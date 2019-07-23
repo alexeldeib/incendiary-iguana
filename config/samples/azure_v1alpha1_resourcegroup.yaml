@@ -1,0 +1,7 @@
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: ResourceGroup
+metadata:
+  name: resourcegroup-sample
+spec:
+  # Add fields here
+  foo: bar

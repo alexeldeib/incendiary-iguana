@@ -1,0 +1,7 @@
+version: "2"
+domain: alexeldeib.xyz
+repo: github.com/alexeldeib/incendiary-iguana
+resources:
+- group: azure
+  version: v1alpha1
+  kind: ResourceGroup
