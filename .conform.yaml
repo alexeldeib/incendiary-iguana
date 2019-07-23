@@ -1,0 +1,29 @@
+policies:
+  - type: commit
+    spec:
+      headerLength: 89
+      dco: false
+      gpg: false
+      imperative: true
+      maximumOfOneCommit: true
+      requireCommitBody: false
+      conventional:
+        types:
+          - chore
+          - docs
+          - refactor
+          - style
+          - test
+          - fix
+        scopes:
+          - "scope"
+  - type: license
+    spec:
+      includeSuffixes:
+        - .go
+      excludeSuffixes:
+        - .deepcopy.go
+      header: |
+        /*
+        Copyright 2019 Alexander Eldeib.
+        */
