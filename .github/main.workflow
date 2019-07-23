@@ -4,5 +4,5 @@ workflow "New workflow" {
 }
 
 action "Conform Action" {
-  uses = "talos-systems/conform@v0.1.0-alpha.16"
+  uses = "./actions/conform"
 }
