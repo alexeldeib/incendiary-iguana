@@ -15,6 +15,7 @@ policies:
           - style
           - test
           - fix
+          - debug
         scopes:
           - "scope"
   - type: license
