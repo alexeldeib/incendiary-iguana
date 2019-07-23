@@ -1,8 +1,15 @@
-workflow "New workflow" {
-  resolves = ["Conform Action"]
-  on = "push"
+workflow "Conform Pull Request" {
+  on       = "pull_request"
+
+  resolves = [
+    "conform"
+  ]
 }
 
-action "Conform Action" {
-  uses = "talos-systems/conform@v0.1.0-alpha.16"
+action "conform" {
+  uses    = "docker://autonomy/conform:v0.1.0-alpha.16"
+
+  secrets = [
+    "GITHUB_TOKEN"
+  ]
 }
