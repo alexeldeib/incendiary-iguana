@@ -1,0 +1,50 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["resourcegroup_controller.go"],
+    importpath = "github.com/alexeldeib/incendiary-iguana/controllers",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api/v1alpha1:go_default_library",
+        "//pkg/clients/resourcegroups:go_default_library",
+        "//pkg/config:go_default_library",
+        "@com_github_go_logr_logr//:go_default_library",
+        "@com_github_hashicorp_go_multierror//:go_default_library",
+        "@io_k8s_apimachinery//pkg/api/errors:go_default_library",
+        "@io_k8s_sigs_controller_runtime//:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/client:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/controller:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "resourcegroup_controller_test.go",
+        "suite_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//api/v1alpha1:go_default_library",
+        "//pkg/mocks/mock_config:go_default_library",
+        "//pkg/mocks/mock_resourcegroup:go_default_library",
+        "@com_github_azure_azure_sdk_for_go//services/resources/mgmt/2019-05-01/resources:go_default_library",
+        "@com_github_azure_go_autorest_autorest//:go_default_library",
+        "@com_github_azure_go_autorest_autorest_to//:go_default_library",
+        "@com_github_golang_mock//gomock:go_default_library",
+        "@com_github_onsi_ginkgo//:go_default_library",
+        "@com_github_onsi_gomega//:go_default_library",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/types:go_default_library",
+        "@io_k8s_client_go//kubernetes/scheme:go_default_library",
+        "@io_k8s_client_go//rest:go_default_library",
+        "@io_k8s_sigs_controller_runtime//:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/client:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/envtest:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/log:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/log/zap:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/manager:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/reconcile:go_default_library",
+    ],
+)

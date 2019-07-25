@@ -1,7 +1,8 @@
 apiVersion: azure.alexeldeib.xyz/v1alpha1
 kind: ResourceGroup
 metadata:
-  name: resourcegroup-sample
+  name: rg-sample
 spec:
-  # Add fields here
-  foo: bar
+  subscriptionId: c69b07f1-f4da-401d-a2e3-6db35cc3d017
+  name: ace-crd
+  location: westus2

@@ -1,8 +1,12 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= alexeldeib/controller:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
+BAZEL_OPTIONS ?= --local_cpu_resources HOST_CPUS-2  --local_ram_resources HOST_RAM*.50
+BAZEL_TEST_OPTIONS ?= $(BAZEL_OPTIONS) --test_output all --test_summary detailed 
+DEBUG_TEST_OPTIONS = $(BAZEL_TEST_OPTIONS) --sandbox_debug
+GO_TEST_OPTIONS ?= ./api/... ./controllers/... -coverprofile cover.out
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -14,12 +18,16 @@ endif
 all: manager
 
 # Run tests
-test: generate fmt vet manifests
-	go test ./api/... ./controllers/... -coverprofile cover.out
-
+# alternatively ginkgo -v ./...
+test: fmt vet
+ifeq (,$(DEBUG))
+	go test -v $(GO_TEST_OPTIONS)
+else
+	go test -v $(GO_TEST_OPTIONS) -ginkgo.v
+endif
 # Build manager binary
 manager: generate fmt vet
-	go build -o bin/manager main.go
+	go build -gcflags '-N -l' -o bin/manager main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet
@@ -35,19 +43,24 @@ deploy: manifests
 	kustomize build config/default | kubectl apply -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
-manifests: controller-gen
+manifests: controller-gen generate
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 # Run go fmt against code
 fmt:
 	go fmt ./...
+	goimports -w .
 
 # Run go vet against code
 vet:
 	go vet ./...
 
+# -j flag should be set to NUM_CPU_CORES - 1 or less, and be an integer. It defaults to 8 if removed.
+lint:
+	golangci-lint run --fix -j=2
+
 # Generate code
-generate: controller-gen
+generate: controller-gen mockgen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./api/...
 
 # Build the docker image
@@ -69,3 +82,39 @@ CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
+
+mockgen:
+ifeq (, $(shell which mockgen))
+	go get github.com/golang/mock/gomock
+	go install github.com/golang/mock/mockgen
+endif
+	go generate ./pkg/... ./controllers/... ./api/...
+
+deps:
+	bazel run gazelle -- update-repos -from_file go.mod
+
+gazelle:
+	bazel run gazelle -- update
+
+bazel-bin: fmt gazelle 
+	rm -f ./bin/manager
+	bazel build incendiary-iguana --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
+	cp ./bazel-bin/linux_amd64_static_pure_stripped/incendiary-iguana ./bin/manager
+
+bazel-exe: fmt gazelle
+	rm -f ./bin/incendiary-iguana.exe
+	bazel build incendiary-iguana --platforms=@io_bazel_rules_go//go/toolchain:windows_amd64
+	cp ./bazel-bin/windows_amd64_static_pure_stripped/incendiary-iguana.exe ./bin/manager.exe
+
+bazel-image: fmt gazelle
+	bazel run image -- --norun
+
+bazel-test: fmt gazelle
+ifeq (,$(DEBUG))
+	bazel test ... $(BAZEL_TEST_OPTIONS)
+else
+	bazel test ... $(DEBUG_TEST_OPTIONS)
+endif
+
+publish: bazel-image
+	bazel run publish
