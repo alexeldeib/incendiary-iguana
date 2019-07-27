@@ -8,6 +8,7 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.1.0
 	github.com/Azure/go-autorest/autorest/to v0.2.0
 	github.com/Azure/go-autorest/autorest/validation v0.1.0 // indirect
+	github.com/apex/log v1.1.1
 	github.com/autonomy/conform v0.1.0-alpha.16 // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/golang/mock v1.3.1
@@ -16,6 +17,7 @@ require (
 	github.com/onsi/gomega v1.5.0
 	github.com/pkg/errors v0.8.1
 	github.com/sanity-io/litter v1.1.0
+	github.com/satori/go.uuid v1.2.0
 	k8s.io/apimachinery v0.0.0-20190404173353-6a84e37a896d
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	sigs.k8s.io/controller-runtime v0.2.0-beta.4

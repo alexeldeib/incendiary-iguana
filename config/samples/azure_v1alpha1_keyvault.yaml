@@ -1,0 +1,10 @@
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: Keyvault
+metadata:
+  name: keyvault-sample
+spec:
+  subscriptionId: 82023f87-d065-4e48-bcac-4ae06dfc1e14
+  name: banana-vault
+  location: westus2
+  resourceGroup: ace-vault
+  tenantId: 72f988bf-86f1-41af-91ab-2d7cd011db47

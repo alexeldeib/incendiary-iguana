@@ -66,7 +66,7 @@ func (c *client) Ensure(ctx context.Context, resourceGroup *azurev1alpha1.Resour
 		Location: &resourceGroup.Spec.Location,
 	}
 	group, err = c.internal.CreateOrUpdate(ctx, resourceGroup.Spec.Name, spec)
-	return resources.Group{}, err
+	return group, err
 }
 
 // Get returns a resource group and sets its provisioning state.
@@ -79,11 +79,9 @@ func (c *client) Delete(ctx context.Context, resourceGroup *azurev1alpha1.Resour
 	future, err := c.internal.Delete(ctx, resourceGroup.Spec.Name)
 	if err != nil {
 		// Not found is a successful delete
-		if resp := future.Response(); resp != nil && resp.StatusCode == http.StatusNotFound {
-			return future.Status(), nil
+		if resp := future.Response(); resp != nil && resp.StatusCode != http.StatusNotFound {
+			return "", err
 		}
-		return "", err
 	}
-	// Update deletion status
 	return future.Status(), nil
 }

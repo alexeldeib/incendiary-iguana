@@ -10,6 +10,8 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/controllers"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -38,7 +40,7 @@ func main() {
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
 	flag.Parse()
 
-	ctrl.SetLogger(zap.Logger(true))
+	ctrl.SetLogger(zap.Logger(false))
 
 	configuration := config.New(setupLog)
 	err := configuration.DetectAuthorizer()
@@ -51,21 +53,37 @@ func main() {
 		MetricsBindAddress: metricsAddr,
 		LeaderElection:     enableLeaderElection,
 	})
+
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
-	context := config.Context{
-		Config: configuration,
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers"),
-	}
+	log := ctrl.Log.WithName("controllers")
+	client := mgr.GetClient()
 
-	if err = controllers.NewResourceGroupReconciler(context).SetupWithManager(mgr); err != nil {
+	if err = (&controllers.ResourceGroupReconciler{
+		Client:       client,
+		Log:          log.WithName("ResourceGroup"),
+		Config:       configuration,
+		GroupsClient: resourcegroups.New(configuration),
+	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ResourceGroup")
 		os.Exit(1)
 	}
+
+	if err = (&controllers.KeyvaultReconciler{
+		Client:       client,
+		Log:          log.WithName("Keyvault"),
+		Config:       configuration,
+		GroupsClient: resourcegroups.New(configuration),
+		VaultsClient: keyvaults.New(configuration),
+		Scheme:       mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Keyvault")
+		os.Exit(1)
+	}
+
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")

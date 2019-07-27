@@ -51,10 +51,10 @@ func TestReconcile(t *testing.T) {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			reconciler = &ResourceGroupReconciler{
-				Config: mockConfig,
-				Client: k8sClient,
-				Log:    ctrl.Log.WithName("controllers"),
-				Azure:  mockResourceGroupClient,
+				Config:       mockConfig,
+				Client:       k8sClient,
+				Log:          ctrl.Log.WithName("controllers"),
+				GroupsClient: mockResourceGroupClient,
 			}
 
 			err = reconciler.SetupWithManager(mgr)
@@ -119,7 +119,6 @@ func TestReconcile(t *testing.T) {
 				mockResourceGroupClient.EXPECT().Get(ctx, &spec),
 				mockResourceGroupClient.EXPECT().Ensure(ctx, gomock.Any()),
 				mockResourceGroupClient.EXPECT().Get(ctx, gomock.Any()).Return(fakeGroup, nil),
-				mockResourceGroupClient.EXPECT().Ensure(ctx, gomock.Any()),
 			)
 
 			_, err = reconciler.Reconcile(req)

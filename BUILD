@@ -16,6 +16,8 @@ go_library(
     deps = [
         "//api/v1alpha1:go_default_library",
         "//controllers:go_default_library",
+        "//pkg/clients/keyvaults:go_default_library",
+        "//pkg/clients/resourcegroups:go_default_library",
         "//pkg/config:go_default_library",
         "@io_k8s_apimachinery//pkg/runtime:go_default_library",
         "@io_k8s_client_go//kubernetes/scheme:go_default_library",
@@ -51,6 +53,9 @@ go_image(
         "//api/v1alpha1:go_default_library",
         "//controllers:go_default_library",
         "//pkg/config:go_default_library",
+        "//pkg/clients/keyvaults:go_default_library",
+        "//pkg/clients/resourcegroups:go_default_library",
+        "//pkg/clients/resources:go_default_library",
         "@io_k8s_apimachinery//pkg/runtime:go_default_library",
         "@io_k8s_client_go//kubernetes/scheme:go_default_library",
         "@io_k8s_client_go//plugin/pkg/client/auth/gcp:go_default_library",

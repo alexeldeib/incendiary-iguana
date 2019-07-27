@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["keyvaults.go"],
+    importpath = "github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api/v1alpha1:go_default_library",
+        "//pkg/config:go_default_library",
+        "@com_github_azure_azure_sdk_for_go//services/keyvault/mgmt/2018-02-14/keyvault:go_default_library",
+        "@com_github_azure_go_autorest_autorest_to//:go_default_library",
+        "@com_github_satori_go_uuid//:go_default_library",
+    ],
+)

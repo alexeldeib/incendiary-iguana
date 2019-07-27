@@ -7,7 +7,6 @@ package controllers
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/hashicorp/go-multierror"
@@ -31,32 +30,8 @@ const (
 type ResourceGroupReconciler struct {
 	client.Client
 	config.Config
-	Log   logr.Logger
-	Azure resourcegroups.Client
-}
-
-// AzureResourceGroupReconciler defines methods which call external services for stub generation.
-type AzureResourceGroupReconciler interface {
-	ReconcileExternalResources(context.Context, *azurev1alpha1.ResourceGroup, resourcegroups.Client, logr.Logger) (ctrl.Result, error)
-	DeleteExternalResources(context.Context, *azurev1alpha1.ResourceGroup, resourcegroups.Client) error
-}
-
-// NewResourceGroupReconciler instantiates a resource group reconciler with a
-// context, Azure credentials, Kubernetes client, and the default Azure client.
-func NewResourceGroupReconciler(ctx config.Context) *ResourceGroupReconciler {
-	return NewResourceGroupReconcilerForClient(ctx, resourcegroups.New(ctx.Config))
-}
-
-// NewResourceGroupReconcilerForClient instantiates a resource group
-// reconciler with a context, Azure credentials, Kubernetes client, and
-// Azure client.
-func NewResourceGroupReconcilerForClient(ctx config.Context, azure resourcegroups.Client) *ResourceGroupReconciler {
-	return &ResourceGroupReconciler{
-		Config: ctx.Config,
-		Client: ctx.Client,
-		Log:    ctx.Log.WithName("ResourceGroup"),
-		Azure:  azure,
-	}
+	Log          logr.Logger
+	GroupsClient resourcegroups.Client
 }
 
 // Reconcile reconciles a user request for a Resource Group against Azure.
@@ -80,19 +55,20 @@ func (r *ResourceGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 	}
 
 	// Authorize client
-	err := r.Azure.ForSubscription(resourceGroup.Spec.SubscriptionID)
+	err := r.GroupsClient.ForSubscription(resourceGroup.Spec.SubscriptionID)
 	if err != nil {
 		// Don't requeue if fail to instantiate Azure client.
 		return ctrl.Result{Requeue: false}, err
 	}
 
 	// Fetch state of world
-	group, err := r.Azure.Get(ctx, &resourceGroup)
+	group, err := r.GroupsClient.Get(ctx, &resourceGroup)
 	if err != nil && !group.IsHTTPStatus(http.StatusNotFound) {
 		return ctrl.Result{}, err
 	}
 
 	// Update our awareness of the state
+	oldGeneration := resourceGroup.Status.Generation
 	resourceGroup.Status.Generation = resourceGroup.ObjectMeta.GetGeneration()
 	if group.Response.IsHTTPStatus(http.StatusNotFound) {
 		resourceGroup.Status.ProvisioningState = provisioningStateNotFound
@@ -101,6 +77,7 @@ func (r *ResourceGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		resourceGroup.Status.ProvisioningState = *group.Properties.ProvisioningState
 	}
 	if err := r.Status().Update(ctx, &resourceGroup); err != nil {
+		log.Info("failed to update status after reconcile")
 		return ctrl.Result{}, err
 	}
 
@@ -112,6 +89,7 @@ func (r *ResourceGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		if !containsString(resourceGroup.ObjectMeta.Finalizers, finalizerName) {
 			resourceGroup.ObjectMeta.Finalizers = append(resourceGroup.ObjectMeta.Finalizers, finalizerName)
 			if err := r.Update(ctx, &resourceGroup); err != nil {
+				log.Info("failed to add finalizer")
 				return ctrl.Result{}, err
 			}
 		}
@@ -127,22 +105,27 @@ func (r *ResourceGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 					r.Log.Info("deletion in progress, will requeue")
 				} else {
 					// Should delete; start async deletion.
-					if err := r.DeleteExternalResources(ctx, &resourceGroup); err != nil {
+					_, err := r.GroupsClient.Delete(ctx, &resourceGroup)
+					if err != nil {
 						r.Log.Info("error while deleting external resources")
 						resultErr = multierror.Append(resultErr, err)
+					} else {
+						r.Log.Info("started deletion of resource group")
+						resourceGroup.Status.ProvisioningState = provisioningStateDeleting
+						if err := r.Status().Update(ctx, &resourceGroup); err != nil {
+							log.Info("failed to update status after reconcile")
+							return ctrl.Result{}, err
+						}
 					}
-					r.Log.Info("started deletion of resource group")
-				}
-				// Try to update status, accumulate all errors
-				if err := r.Status().Update(ctx, &resourceGroup); err != nil {
-					resultErr = multierror.Append(resultErr, err)
 				}
 				// Requeue while we wait for deletion, returning either/both error(s) if appropriate
-				return ctrl.Result{RequeueAfter: time.Second * 5}, resultErr.ErrorOrNil()
+				return ctrl.Result{Requeue: true}, resultErr.ErrorOrNil()
 			}
-			// Deletion done; remove our finalizer from the list and update it.
+			r.Log.Info("finished deletion of resource group")
+			// Deletion done; remove our finalizer from the list and update object in API server.
 			resourceGroup.ObjectMeta.Finalizers = removeString(resourceGroup.ObjectMeta.Finalizers, finalizerName)
 			if err := r.Update(ctx, &resourceGroup); err != nil {
+				log.Info("failed to update object after deletion")
 				return ctrl.Result{}, err
 			}
 		}
@@ -150,40 +133,22 @@ func (r *ResourceGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 	}
 
 	// Reconcile Azure resources.
-	result, err := r.ReconcileExternalResources(ctx, &resourceGroup, log)
-	if err != nil {
-		return result, err
+	if oldGeneration != resourceGroup.ObjectMeta.GetGeneration() {
+		group, err = r.GroupsClient.Ensure(ctx, &resourceGroup)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
-	// Attempt to update status
-	if err := r.Status().Update(ctx, &resourceGroup); err != nil {
-		return ctrl.Result{RequeueAfter: time.Second * 30}, err
-	}
-	return ctrl.Result{}, nil
-}
-
-// ReconcileExternalResources handles reconciliation of Azure resource in a given cloud environment
-func (r *ResourceGroupReconciler) ReconcileExternalResources(ctx context.Context, resourceGroup *azurev1alpha1.ResourceGroup, log logr.Logger) (ctrl.Result, error) {
-	// Check for existence of Resource group. We only care about location and name.
-	// TODO(ace): handle location/name changes? via status somehow
-	group, err := r.Azure.Ensure(ctx, resourceGroup)
-	if err != nil {
-		return ctrl.Result{RequeueAfter: time.Second * 30}, err
-	}
-	if group.Properties != nil {
+	// Attempt to update status in API server.
+	if group.Properties != nil && group.Properties.ProvisioningState != nil {
 		resourceGroup.Status.ProvisioningState = *group.Properties.ProvisioningState
 	}
-	return ctrl.Result{Requeue: false}, nil
-}
-
-// DeleteExternalResources handles deletion of Azure resource in a given cloud environment
-func (r *ResourceGroupReconciler) DeleteExternalResources(ctx context.Context, resourceGroup *azurev1alpha1.ResourceGroup) error {
-	status, err := r.Azure.Delete(ctx, resourceGroup)
-	if err != nil {
-		return err
+	if err := r.Status().Update(ctx, &resourceGroup); err != nil {
+		log.Info("failed to update status after reconcile")
+		return ctrl.Result{}, err
 	}
-	resourceGroup.Status.ProvisioningState = status
-	return nil
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up this controller for use.

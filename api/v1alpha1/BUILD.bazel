@@ -4,6 +4,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "groupversion_info.go",
+        "keyvault_types.go",
         "resourcegroup_types.go",
         "zz_generated.deepcopy.go",
     ],

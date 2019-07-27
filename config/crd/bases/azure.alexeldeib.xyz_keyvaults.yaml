@@ -4,22 +4,22 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   creationTimestamp: null
-  name: resourcegroups.azure.alexeldeib.xyz
+  name: keyvaults.azure.alexeldeib.xyz
 spec:
   group: azure.alexeldeib.xyz
   names:
     categories:
     - all
-    kind: ResourceGroup
-    plural: resourcegroups
+    kind: Keyvault
+    plural: keyvaults
     shortNames:
-    - rg
+    - kv
   scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: ResourceGroup is the Schema for the resourcegroups API
+      description: Keyvault is the Schema for the keyvaults API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -34,38 +34,45 @@ spec:
         metadata:
           type: object
         spec:
-          description: ResourceGroupSpec defines the desired state of ResourceGroup
+          description: KeyvaultSpec defines the desired state of Keyvault
           properties:
             location:
               description: Location of the resource group (e.g., eastus2 or "West
                 US")
               type: string
             name:
-              description: Name is the name of the Azure resource group.
+              description: Name is the name of the Azure Keyvault.
+              type: string
+            resourceGroup:
+              description: ResourceGroup contains the Keyvault.
               type: string
             subscriptionId:
-              description: SubscriptionID is the GUID of the subscription for this
-                resource group.
+              description: SubscriptionID contains the Resource group. Is a GUID.
+              type: string
+            tenantId:
+              description: TenantID contains the Subscription. Is a GUID.
               type: string
           required:
           - location
           - name
+          - resourceGroup
           - subscriptionId
+          - tenantId
           type: object
         status:
-          description: ResourceGroupStatus defines the observed state of ResourceGroup
+          description: KeyvaultStatus defines the observed state of Keyvault
           properties:
+            exists:
+              description: Exists sync the provisioning status of the resource from
+                Azure.
+              type: boolean
             generation:
               description: Generation is the last reconciled generation.
               format: int64
               type: integer
-            provisioningState:
-              description: ProvisioningState sync the provisioning status of the resource
-                from Azure.
-              type: string
           required:
+          - exists
           - generation
-          - provisioningState
           type: object
       type: object
   versions:

@@ -67,6 +67,7 @@ func (c *config) DetectAuthorizer() error {
 
 // GetAuthorizer creates a new ARM authorizer, preferring cli => file => env vars => msi.
 func (c *config) GetAuthorizer() (autorest.Authorizer, error) {
+	// TODO(ace): use detected mode and don't do the whole loop every time.
 	authorizer, err := auth.NewAuthorizerFromFile(azure.PublicCloud.ResourceManagerEndpoint)
 	if err == nil {
 		return authorizer, nil
