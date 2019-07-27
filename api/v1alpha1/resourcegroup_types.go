@@ -22,9 +22,11 @@ type ResourceGroupSpec struct {
 type ResourceGroupStatus struct {
 	// ProvisioningState sync the provisioning status of the resource from Azure.
 	ProvisioningState string `json:"provisioningState"`
+	Generation        int64  `json:"generation"`
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // ResourceGroup is the Schema for the resourcegroups API
 type ResourceGroup struct {

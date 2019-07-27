@@ -1,0 +1,16 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "mock_config.go",
+        "zz_generated_mock.go",
+    ],
+    importpath = "github.com/alexeldeib/incendiary-iguana/pkg/mocks/mock_config",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/config:go_default_library",
+        "@com_github_azure_go_autorest_autorest//:go_default_library",
+        "@com_github_golang_mock//gomock:go_default_library",
+    ],
+)

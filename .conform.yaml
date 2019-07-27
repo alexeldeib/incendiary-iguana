@@ -23,6 +23,7 @@ policies:
         - .go
       excludeSuffixes:
         - .deepcopy.go
+        - mock.go
       header: |
         /*
         Copyright 2019 Alexander Eldeib.

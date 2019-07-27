@@ -1,0 +1,10 @@
+run:
+  linters:
+    enable-all: true
+    disable:
+    - lll
+    - gochecknoglobals
+    - gochecknoinits
+  skip-dirs:
+  - bazel-*
+  - bin

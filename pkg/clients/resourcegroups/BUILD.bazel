@@ -1,0 +1,13 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["resourcegroups.go"],
+    importpath = "github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api/v1alpha1:go_default_library",
+        "//pkg/config:go_default_library",
+        "@com_github_azure_azure_sdk_for_go//services/resources/mgmt/2019-05-01/resources:go_default_library",
+    ],
+)

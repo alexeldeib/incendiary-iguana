@@ -11,6 +11,8 @@ spec:
     kind: ResourceGroup
     plural: resourcegroups
   scope: ""
+  subresources:
+    status: {}
   validation:
     openAPIV3Schema:
       description: ResourceGroup is the Schema for the resourcegroups API
@@ -37,18 +39,27 @@ spec:
             name:
               description: Name is the name of the Azure resource group.
               type: string
+            subscriptionId:
+              description: SubscriptionID is the GUID of the subscription for this
+                resource group.
+              type: string
           required:
           - location
           - name
+          - subscriptionId
           type: object
         status:
           description: ResourceGroupStatus defines the observed state of ResourceGroup
           properties:
+            generation:
+              format: int64
+              type: integer
             provisioningState:
               description: ProvisioningState sync the provisioning status of the resource
                 from Azure.
               type: string
           required:
+          - generation
           - provisioningState
           type: object
       type: object
