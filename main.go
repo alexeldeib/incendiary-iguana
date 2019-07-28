@@ -12,6 +12,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/controllers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -62,6 +63,13 @@ func main() {
 	log := ctrl.Log.WithName("controllers")
 	client := mgr.GetClient()
 
+	// Global client initialization
+	secretsclient, err := secrets.New(configuration)
+	if err != nil {
+		setupLog.Error(err, "failed to initialize keyvault secret client")
+		os.Exit(1)
+	}
+
 	if err = (&controllers.ResourceGroupReconciler{
 		Client:       client,
 		Log:          log.WithName("ResourceGroup"),
@@ -78,12 +86,31 @@ func main() {
 		Config:       configuration,
 		GroupsClient: resourcegroups.New(configuration),
 		VaultsClient: keyvaults.New(configuration),
-		Scheme:       mgr.GetScheme(),
+		Scheme:       scheme,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Keyvault")
 		os.Exit(1)
 	}
 
+	if err = (&controllers.SecretReconciler{
+		Client:        client,
+		Log:           ctrl.Log.WithName("controllers").WithName("Secret"),
+		SecretsClient: secretsclient,
+		Scheme:        scheme,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Secret")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.SecretBundleReconciler{
+		Client:        mgr.GetClient(),
+		Log:           ctrl.Log.WithName("controllers").WithName("SecretBundle"),
+		SecretsClient: secretsclient,
+		Scheme:        scheme,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "SecretBundle")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")

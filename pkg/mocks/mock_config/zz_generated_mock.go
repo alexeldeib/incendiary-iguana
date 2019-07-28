@@ -80,3 +80,18 @@ func (mr *MockConfigMockRecorder) GetAuthorizer() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAuthorizer", reflect.TypeOf((*MockConfig)(nil).GetAuthorizer))
 }
+
+// GetKeyvaultAuthorizer mocks base method
+func (m *MockConfig) GetKeyvaultAuthorizer() (autorest.Authorizer, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetKeyvaultAuthorizer")
+	ret0, _ := ret[0].(autorest.Authorizer)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetKeyvaultAuthorizer indicates an expected call of GetKeyvaultAuthorizer
+func (mr *MockConfigMockRecorder) GetKeyvaultAuthorizer() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetKeyvaultAuthorizer", reflect.TypeOf((*MockConfig)(nil).GetKeyvaultAuthorizer))
+}

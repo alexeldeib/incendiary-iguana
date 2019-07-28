@@ -133,11 +133,13 @@ func (r *ResourceGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 	}
 
 	// Reconcile Azure resources.
-	if oldGeneration != resourceGroup.ObjectMeta.GetGeneration() {
+	if oldGeneration != resourceGroup.ObjectMeta.GetGeneration() || resourceGroup.Status.ProvisioningState == provisioningStateNotFound {
 		group, err = r.GroupsClient.Ensure(ctx, &resourceGroup)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+	} else {
+		log.Info("skipping reconciliation, smooth sailing.")
 	}
 
 	// Attempt to update status in API server.

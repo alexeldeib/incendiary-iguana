@@ -115,6 +115,9 @@ func (r *KeyvaultReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 						// It is still useful for multi-level ownership hierarchies where a user deletes
 						// an object which owns an object owning another object (user -> object -> object -> object).
 						// The middle object should wait for the final object's deletion, which this would enforce.
+						//
+						// Also, this is deleting the resource group containing the KV,
+						// so the "delete vault" portion of this loop should likely not execute.
 						err = r.Client.Delete(ctx, &resourceGroup, client.PropagationPolicy(metav1.DeletePropagationForeground))
 						if err != nil {
 							return ctrl.Result{}, err
@@ -184,16 +187,24 @@ func (r *KeyvaultReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 					SubscriptionID: keyVault.Spec.SubscriptionID,
 				},
 			}
-			err := controllerutil.SetControllerReference(&keyVault, &resourceGroup, r.Scheme)
-			if err = r.Client.Create(ctx, &resourceGroup); err != nil {
+			err = controllerutil.SetControllerReference(&keyVault, &resourceGroup, r.Scheme) //nolint:ineffassign
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			log.Info("creating resource group")
+			if err = r.Create(ctx, &resourceGroup); err != nil {
+				log.Info("failed creating resource group")
 				return ctrl.Result{}, err
 			}
 		}
+		log.Info("creating keyvault")
 		if err := r.VaultsClient.Ensure(ctx, &keyVault); err != nil {
+			log.Info("failed creating keyvault")
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{Requeue: true}, nil
 	}
+	log.Info("skipping reconciliation, smooth sailing.")
 	return ctrl.Result{}, nil
 }
 

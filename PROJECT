@@ -8,3 +8,9 @@ resources:
 - group: azure
   version: v1alpha1
   kind: Keyvault
+- group: azure
+  version: v1alpha1
+  kind: Secret
+- group: azure
+  version: v1alpha1
+  kind: SecretBundle

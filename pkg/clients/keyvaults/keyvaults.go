@@ -18,7 +18,7 @@ import (
 // Type assertion for interface/implementation
 var _ Client = &client{}
 
-// Client is the interface for Azure resource keyvaults. Defined for test mocks.
+// Client is the interface for Azure keyvaults. Defined for test mocks.
 type Client interface {
 	ForSubscription(string) error
 	Ensure(context.Context, *azurev1alpha1.Keyvault) error

@@ -1349,3 +1349,17 @@ go_repository(
     sum = "h1:sWo7pRubEwovyVnbgs3VJpe4ppUGSLbu/zNPyCBXtHE=",
     version = "v0.0.0-20190119082159-9be13e02fd56",
 )
+
+go_repository(
+    name = "com_github_google_subcommands",
+    importpath = "github.com/google/subcommands",
+    sum = "h1:/eqq+otEXm5vhfBrbREPCSVQbvofip6kIz+mX5TUH7k=",
+    version = "v1.0.1",
+)
+
+go_repository(
+    name = "com_github_google_wire",
+    importpath = "github.com/google/wire",
+    sum = "h1:imGQZGEVEHpje5056+K+cgdO72p0LQv2xIIFXNGUf60=",
+    version = "v0.3.0",
+)

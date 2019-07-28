@@ -6,6 +6,8 @@ go_library(
         "groupversion_info.go",
         "keyvault_types.go",
         "resourcegroup_types.go",
+        "secret_types.go",
+        "secretbundle_types.go",
         "zz_generated.deepcopy.go",
     ],
     importpath = "github.com/alexeldeib/incendiary-iguana/api/v1alpha1",
