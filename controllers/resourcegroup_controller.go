@@ -34,9 +34,10 @@ type ResourceGroupReconciler struct {
 	GroupsClient resourcegroups.Client
 }
 
-// Reconcile reconciles a user request for a Resource Group against Azure.
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=resourcegroups,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=resourcegroups/status,verbs=get;update;patch
+
+// Reconcile reconciles a user request for a Resource Group against Azure.
 func (r *ResourceGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
 	log := r.Log.WithValues("resourcegroup", req.NamespacedName)

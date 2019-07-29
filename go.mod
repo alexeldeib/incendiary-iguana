@@ -17,6 +17,7 @@ require (
 	github.com/onsi/ginkgo v1.8.0
 	github.com/onsi/gomega v1.5.0
 	github.com/pkg/errors v0.8.1
+	github.com/prometheus/common v0.2.0
 	github.com/sanity-io/litter v1.1.0
 	github.com/satori/go.uuid v1.2.0
 	k8s.io/api v0.0.0-20190409021203-6e4e0e4f393b

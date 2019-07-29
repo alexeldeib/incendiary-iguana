@@ -39,6 +39,7 @@ func (r *SecretBundleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	log := r.Log.WithValues("secretBundle", req.NamespacedName)
 
 	// Fetch from Kubernetes API server
+	// FETCH
 	var secretBundle azurev1alpha1.SecretBundle
 	if err := r.Get(ctx, req.NamespacedName, &secretBundle); err != nil {
 		// dont't requeue not found
@@ -49,6 +50,7 @@ func (r *SecretBundleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, err
 	}
 
+	// UPDATE STATUS
 	remoteSecretsStatus := azurev1alpha1.SecretBundleStatus{
 		Generation: secretBundle.ObjectMeta.GetGeneration(),
 		Desired:    len(secretBundle.Spec.Secrets),
@@ -142,6 +144,7 @@ func (r *SecretBundleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, err
 	}
 
+	// ADD FINALIZER (util func)
 	// Handle deletion/finalizer
 	if secretBundle.ObjectMeta.DeletionTimestamp.IsZero() {
 		// Add finalizer if not present
@@ -154,6 +157,7 @@ func (r *SecretBundleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	} else {
 		// The object is being deleted
 		if containsString(secretBundle.ObjectMeta.Finalizers, finalizerName) {
+			// DELETE
 			log.Info("handling deletion of secret bundle")
 			requeue := false
 			var resultErr *multierror.Error
@@ -186,6 +190,7 @@ func (r *SecretBundleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, nil
 	}
 
+	// RECONCILE
 	log.Info("reconciling secret")
 
 	// Construct candidate owner reference
