@@ -190,35 +190,14 @@ func (r *SecretBundleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, nil
 	}
 
-	// RECONCILE
 	log.Info("reconciling secret")
-
-	// Construct candidate owner reference
-	ref, err := refFromOwner(r.Scheme, &secretBundle)
-	if err != nil {
-		return ctrl.Result{}, nil
-	}
-
-	// Create or mutate
-	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, &localSecretBundle, func() error {
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, &localSecretBundle, func() error {
 		log.Info("mutating secret bundle")
-		// Get existing owner refs, decide if we should add ours
-		owners := localSecretBundle.GetOwnerReferences()
-		add := true
-		for _, owner := range owners {
-			if referSameObject(owner, ref) {
-				add = false
-			}
-		}
-		// Add the reference
-		if add {
-			innerErr := controllerutil.SetControllerReference(&secretBundle, &localSecretBundle, r.Scheme) //nolint:ineffassign
-			if innerErr != nil {
-				return innerErr
-			}
+		innerErr := controllerutil.SetControllerReference(&secretBundle, &localSecretBundle, r.Scheme)
+		if innerErr != nil {
+			return innerErr
 		}
 		log.Info("setting secret map data")
-		// Initialize data if necessary, and set desired key.
 		localSecretBundle.Data = newSecretData
 		return nil
 	})

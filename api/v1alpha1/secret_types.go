@@ -38,6 +38,9 @@ type SingleSecretStatus struct {
 	Exists bool `json:"exists"`
 	// Available is true when the secret is ready for use in Kubernetes.
 	Available bool `json:"available"`
+	// LastKnownName is the name of this secret as seen when it was last reconciled.
+	// This is useful for knowing when to delete/recreate a secret.
+	LastKnownName string `json:"lastKnownName"`
 }
 
 // SecretStatus defines the observed state of Secret
