@@ -7,9 +7,12 @@ package controllers
 import (
 	"context"
 	"net/http"
+	"regexp"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/hashicorp/go-multierror"
+	"github.com/sanity-io/litter"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,6 +25,8 @@ import (
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secrets"
 )
+
+var BadHostRegex = regexp.MustCompile(`StatusCode=([0-9]{0,3})`)
 
 // SecretBundleReconciler reconciles a Secret object
 type SecretBundleReconciler struct {
@@ -69,24 +74,33 @@ func (r *SecretBundleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			},
 		}
 		remoteSecret, err := r.SecretsClient.Get(ctx, arg)
-		if err != nil && !remoteSecret.IsHTTPStatus(http.StatusNotFound) {
+
+		if err != nil && !remoteSecret.HasHTTPStatus(http.StatusNotFound) {
 			// TODO(ace): BLOCKER should handle this more gracefully
-			return ctrl.Result{}, err
+			matches := BadHostRegex.FindSubmatch([]byte(err.Error()))
+			if matches == nil {
+				return ctrl.Result{}, err
+			}
+			parts := strings.Split(string(matches[0]), "=")
+			if len(parts) < 2 || parts[1] != "0" {
+				litter.Dump(parts[1])
+				return ctrl.Result{}, err
+			}
 		}
-		if remoteSecret.IsHTTPStatus(http.StatusNotFound) {
+		localName := item.Name
+		if item.LocalName != nil {
+			localName = *item.LocalName
+		}
+		if !remoteSecret.IsHTTPStatus(http.StatusOK) {
 			log.Info("keyvault secret not found")
-			remoteSecretsStatus.Secrets[item.Name] = azurev1alpha1.SingleSecretStatus{
+			remoteSecretsStatus.Secrets[localName] = azurev1alpha1.SingleSecretStatus{
 				Exists:    false,
 				Available: false,
 			}
 		} else {
 			available = available + 1
-			if item.LocalName != nil {
-				newSecretData[*item.LocalName] = []byte(*remoteSecret.Value)
-			} else {
-				newSecretData[item.Name] = []byte(*remoteSecret.Value)
-			}
-			remoteSecretsStatus.Secrets[item.Name] = azurev1alpha1.SingleSecretStatus{
+			newSecretData[localName] = []byte(*remoteSecret.Value)
+			remoteSecretsStatus.Secrets[localName] = azurev1alpha1.SingleSecretStatus{
 				Exists:    true,
 				Available: false,
 			}

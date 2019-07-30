@@ -56,7 +56,7 @@ func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	if err = r.Get(ctx, req.NamespacedName, &secret); err != nil {
 		log.Info("error during get crd")
-		return ctrl.Result{Requeue: !apierrs.IsNotFound(err)}, err
+		return ctrl.Result{Requeue: !apierrs.IsNotFound(err)}, client.IgnoreNotFound(err)
 	}
 
 	if remote, err = r.getRemote(ctx, &secret, log); err != nil {
@@ -64,7 +64,7 @@ func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	if err = r.getLocal(ctx, &secret, &local, log); err != nil {
+	if local, err = r.getLocal(ctx, &secret, log); err != nil {
 		log.Info("error during get local")
 		return ctrl.Result{}, err
 	}
@@ -95,24 +95,26 @@ func (r *SecretReconciler) getRemote(ctx context.Context, secret *azurev1alpha1.
 	return &remote, nil
 }
 
-func (r *SecretReconciler) getLocal(ctx context.Context, secret *azurev1alpha1.Secret, local *corev1.Secret, log logr.Logger) error {
-	name := getNameOverride(secret, local)
-	err := r.Get(ctx, name, local)
-	if err != nil && !apierrs.IsNotFound(err) {
+func (r *SecretReconciler) getLocal(ctx context.Context, secret *azurev1alpha1.Secret, log logr.Logger) (corev1.Secret, error) {
+	var local corev1.Secret
+	name := overrideName(secret, &local)
+	err := r.Get(ctx, name, &local)
+	if client.IgnoreNotFound(err) != nil {
 		log.Error(err, "failed to get local secret")
-		return err
+		return local, err
 	}
-	return nil
+	return local, nil
 }
 
-func getNameOverride(secret *azurev1alpha1.Secret, local *corev1.Secret) types.NamespacedName {
+func overrideName(secret *azurev1alpha1.Secret, local *corev1.Secret) types.NamespacedName {
 	name := types.NamespacedName{
 		Name:      secret.Spec.Name,
 		Namespace: secret.ObjectMeta.Namespace,
 	}
-	local.ObjectMeta.Namespace = secret.Spec.Name
+	local.ObjectMeta.Name = secret.Spec.Name
 	local.ObjectMeta.Namespace = secret.ObjectMeta.Namespace
 	if secret.Spec.LocalName != nil {
+		name.Name = *secret.Spec.LocalName
 		local.ObjectMeta.Name = *secret.Spec.LocalName
 	}
 	return name
@@ -136,10 +138,12 @@ func syncRemote(secret *azurev1alpha1.Secret, remote *keyvault.SecretBundle, log
 }
 
 func syncLocal(secret *azurev1alpha1.Secret, local *corev1.Secret, log logr.Logger) {
+	log.Info("syncing local")
 	if local.Data == nil || len(local.Data) == 0 {
 		log.Info("corresponding kubernetes secret not found")
 		secret.Status.Available = false
 	} else {
+		log.Info("found local")
 		secret.Status.Available = true
 	}
 }
@@ -169,7 +173,8 @@ func (r *SecretReconciler) reconcileExternal(ctx context.Context, secret *azurev
 		if err = r.deleteOld(ctx, secret, log); err != nil {
 			return err
 		}
-		return AddFinalizerAndUpdate(ctx, r.Client, finalizerName, secret)
+		AddFinalizer(secret, finalizerName)
+		return nil
 	}
 	// TODO(ace): If it doesn't exist, generate it (requires input metadata)
 	// TODO(ace): create the necessary Keyvault if it doesn't exist
