@@ -29,6 +29,26 @@ rules:
 - apiGroups:
   - azure.alexeldeib.xyz
   resources:
+  - resourcegroups
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - resourcegroups/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
   - secretbundles
   verbs:
   - create

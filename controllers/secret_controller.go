@@ -44,24 +44,9 @@ func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	var secret *azurev1alpha1.Secret
 	var localsecret *corev1.Secret
-	var remotesecret keyvault.SecretBundle
+	var remotesecret *keyvault.SecretBundle
 
-	if err := r.Get(ctx, req.NamespacedName, secret); err != nil {
-		// dont't requeue not found
-		if apierrs.IsNotFound(err) {
-			return ctrl.Result{}, nil
-		}
-		log.Error(err, "unable to fetch secret")
-		return ctrl.Result{}, err
-	}
-
-	if remotesecret, err := r.SecretsClient.Get(ctx, secret); err != nil {
-		if !remotesecret.IsHTTPStatus(http.StatusNotFound) {
-			return ctrl.Result{}, err
-		}
-	}
-
-	if err := r.Get(ctx, req.NamespacedName, localsecret); err != nil && !apierrs.IsNotFound(err) {
+	if err := r.fetchAll(ctx, req.NamespacedName, remotesecret, localsecret, secret); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -93,7 +78,29 @@ func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
 
-func (r *SecretReconciler) updateStatus(ctx context.Context, namespaceName types.NamespacedName, remotesecret keyvault.SecretBundle, localsecret *corev1.Secret, secret *azurev1alpha1.Secret) {
+func (r *SecretReconciler) fetchAll(ctx context.Context, namespaceName types.NamespacedName, remotesecret *keyvault.SecretBundle, localsecret *corev1.Secret, secret *azurev1alpha1.Secret) error {
+	if err := r.Get(ctx, namespacedName, secret); err != nil {
+		// dont't requeue not found
+		if apierrs.IsNotFound(err) {
+			return nil
+		}
+		log.Error(err, "unable to fetch secret")
+		return err
+	}
+
+	if remotesecret, err := r.SecretsClient.Get(ctx, secret); err != nil {
+		if !remotesecret.IsHTTPStatus(http.StatusNotFound) {
+			return err
+		}
+	}
+
+	if err := r.Get(ctx, namespacedName, localsecret); err != nil && !apierrs.IsNotFound(err) {
+		return err
+	}
+	return nil
+}
+
+func (r *SecretReconciler) updateStatus(ctx context.Context, namespaceName types.NamespacedName, remotesecret *keyvault.SecretBundle, localsecret *corev1.Secret, secret *azurev1alpha1.Secret) {
 	if remotesecret.IsHTTPStatus(http.StatusNotFound) {
 		log.Info("keyvault secret not found")
 		secret.Status.Exists = false
@@ -143,7 +150,6 @@ func (r *SecretReconciler) reconcileExternal(ctx context.Context, remotesecret k
 		})
 		return err
 	}
-
 	// TODO(ace): If it doesn't exist, generate it (requires input metadata)
 	// TODO(ace): create the necessary Keyvault if it doesn't exist
 	return nil
