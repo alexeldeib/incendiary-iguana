@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	"github.com/hashicorp/go-multierror"
 	"github.com/sanity-io/litter"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -44,15 +43,10 @@ func (r *SecretBundleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	log := r.Log.WithValues("secretBundle", req.NamespacedName)
 
 	// Fetch from Kubernetes API server
-	// FETCH
 	var secretBundle azurev1alpha1.SecretBundle
 	if err := r.Get(ctx, req.NamespacedName, &secretBundle); err != nil {
-		// dont't requeue not found
-		if apierrs.IsNotFound(err) {
-			return ctrl.Result{}, nil
-		}
-		log.Error(err, "unable to fetch secret")
-		return ctrl.Result{}, err
+		log.Info("unable to fetch secret")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	// UPDATE STATUS
@@ -74,7 +68,6 @@ func (r *SecretBundleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			},
 		}
 		remoteSecret, err := r.SecretsClient.Get(ctx, arg)
-
 		if err != nil && !remoteSecret.HasHTTPStatus(http.StatusNotFound) {
 			// TODO(ace): BLOCKER should handle this more gracefully
 			matches := BadHostRegex.FindSubmatch([]byte(err.Error()))
@@ -113,7 +106,7 @@ func (r *SecretBundleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		Namespace: secretBundle.ObjectMeta.GetNamespace(),
 	}
 
-	// Construct the Kubernetes secret bundle
+	// Construct the desired secret object
 	localSecretBundle := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namespacedNamed.Name,
@@ -122,9 +115,9 @@ func (r *SecretBundleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		Data: map[string][]byte{},
 	}
 
-	// Try to get the Kubernetes bundle
+	// Try to get the existing object
 	localerr := r.Get(ctx, namespacedNamed, &localSecretBundle)
-	if localerr != nil && !apierrs.IsNotFound(localerr) {
+	if client.IgnoreNotFound(localerr) != nil {
 		return ctrl.Result{}, localerr
 	}
 
@@ -158,50 +151,19 @@ func (r *SecretBundleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		return ctrl.Result{}, err
 	}
 
-	// ADD FINALIZER (util func)
-	// Handle deletion/finalizer
-	if secretBundle.ObjectMeta.DeletionTimestamp.IsZero() {
-		// Add finalizer if not present
-		if !containsString(secretBundle.ObjectMeta.Finalizers, finalizerName) {
-			secretBundle.ObjectMeta.Finalizers = append(secretBundle.ObjectMeta.Finalizers, finalizerName)
-			if err := r.Update(ctx, &secretBundle); err != nil {
+	if !secretBundle.ObjectMeta.DeletionTimestamp.IsZero() {
+		if contains(secretBundle.ObjectMeta.Finalizers, finalizerName) {
+			log.Info("handling deletion of secret bundle")
+			if err := r.Delete(ctx, &localSecretBundle); client.IgnoreNotFound(err) != nil {
+				log.Info("failed deletion of Kubernetes secret")
 				return ctrl.Result{}, err
 			}
-		}
-	} else {
-		// The object is being deleted
-		if containsString(secretBundle.ObjectMeta.Finalizers, finalizerName) {
-			// DELETE
-			log.Info("handling deletion of secret bundle")
-			requeue := false
-			var resultErr *multierror.Error
-
-			// If the Kubernetes secret exists, delete it.
-			if !apierrs.IsNotFound(localerr) {
-				requeue = true
-				if err := r.Delete(ctx, &localSecretBundle); err != nil {
-					log.Info("failed deletion of Kubernetes secret")
-					resultErr = multierror.Append(resultErr, err)
-				}
-			}
-
-			// Sync our status post deletion
 			if err := r.Status().Update(ctx, &secretBundle); err != nil {
 				log.Info("failed to update status after deletion")
-				resultErr = multierror.Append(resultErr, err) //nolint:ineffassign
+				return ctrl.Result{}, err
 			}
-
-			// Cleanup finalizer
-			if !requeue {
-				log.Info("finished deletion of secret")
-				secretBundle.ObjectMeta.Finalizers = removeString(secretBundle.ObjectMeta.Finalizers, finalizerName)
-				if err := r.Update(ctx, &secretBundle); err != nil {
-					resultErr = multierror.Append(resultErr, err)
-				}
-			}
-			return ctrl.Result{Requeue: requeue}, resultErr.ErrorOrNil()
+			return ctrl.Result{}, RemoveFinalizerAndUpdate(ctx, r.Client, finalizerName, &secretBundle)
 		}
-		return ctrl.Result{}, nil
 	}
 
 	log.Info("reconciling secret")

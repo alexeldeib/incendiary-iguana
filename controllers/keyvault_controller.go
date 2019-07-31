@@ -102,22 +102,13 @@ func (r *KeyvaultReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 					Namespace: keyVault.Namespace,
 				}
 				err := r.Client.Get(ctx, namespacedName, &resourceGroup)
-				if err != nil && !apierrs.IsNotFound(err) {
+				if client.IgnoreNotFound(err) != nil {
 					return ctrl.Result{}, err
 				}
 
 				// Delete the managed resource group if necessary
 				if err == nil {
 					if _, ok := resourceGroup.Annotations[ManagedAnnotation]; ok {
-						// TODO(ace): improve deletion handling.
-						// Foreground deletion on single level depenency is a no-op
-						// because kubectl will set the policy to background for the top level object.
-						// It is still useful for multi-level ownership hierarchies where a user deletes
-						// an object which owns an object owning another object (user -> object -> object -> object).
-						// The middle object should wait for the final object's deletion, which this would enforce.
-						//
-						// Also, this is deleting the resource group containing the KV,
-						// so the "delete vault" portion of this loop should likely not execute.
 						err = r.Client.Delete(ctx, &resourceGroup, client.PropagationPolicy(metav1.DeletePropagationForeground))
 						if err != nil {
 							return ctrl.Result{}, err

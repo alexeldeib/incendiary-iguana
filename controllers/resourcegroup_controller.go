@@ -9,8 +9,6 @@ import (
 	"net/http"
 
 	"github.com/go-logr/logr"
-	"github.com/hashicorp/go-multierror"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -21,7 +19,7 @@ import (
 )
 
 const (
-	finalizerName             string = "resourcegroup.azure.alexeldeib.xyz"
+	finalizerName             string = "azure.alexeldeib.xyz/finalizer"
 	provisioningStateDeleting string = "Deleting"
 	provisioningStateNotFound string = "NotFound"
 )
@@ -45,14 +43,8 @@ func (r *ResourceGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 	// Fetch object from Kubernetes API server
 	var resourceGroup azurev1alpha1.ResourceGroup
 	if err := r.Get(ctx, req.NamespacedName, &resourceGroup); err != nil {
-		log.Error(err, "unable to fetch ResourceGroup")
-		// we'll ignore not-found errors, since they can't be fixed by an immediate
-		// requeue (we'll need to wait for a new notification), and we can get them
-		// on deleted requests.
-		if apierrs.IsNotFound(err) {
-			return ctrl.Result{}, nil
-		}
-		return ctrl.Result{}, err
+		log.Info("unable to fetch ResourceGroup")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	// Authorize client
@@ -82,25 +74,11 @@ func (r *ResourceGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		return ctrl.Result{}, err
 	}
 
-	// Handle deletion/finalizer
-	if resourceGroup.ObjectMeta.DeletionTimestamp.IsZero() {
-		// The object is not being deleted, so if it does not have our finalizer,
-		// then lets add the finalizer and update the object. This is equivalent
-		// registering our finalizer.
-		if !containsString(resourceGroup.ObjectMeta.Finalizers, finalizerName) {
-			resourceGroup.ObjectMeta.Finalizers = append(resourceGroup.ObjectMeta.Finalizers, finalizerName)
-			if err := r.Update(ctx, &resourceGroup); err != nil {
-				log.Info("failed to add finalizer")
-				return ctrl.Result{}, err
-			}
-		}
-	} else {
-		// The object is being deleted
+	// The object is being deleted
+	if !resourceGroup.ObjectMeta.DeletionTimestamp.IsZero() {
 		if containsString(resourceGroup.ObjectMeta.Finalizers, finalizerName) {
-			// our finalizer is present, so lets handle any external dependency
 			// We either have 404 or 200. If 200, we may need to begin deletion, wait for deletion to finish,
 			if group.IsHTTPStatus(http.StatusOK) {
-				var resultErr *multierror.Error
 				// Deletion started; wait for completion.
 				if *group.Properties.ProvisioningState == provisioningStateDeleting {
 					r.Log.Info("deletion in progress, will requeue")
@@ -109,7 +87,7 @@ func (r *ResourceGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 					_, err := r.GroupsClient.Delete(ctx, &resourceGroup)
 					if err != nil {
 						r.Log.Info("error while deleting external resources")
-						resultErr = multierror.Append(resultErr, err)
+						return ctrl.Result{}, err
 					} else {
 						r.Log.Info("started deletion of resource group")
 						resourceGroup.Status.ProvisioningState = provisioningStateDeleting
@@ -120,17 +98,18 @@ func (r *ResourceGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 					}
 				}
 				// Requeue while we wait for deletion, returning either/both error(s) if appropriate
-				return ctrl.Result{Requeue: true}, resultErr.ErrorOrNil()
+				return ctrl.Result{Requeue: true}, nil
 			}
 			r.Log.Info("finished deletion of resource group")
-			// Deletion done; remove our finalizer from the list and update object in API server.
-			resourceGroup.ObjectMeta.Finalizers = removeString(resourceGroup.ObjectMeta.Finalizers, finalizerName)
-			if err := r.Update(ctx, &resourceGroup); err != nil {
-				log.Info("failed to update object after deletion")
+			if err := RemoveFinalizerAndUpdate(ctx, r.Client, finalizerName, &resourceGroup); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 		return ctrl.Result{}, nil
+	}
+
+	if err := AddFinalizerAndUpdate(ctx, r.Client, finalizerName, &resourceGroup); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	// Reconcile Azure resources.
@@ -143,7 +122,8 @@ func (r *ResourceGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		log.Info("skipping reconciliation, smooth sailing.")
 	}
 
-	// Attempt to update status in API server.
+	// Attempt to update status in API server, since resource group usually creates immediately.
+	// TODO(ace): consider removing this and requeuing request to get status updates on next loop?
 	if group.Properties != nil && group.Properties.ProvisioningState != nil {
 		resourceGroup.Status.ProvisioningState = *group.Properties.ProvisioningState
 	}
@@ -160,28 +140,4 @@ func (r *ResourceGroupReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&azurev1alpha1.ResourceGroup{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 5}).
 		Complete(r)
-}
-
-//
-//
-// Helpers below this line
-//
-//
-func containsString(slice []string, s string) bool {
-	for _, item := range slice {
-		if item == s {
-			return true
-		}
-	}
-	return false
-}
-
-func removeString(slice []string, s string) (result []string) {
-	for _, item := range slice {
-		if item == s {
-			continue
-		}
-		result = append(result, item)
-	}
-	return
 }

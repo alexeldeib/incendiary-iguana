@@ -51,7 +51,7 @@ func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	var secret azurev1alpha1.Secret
 	var local corev1.Secret
-	var remote *keyvault.SecretBundle
+	var remote keyvault.SecretBundle
 	var err error
 
 	if err = r.Get(ctx, req.NamespacedName, &secret); err != nil {
@@ -59,7 +59,7 @@ func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{Requeue: !apierrs.IsNotFound(err)}, client.IgnoreNotFound(err)
 	}
 
-	if remote, err = r.getRemote(ctx, &secret, log); err != nil {
+	if remote, err = r.SecretsClient.Get(ctx, &secret); err != nil {
 		log.Info("error during get remote")
 		return ctrl.Result{}, err
 	}
@@ -69,41 +69,28 @@ func (r *SecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	if err = r.sync(ctx, &secret, remote, &local, log); err != nil {
+	if err = r.sync(ctx, &secret, &remote, &local, log); err != nil {
 		log.Info("error during sync")
 		return ctrl.Result{}, err
 	}
 
-	if err = r.deleteExternal(ctx, &secret, remote, &local, log); err != nil {
+	if err = r.deleteExternal(ctx, &secret, &remote, &local, log); err != nil {
 		log.Info("error during delete external")
 		return ctrl.Result{}, err
 	}
 
-	if err = r.reconcileExternal(ctx, &secret, remote, &local, log); err != nil {
+	if err = r.reconcileExternal(ctx, &secret, &remote, &local, log); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *SecretReconciler) getRemote(ctx context.Context, secret *azurev1alpha1.Secret, log logr.Logger) (*keyvault.SecretBundle, error) {
-	remote, err := r.SecretsClient.Get(ctx, secret)
-	if err != nil {
-		log.Error(err, "unable to fetch remote secret")
-		return nil, err
-	}
-	return &remote, nil
-}
-
 func (r *SecretReconciler) getLocal(ctx context.Context, secret *azurev1alpha1.Secret, log logr.Logger) (corev1.Secret, error) {
 	var local corev1.Secret
 	name := overrideName(secret, &local)
 	err := r.Get(ctx, name, &local)
-	if client.IgnoreNotFound(err) != nil {
-		log.Error(err, "failed to get local secret")
-		return local, err
-	}
-	return local, nil
+	return local, client.IgnoreNotFound(err)
 }
 
 func overrideName(secret *azurev1alpha1.Secret, local *corev1.Secret) types.NamespacedName {
@@ -154,7 +141,6 @@ func (r *SecretReconciler) reconcileExternal(ctx context.Context, secret *azurev
 	if secret.Status.Exists {
 		log.Info("reconciling target secret")
 		_, err := controllerutil.CreateOrUpdate(ctx, r.Client, local, func() error {
-			// Idempotent
 			innerErr := controllerutil.SetControllerReference(secret, local, r.Scheme)
 			if innerErr != nil {
 				return innerErr
@@ -162,19 +148,18 @@ func (r *SecretReconciler) reconcileExternal(ctx context.Context, secret *azurev
 			// TODO(ace): check for and avoid conflicts; allow/deny overwrite from user spec
 			// TODO(ace): key this off something else
 			local.Data = map[string][]byte{
-				*secret.Spec.LocalName: []byte(*remote.Value),
+				local.ObjectMeta.Name: []byte(*remote.Value),
 			}
 			return nil
 		})
 		if err != nil {
-			log.Error(err, "failed to reconcile")
 			return err
 		}
-		if err = r.deleteOld(ctx, secret, log); err != nil {
+		if err = r.deleteOld(ctx, secret, local, log); err != nil {
 			return err
 		}
-		AddFinalizer(secret, finalizerName)
-		return nil
+		secret.Status.LastKnownName = local.ObjectMeta.Name
+		return r.Status().Update(ctx, secret)
 	}
 	// TODO(ace): If it doesn't exist, generate it (requires input metadata)
 	// TODO(ace): create the necessary Keyvault if it doesn't exist
@@ -182,9 +167,9 @@ func (r *SecretReconciler) reconcileExternal(ctx context.Context, secret *azurev
 }
 
 // deleteOld handles deletion of secrets after a rename of the item.
-func (r *SecretReconciler) deleteOld(ctx context.Context, secret *azurev1alpha1.Secret, base logr.Logger) error {
+func (r *SecretReconciler) deleteOld(ctx context.Context, secret *azurev1alpha1.Secret, local *corev1.Secret, base logr.Logger) error {
 	log := base.WithValues("func", "deleteOld")
-	if secret.Status.Available && secret.Status.LastKnownName != "" && secret.Status.LastKnownName != *secret.Spec.LocalName {
+	if secret.Status.Available && secret.Status.LastKnownName != "" && secret.Status.LastKnownName != local.ObjectMeta.Name {
 		old := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secret.Status.LastKnownName,
@@ -198,20 +183,12 @@ func (r *SecretReconciler) deleteOld(ctx context.Context, secret *azurev1alpha1.
 		}
 		log.Info("finished deleting old secret after name change")
 	}
-	secret.Status.LastKnownName = *secret.Spec.LocalName
-	return r.Status().Update(ctx, secret)
-}
-
-func deleteIfFound(ctx context.Context, client client.Client, obj runtime.Object) error {
-	if err := client.Delete(ctx, obj); err != nil && !apierrs.IsNotFound(err) {
-		return err
-	}
 	return nil
 }
 
 func (r *SecretReconciler) deleteLocal(ctx context.Context, secret *azurev1alpha1.Secret, local *corev1.Secret) error {
 	if secret.Status.Available {
-		return deleteIfFound(ctx, r.Client, local)
+		return DeleteIfFound(ctx, r.Client, local)
 	}
 	return nil
 }

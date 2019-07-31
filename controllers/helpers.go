@@ -98,6 +98,17 @@ func RemoveFinalizer(o metav1.Object, finalizer string) {
 	}
 }
 
+// HasFinalizer accepts a metav1 object and returns true if the the object has the provided finalizer.
+func HasFinalizer(o metav1.Object, finalizer string) bool {
+	f := o.GetFinalizers()
+	for _, e := range f {
+		if e == finalizer {
+			return true
+		}
+	}
+	return false
+}
+
 // RemoveFinalizerWithError tries to convert a runtime object to a metav1 object and remove the provided finalizer.
 // It returns an error if the provided object cannot provide an accessor.
 func RemoveFinalizerWithError(o runtime.Object, finalizer string) error {
@@ -106,6 +117,13 @@ func RemoveFinalizerWithError(o runtime.Object, finalizer string) error {
 		return err
 	}
 	RemoveFinalizer(m, finalizer)
+	return nil
+}
+
+func DeleteIfFound(ctx context.Context, client client.Client, obj runtime.Object) error {
+	if err := client.Delete(ctx, obj); err != nil && !apierrs.IsNotFound(err) {
+		return err
+	}
 	return nil
 }
 
@@ -126,3 +144,22 @@ func contains(vals []string, val string) bool {
 // 	}
 // 	return vals
 // }
+
+func containsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+func removeString(slice []string, s string) (result []string) {
+	for _, item := range slice {
+		if item == s {
+			continue
+		}
+		result = append(result, item)
+	}
+	return
+}
