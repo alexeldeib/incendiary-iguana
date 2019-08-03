@@ -117,4 +117,4 @@ else
 endif
 
 publish: bazel-image
-	bazel run publish
+	bazel run publish --host_force_python=PY2
