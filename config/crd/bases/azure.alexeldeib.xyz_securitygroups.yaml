@@ -1,0 +1,151 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: securitygroups.azure.alexeldeib.xyz
+spec:
+  group: azure.alexeldeib.xyz
+  names:
+    categories:
+    - all
+    kind: SecurityGroup
+    plural: securitygroups
+    shortNames:
+    - sg
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: SecurityGroup is the Schema for the securitygroups API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: SecurityGroupSpec defines the desired state of SecurityGroup
+          properties:
+            location:
+              description: Location osecurity group (e.g., eastus2)
+              type: string
+            name:
+              description: Name is the name of the security group.
+              type: string
+            resourceGroup:
+              description: ResourceGroup containsecurity group.
+              type: string
+            rules:
+              items:
+                description: SecurityRule defines an allow/deny traffic rule on the
+                  security group.
+                properties:
+                  access:
+                    description: 'Access - The network traffic is allowed or denied.
+                      Possible values include: ''SecurityRuleAccessAllow'', ''SecurityRuleAccessDeny'''
+                    type: string
+                  destinationAddressPrefix:
+                    description: DestinationAddressPrefix - The destination address
+                      prefix. CIDR or destination IP range. Asterisk '*' can also
+                      be used to match all source IPs. Default tags such as 'VirtualNetwork',
+                      'AzureLoadBalancer' and 'Internet' can also be used.
+                    type: string
+                  destinationPortRange:
+                    description: DestinationPortRange - The destination port or range.
+                      Integer or range between 0 and 65535. Asterisk '*' can also
+                      be used to match all ports.
+                    type: string
+                  direction:
+                    description: 'Direction - The direction of the rule. The direction
+                      specifies if rule will be evaluated on incoming or outgoing
+                      traffic. Possible values include: ''SecurityRuleDirectionInbound'',
+                      ''SecurityRuleDirectionOutbound'''
+                    type: string
+                  name:
+                    description: Name is the name of the rule.
+                    type: string
+                  priority:
+                    description: Priority - The priority of the rule. The value can
+                      be between 100 and 4096. The priority number must be unique
+                      for each rule in the collection. The lower the priority number,
+                      the higher the priority of the rule.
+                    format: int32
+                    type: integer
+                  protocol:
+                    description: 'Protocol - Network protocol this rule applies to.
+                      Possible values include: ''SecurityRuleProtocolTCP'', ''SecurityRuleProtocolUDP'',
+                      ''SecurityRuleProtocolIcmp'', ''SecurityRuleProtocolEsp'', ''SecurityRuleProtocolAsterisk'''
+                    type: string
+                  sourceAddressPrefix:
+                    description: SourceAddressPrefix - The CIDR or source IP range.
+                      Asterisk '*' can also be used to match all source IPs. Default
+                      tags such as 'VirtualNetwork', 'AzureLoadBalancer' and 'Internet'
+                      can also be used. If this is an ingress rule, specifies where
+                      network traffic originates from.
+                    type: string
+                  sourcePortRange:
+                    description: SourcePortRange - The source port or range. Integer
+                      or range between 0 and 65535. Asterisk '*' can also be used
+                      to match all ports.
+                    type: string
+                required:
+                - access
+                - destinationPortRange
+                - direction
+                - name
+                - priority
+                - sourceAddressPrefix
+                - sourcePortRange
+                type: object
+              type: array
+            subscriptionId:
+              description: SubscriptionID contains the Resource group. Is a GUID.
+              type: string
+          required:
+          - location
+          - name
+          - resourceGroup
+          - subscriptionId
+          type: object
+        status:
+          description: SecurityGroupStatus defines the observed state of SecurityGroup
+          properties:
+            id:
+              description: ID is the fully qualified Azure resource ID.
+              type: string
+            observedGeneration:
+              description: ObservedGeneration is the iteration of user-provided spec
+                which has already been reconciled. This is used to decide when to
+                re-reconcile changes.
+              format: int64
+              type: integer
+            provisioningState:
+              description: ProvisioningState sync the provisioning status of the resource
+                from Azure.
+              type: string
+          required:
+          - id
+          - observedGeneration
+          - provisioningState
+          type: object
+      type: object
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

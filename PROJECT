@@ -14,3 +14,12 @@ resources:
 - group: azure
   version: v1alpha1
   kind: SecretBundle
+- group: azure
+  version: v1alpha1
+  kind: VirtualNetwork
+- group: azure
+  version: v1alpha1
+  kind: Subnet
+- group: azure
+  version: v1alpha1
+  kind: SecurityGroup

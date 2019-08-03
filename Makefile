@@ -26,7 +26,7 @@ else
 	go test -v $(GO_TEST_OPTIONS) -ginkgo.v
 endif
 # Build manager binary
-manager: fmt vet
+manager: manifests fmt vet lint 
 	go build -gcflags '-N -l' -o bin/manager main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
@@ -60,7 +60,7 @@ lint:
 	golangci-lint run --fix -j=2
 
 # Generate code
-generate: controller-gen mockgen
+generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./api/...
 
 # Build the docker image
@@ -77,7 +77,7 @@ docker-push:
 # download controller-gen if necessary
 controller-gen:
 ifeq (, $(shell which controller-gen))
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0-beta.4
+	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0-beta.5
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)

@@ -178,7 +178,7 @@ func (r *KeyvaultReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 					SubscriptionID: keyVault.Spec.SubscriptionID,
 				},
 			}
-			err = controllerutil.SetControllerReference(&keyVault, &resourceGroup, r.Scheme) //nolint:ineffassign
+			err = controllerutil.SetControllerReference(&keyVault, &resourceGroup, r.Scheme)
 			if err != nil {
 				return ctrl.Result{}, err
 			}

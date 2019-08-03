@@ -12,7 +12,7 @@ require (
 	github.com/autonomy/conform v0.1.0-alpha.16 // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/golang/mock v1.3.1
-	github.com/google/wire v0.3.0
+	github.com/google/go-cmp v0.3.0
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/onsi/ginkgo v1.8.0
 	github.com/onsi/gomega v1.5.0

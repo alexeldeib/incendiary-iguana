@@ -13,6 +13,9 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secrets"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -109,6 +112,31 @@ func main() {
 		Scheme:        scheme,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SecretBundle")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.VirtualNetworkReconciler{
+		Client:      mgr.GetClient(),
+		Log:         ctrl.Log.WithName("controllers").WithName("VirtualNetwork"),
+		VnetsClient: virtualnetworks.New(configuration),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "VirtualNetwork")
+		os.Exit(1)
+	}
+	if err = (&controllers.SubnetReconciler{
+		Client:        mgr.GetClient(),
+		Log:           ctrl.Log.WithName("controllers").WithName("Subnet"),
+		SubnetsClient: subnets.New(configuration),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Subnet")
+		os.Exit(1)
+	}
+	if err = (&controllers.SecurityGroupReconciler{
+		Client:               mgr.GetClient(),
+		Log:                  ctrl.Log.WithName("controllers").WithName("SecurityGroup"),
+		SecurityGroupsClient: securitygroups.New(configuration),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "SecurityGroup")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
