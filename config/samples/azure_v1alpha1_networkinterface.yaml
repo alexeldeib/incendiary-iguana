@@ -1,0 +1,17 @@
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: NetworkInterface
+metadata:
+  name: nic-sample
+spec:
+  subscriptionId: 4a62f512-4d63-4819-9f5c-d38a8065a16f
+  resourceGroup: ace-crd
+  name: ace-ip
+  location: westus2
+  network: ace-vnet
+  subnet: ace-subnet
+  ipConfigurations: 
+  - privateIP: 10.0.0.5
+    publicIP:
+      subscriptionId: 4a62f512-4d63-4819-9f5c-d38a8065a16f
+      resourceGroup: ace-crd
+      name: ace-ip

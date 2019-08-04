@@ -11,6 +11,8 @@ import (
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/controllers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/nics"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
@@ -137,6 +139,24 @@ func main() {
 		SecurityGroupsClient: securitygroups.New(configuration),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SecurityGroup")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.PublicIPReconciler{
+		Client:          mgr.GetClient(),
+		Log:             ctrl.Log.WithName("controllers").WithName("PublicIP"),
+		PublicIPsClient: publicips.New(configuration),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "PublicIP")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.NetworkInterfaceReconciler{
+		Client:     mgr.GetClient(),
+		Log:        ctrl.Log.WithName("controllers").WithName("NetworkInterface"),
+		NICsClient: nics.New(configuration),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "NetworkInterface")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

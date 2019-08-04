@@ -23,3 +23,9 @@ resources:
 - group: azure
   version: v1alpha1
   kind: SecurityGroup
+- group: azure
+  version: v1alpha1
+  kind: PublicIP
+- group: azure
+  version: v1alpha1
+  kind: NetworkInterface

@@ -9,6 +9,8 @@ resources:
 - bases/azure.alexeldeib.xyz_virtualnetworks.yaml
 - bases/azure.alexeldeib.xyz_subnets.yaml
 - bases/azure.alexeldeib.xyz_securitygroups.yaml
+- bases/azure.alexeldeib.xyz_publicips.yaml
+- bases/azure.alexeldeib.xyz_networkinterfaces.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:
@@ -21,6 +23,8 @@ patches:
 #- patches/webhook_in_virtualnetworks.yaml
 #- patches/webhook_in_subnets.yaml
 #- patches/webhook_in_securitygroups.yaml
+#- patches/webhook_in_publicips.yaml
+#- patches/webhook_in_networkinterfaces.yaml
 # +kubebuilder:scaffold:crdkustomizewebhookpatch
 
 # [CERTMANAGER] To enable webhook, uncomment all the sections with [CERTMANAGER] prefix.
@@ -32,6 +36,8 @@ patches:
 #- patches/cainjection_in_virtualnetworks.yaml
 #- patches/cainjection_in_subnets.yaml
 #- patches/cainjection_in_securitygroups.yaml
+#- patches/cainjection_in_publicips.yaml
+#- patches/cainjection_in_networkinterfaces.yaml
 # +kubebuilder:scaffold:crdkustomizecainjectionpatch
 
 # the following config is for teaching kustomize how to do kustomization for CRDs.

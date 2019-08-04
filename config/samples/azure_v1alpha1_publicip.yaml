@@ -1,0 +1,9 @@
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: PublicIP
+metadata:
+  name: ip-sample
+spec:
+  subscriptionId: cd3164d9-7d02-4896-88be-83ed92fdb2a9
+  resourceGroup: ace-crd
+  name: ace-ip
+  location: eastus2
