@@ -6,8 +6,10 @@ package trafficmanagers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/services/trafficmanager/mgmt/2018-04-01/trafficmanager"
+	"github.com/Azure/go-autorest/autorest/to"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
@@ -55,7 +57,28 @@ func (c *client) ForSubscription(subID string) error {
 
 // Ensure creates or updates a virtual network in an idempotent manner and sets its provisioning state.
 func (c *client) Ensure(ctx context.Context, local *azurev1alpha1.TrafficManager, remote trafficmanager.Profile) error {
-	spec := trafficmanager.Profile{}
+	spec := trafficmanager.Profile{
+		ProfileProperties: &trafficmanager.ProfileProperties{
+			ProfileStatus:        trafficmanager.ProfileStatus(local.Spec.ProfileStatus),
+			TrafficRoutingMethod: trafficmanager.TrafficRoutingMethod(local.Spec.TrafficRoutingMethod),
+			MonitorConfig: &trafficmanager.MonitorConfig{
+				ProfileMonitorStatus:      trafficmanager.ProfileMonitorStatusOnline,
+				Protocol:                  trafficmanager.MonitorProtocol(local.Spec.Protocol),
+				Port:                      to.Int64Ptr(80),
+				Path:                      to.StringPtr(local.Spec.Healthcheck),
+				TimeoutInSeconds:          to.Int64Ptr(6),
+				IntervalInSeconds:         to.Int64Ptr(10),
+				ToleratedNumberOfFailures: to.Int64Ptr(3),
+			},
+			Endpoints: &[]trafficmanager.Endpoint{},
+			DNSConfig: &trafficmanager.DNSConfig{
+				TTL:          to.Int64Ptr(30),
+				RelativeName: to.StringPtr(local.Spec.DNSName),
+				Fqdn:         to.StringPtr(fmt.Sprintf("%s.trafficmanager.net", local.Spec.DNSName)),
+			},
+		},
+		Location: to.StringPtr("global"),
+	}
 	_, err := c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec)
 	return err
 }
