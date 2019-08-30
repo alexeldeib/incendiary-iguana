@@ -4,22 +4,22 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   creationTimestamp: null
-  name: virtualnetworks.azure.alexeldeib.xyz
+  name: loadbalancers.azure.alexeldeib.xyz
 spec:
   group: azure.alexeldeib.xyz
   names:
     categories:
     - all
-    kind: VirtualNetwork
-    plural: virtualnetworks
+    kind: LoadBalancer
+    plural: loadbalancers
     shortNames:
-    - vnet
+    - lb
   scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: VirtualNetwork is the Schema for the virtualnetworks API
+      description: LoadBalancer is the Schema for the loadbalancers API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -34,35 +34,32 @@ spec:
         metadata:
           type: object
         spec:
-          description: VirtualNetworkSpec defines the desired state of VirtualNetwork
+          description: LoadBalancerSpec defines the desired state of Load Balancer
           properties:
-            addresses:
-              description: Addresses is an array of CIDR blocks describing the available
-                addresses on this virtual network.
-              items:
-                type: string
-              type: array
             location:
-              description: Location of the Virtual Network (e.g., eastus2)
+              description: Location of the resource group (e.g., eastus2 or "West
+                US")
               type: string
             name:
-              description: Name is the name of the Azure Virtual Network.
+              description: Name is the name of the Azure LoadBalancer.
               type: string
             resourceGroup:
-              description: ResourceGroup contains the Virtual Network.
+              description: ResourceGroup contains the LoadBalancer.
+              type: string
+            sku:
+              description: SKU is either basic or standard.
               type: string
             subscriptionId:
               description: SubscriptionID contains the Resource group. Is a GUID.
               type: string
           required:
-          - addresses
           - location
           - name
           - resourceGroup
           - subscriptionId
           type: object
         status:
-          description: VirtualNetworkStatus defines the observed state of VirtualNetwork
+          description: LoadBalancerStatus defines the observed state of Load Balancer
           properties:
             id:
               description: ID is the fully qualified Azure resource ID of the virtual

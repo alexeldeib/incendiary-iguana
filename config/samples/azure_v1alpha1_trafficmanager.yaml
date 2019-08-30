@@ -1,0 +1,14 @@
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: TrafficManager
+metadata:
+  name: trafficmanager-sample
+spec:
+  # Add fields here
+  name: test-tm
+  subscriptionID: bd6a4e14-55fa-4160-a6a7-b718d7a2c95c
+  resourceGroup: new-ace-test
+  profileStatus: enabled
+  dnsName: testtmnew
+  healthcheck: /
+  protocol: HTTPS
+  trafficRoutingMethod: weighted

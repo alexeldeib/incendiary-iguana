@@ -17,6 +17,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -24,7 +25,9 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
 	// +kubebuilder:scaffold:imports
+	"github.com/sanity-io/litter"
 )
 
 var (
@@ -125,6 +128,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "VirtualNetwork")
 		os.Exit(1)
 	}
+
 	if err = (&controllers.SubnetReconciler{
 		Client:        mgr.GetClient(),
 		Log:           ctrl.Log.WithName("controllers").WithName("Subnet"),
@@ -133,6 +137,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Subnet")
 		os.Exit(1)
 	}
+
 	if err = (&controllers.SecurityGroupReconciler{
 		Client:               mgr.GetClient(),
 		Log:                  ctrl.Log.WithName("controllers").WithName("SecurityGroup"),
@@ -157,6 +162,16 @@ func main() {
 		NICsClient: nics.New(configuration),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NetworkInterface")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.TrafficManagerReconciler{
+		Client:                mgr.GetClient(),
+		Log:                   ctrl.Log.WithName("controllers").WithName("TrafficManager"),
+		TrafficManagersClient: trafficmanagers.New(configuration),
+	}).SetupWithManager(mgr); err != nil {
+		litter.Dump(err)
+		setupLog.Error(err, "unable to create controller", "controller", "TrafficManager")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

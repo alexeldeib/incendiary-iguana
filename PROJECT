@@ -29,3 +29,6 @@ resources:
 - group: azure
   version: v1alpha1
   kind: NetworkInterface
+- group: azure
+  version: v1alpha1
+  kind: TrafficManager

@@ -4,22 +4,22 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   creationTimestamp: null
-  name: virtualnetworks.azure.alexeldeib.xyz
+  name: trafficmanagers.azure.alexeldeib.xyz
 spec:
   group: azure.alexeldeib.xyz
   names:
     categories:
     - all
-    kind: VirtualNetwork
-    plural: virtualnetworks
+    kind: TrafficManager
+    plural: trafficmanagers
     shortNames:
-    - vnet
+    - tm
   scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: VirtualNetwork is the Schema for the virtualnetworks API
+      description: TrafficManager is the Schema for the trafficmanagers API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -34,54 +34,54 @@ spec:
         metadata:
           type: object
         spec:
-          description: VirtualNetworkSpec defines the desired state of VirtualNetwork
+          description: TrafficManagerSpec defines the desired state of TrafficManager
           properties:
-            addresses:
-              description: Addresses is an array of CIDR blocks describing the available
-                addresses on this virtual network.
-              items:
-                type: string
-              type: array
-            location:
-              description: Location of the Virtual Network (e.g., eastus2)
+            dnsName:
               type: string
+            healthcheck:
+              type: string
+            intervalInSeconds:
+              type: integer
             name:
-              description: Name is the name of the Azure Virtual Network.
+              type: string
+            profileStatus:
+              type: string
+            protocol:
               type: string
             resourceGroup:
-              description: ResourceGroup contains the Virtual Network.
               type: string
-            subscriptionId:
-              description: SubscriptionID contains the Resource group. Is a GUID.
+            subscriptionID:
+              type: string
+            timeoutInSeconds:
+              type: integer
+            trafficRoutingMethod:
               type: string
           required:
-          - addresses
-          - location
+          - dnsName
+          - healthcheck
           - name
+          - profileStatus
+          - protocol
           - resourceGroup
-          - subscriptionId
+          - subscriptionID
+          - trafficRoutingMethod
           type: object
         status:
-          description: VirtualNetworkStatus defines the observed state of VirtualNetwork
+          description: TrafficManagerStatus defines the observed state of TrafficManager
           properties:
-            id:
-              description: ID is the fully qualified Azure resource ID of the virtual
-                network.
+            fqdn:
               type: string
-            observedGeneration:
-              description: ObservedGeneration is the iteration of user-provided spec
-                which has already been reconciled. This is used to decide when to
-                re-reconcile changes.
-              format: int64
-              type: integer
-            provisioningState:
-              description: ProvisioningState sync the provisioning status of the resource
-                from Azure.
+            id:
+              description: ID is the fully qualified Azure resource ID.
+              type: string
+            profileMonitorStatus:
+              type: string
+            profileStatus:
               type: string
           required:
           - id
-          - observedGeneration
-          - provisioningState
+          - profileMonitorStatus
+          - profileStatus
           type: object
       type: object
   version: v1alpha1
