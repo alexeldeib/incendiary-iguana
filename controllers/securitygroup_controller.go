@@ -102,7 +102,7 @@ func (r *SecurityGroupReconciler) reconcileRemote(ctx context.Context, lastRecon
 	}
 
 	log.Info("reconciling")
-	err := r.SecurityGroupsClient.Ensure(ctx, local, remote)
+	err := r.SecurityGroupsClient.Ensure(ctx, local)
 	if err != nil {
 		return true, err
 	}

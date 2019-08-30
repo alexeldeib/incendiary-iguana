@@ -63,7 +63,7 @@ func (r *TrafficManagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 		}
 	}
 
-	requeue, err = r.reconcileRemote(ctx, &local, remote, log)
+	requeue, err = r.reconcileRemote(ctx, &local, log)
 	return ctrl.Result{Requeue: requeue}, err
 }
 
@@ -86,9 +86,9 @@ func (r *TrafficManagerReconciler) setStatus(ctx context.Context, local *azurev1
 	return r.Status().Update(ctx, local)
 }
 
-func (r *TrafficManagerReconciler) reconcileRemote(ctx context.Context, local *azurev1alpha1.TrafficManager, remote trafficmanager.Profile, log logr.Logger) (bool, error) {
+func (r *TrafficManagerReconciler) reconcileRemote(ctx context.Context, local *azurev1alpha1.TrafficManager, log logr.Logger) (bool, error) {
 	log.Info("reconciling")
-	err := r.TrafficManagersClient.Ensure(ctx, local, remote)
+	err := r.TrafficManagersClient.Ensure(ctx, local)
 	if err != nil {
 		return true, err
 	}

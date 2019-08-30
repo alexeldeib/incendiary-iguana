@@ -100,7 +100,7 @@ func (r *SubnetReconciler) reconcileRemote(ctx context.Context, lastReconciled i
 	}
 	if remote.IsHTTPStatus(http.StatusNotFound) || lastReconciled != local.ObjectMeta.Generation {
 		log.Info("reconciling subnet")
-		err := r.SubnetsClient.Ensure(ctx, local, remote)
+		err := r.SubnetsClient.Ensure(ctx, local)
 		return true, err
 	}
 	log.Info("skipping reconciliation, smooth sailing")

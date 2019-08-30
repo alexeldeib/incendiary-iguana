@@ -102,7 +102,7 @@ func (r *NetworkInterfaceReconciler) reconcileRemote(ctx context.Context, lastRe
 	}
 
 	log.Info("reconciling")
-	err := r.NICsClient.Ensure(ctx, local, remote)
+	err := r.NICsClient.Ensure(ctx, local)
 	if err != nil {
 		return true, err
 	}

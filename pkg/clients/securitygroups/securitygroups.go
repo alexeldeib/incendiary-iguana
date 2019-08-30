@@ -22,7 +22,7 @@ var _ Client = &client{}
 // Client is the interface for Azure resource groups. Defined for test mocks.
 type Client interface {
 	ForSubscription(string) error
-	Ensure(context.Context, *azurev1alpha1.SecurityGroup, network.SecurityGroup) error
+	Ensure(context.Context, *azurev1alpha1.SecurityGroup) error
 	Get(context.Context, *azurev1alpha1.SecurityGroup) (network.SecurityGroup, error)
 	Delete(context.Context, *azurev1alpha1.SecurityGroup) error
 }
@@ -57,7 +57,7 @@ func (c *client) ForSubscription(subID string) error {
 }
 
 // Ensure creates or updates a virtual network in an idempotent manner and sets its provisioning state.
-func (c *client) Ensure(ctx context.Context, local *azurev1alpha1.SecurityGroup, remote network.SecurityGroup) error {
+func (c *client) Ensure(ctx context.Context, local *azurev1alpha1.SecurityGroup) error {
 	spec := network.SecurityGroup{
 		Location: &local.Spec.Location,
 		SecurityGroupPropertiesFormat: &network.SecurityGroupPropertiesFormat{

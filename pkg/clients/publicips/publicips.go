@@ -22,7 +22,7 @@ var _ Client = &client{}
 // Client is the interface for Azure public ip addresses. Defined for test mocks.
 type Client interface {
 	ForSubscription(string) error
-	Ensure(context.Context, *azurev1alpha1.PublicIP, network.PublicIPAddress) error
+	Ensure(context.Context, *azurev1alpha1.PublicIP) error
 	Get(context.Context, *azurev1alpha1.PublicIP) (network.PublicIPAddress, error)
 	Delete(context.Context, *azurev1alpha1.PublicIP) error
 }
@@ -57,7 +57,7 @@ func (c *client) ForSubscription(subID string) error {
 }
 
 // Ensure creates or updates a virtual network in an idempotent manner and sets its provisioning state.
-func (c *client) Ensure(ctx context.Context, local *azurev1alpha1.PublicIP, remote network.PublicIPAddress) error {
+func (c *client) Ensure(ctx context.Context, local *azurev1alpha1.PublicIP) error {
 	spec := network.PublicIPAddress{
 		Location: &local.Spec.Location,
 		Sku: &network.PublicIPAddressSku{

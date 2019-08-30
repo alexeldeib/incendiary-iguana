@@ -6,6 +6,7 @@ package trafficmanagers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/services/trafficmanager/mgmt/2018-04-01/trafficmanager"
@@ -21,8 +22,10 @@ var _ Client = &client{}
 // Client is the interface for Azure public ip addresses. Defined for test mocks.
 type Client interface {
 	ForSubscription(string) error
-	Ensure(context.Context, *azurev1alpha1.TrafficManager, trafficmanager.Profile) error
+	Ensure(context.Context, *azurev1alpha1.TrafficManager) error
 	Get(context.Context, *azurev1alpha1.TrafficManager) (trafficmanager.Profile, error)
+	GetProfileStatus(context.Context, *azurev1alpha1.TrafficManager) (string, error)
+	GetEndpointStatus(context.Context, *azurev1alpha1.TrafficManager, string) (string, error)
 	Delete(context.Context, *azurev1alpha1.TrafficManager) error
 }
 
@@ -56,29 +59,71 @@ func (c *client) ForSubscription(subID string) error {
 }
 
 // Ensure creates or updates a virtual network in an idempotent manner and sets its provisioning state.
-func (c *client) Ensure(ctx context.Context, local *azurev1alpha1.TrafficManager, remote trafficmanager.Profile) error {
+func (c *client) Ensure(ctx context.Context, local *azurev1alpha1.TrafficManager) error {
 	spec := trafficmanager.Profile{
 		ProfileProperties: &trafficmanager.ProfileProperties{
 			ProfileStatus:        trafficmanager.ProfileStatus(local.Spec.ProfileStatus),
 			TrafficRoutingMethod: trafficmanager.TrafficRoutingMethod(local.Spec.TrafficRoutingMethod),
 			MonitorConfig: &trafficmanager.MonitorConfig{
-				ProfileMonitorStatus:      trafficmanager.ProfileMonitorStatusOnline,
-				Protocol:                  trafficmanager.MonitorProtocol(local.Spec.Protocol),
-				Port:                      to.Int64Ptr(80),
-				Path:                      to.StringPtr(local.Spec.Healthcheck),
-				TimeoutInSeconds:          to.Int64Ptr(6),
-				IntervalInSeconds:         to.Int64Ptr(10),
-				ToleratedNumberOfFailures: to.Int64Ptr(3),
+				Protocol:                  trafficmanager.MonitorProtocol(local.Spec.MonitorConfig.Protocol),
+				Port:                      local.Spec.MonitorConfig.Port,
+				Path:                      to.StringPtr("/healthz"),
+				IntervalInSeconds:         local.Spec.MonitorConfig.IntervalInSeconds,
+				TimeoutInSeconds:          local.Spec.MonitorConfig.TimeoutInSeconds,
+				ToleratedNumberOfFailures: local.Spec.MonitorConfig.ToleratedNumberOfFailures,
+				CustomHeaders:             &[]trafficmanager.MonitorConfigCustomHeadersItem{},
+				ExpectedStatusCodeRanges:  &[]trafficmanager.MonitorConfigExpectedStatusCodeRangesItem{},
 			},
 			Endpoints: &[]trafficmanager.Endpoint{},
 			DNSConfig: &trafficmanager.DNSConfig{
-				TTL:          to.Int64Ptr(30),
-				RelativeName: to.StringPtr(local.Spec.DNSName),
-				Fqdn:         to.StringPtr(fmt.Sprintf("%s.trafficmanager.net", local.Spec.DNSName)),
+				RelativeName: local.Spec.DNSConfig.RelativeName,
+				Fqdn:         to.StringPtr(fmt.Sprintf("%s.trafficmanager.net", *local.Spec.DNSConfig.RelativeName)),
+				TTL:          local.Spec.DNSConfig.TTL,
 			},
 		},
 		Location: to.StringPtr("global"),
 	}
+
+	if local.Spec.MonitorConfig.Path != nil {
+		spec.ProfileProperties.MonitorConfig.Path = local.Spec.MonitorConfig.Path
+	}
+
+	if local.Spec.MonitorConfig.CustomHeaders != nil {
+		for _, header := range *local.Spec.MonitorConfig.CustomHeaders {
+			new := trafficmanager.MonitorConfigCustomHeadersItem{
+				Name:  header.Name,
+				Value: header.Value,
+			}
+			*spec.ProfileProperties.MonitorConfig.CustomHeaders = append(*spec.ProfileProperties.MonitorConfig.CustomHeaders, new)
+		}
+	}
+
+	if local.Spec.MonitorConfig.CustomHeaders != nil {
+		for _, spread := range *local.Spec.MonitorConfig.ExpectedStatusCodeRanges {
+			new := trafficmanager.MonitorConfigExpectedStatusCodeRangesItem{
+				Min: spread.Min,
+				Max: spread.Max,
+			}
+			*spec.ProfileProperties.MonitorConfig.ExpectedStatusCodeRanges = append(*spec.ProfileProperties.MonitorConfig.ExpectedStatusCodeRanges, new)
+		}
+	}
+
+	if local.Spec.Endpoints != nil {
+		for _, ep := range *local.Spec.Endpoints {
+			endpointSpec := trafficmanager.Endpoint{
+				Name: to.StringPtr(ep.Name),
+				Type: to.StringPtr("Microsoft.Network/trafficManagerProfiles/externalEndpoints"),
+				EndpointProperties: &trafficmanager.EndpointProperties{
+					Target:           ep.Properties.Target,
+					Weight:           ep.Properties.Weight,
+					Priority:         to.Int64Ptr(ep.Properties.Priority),
+					EndpointLocation: to.StringPtr(ep.Properties.EndpointLocation),
+				},
+			}
+			*spec.ProfileProperties.Endpoints = append(*spec.ProfileProperties.Endpoints, endpointSpec)
+		}
+	}
+
 	_, err := c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec)
 	return err
 }
@@ -86,6 +131,29 @@ func (c *client) Ensure(ctx context.Context, local *azurev1alpha1.TrafficManager
 // Get returns a virtual network.
 func (c *client) Get(ctx context.Context, local *azurev1alpha1.TrafficManager) (trafficmanager.Profile, error) {
 	return c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
+}
+
+// GetProfileStatus returns the status of an entire Azure TM.
+func (c *client) GetProfileStatus(ctx context.Context, local *azurev1alpha1.TrafficManager) (string, error) {
+	res, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
+	if err != nil {
+		return "", err
+	}
+	return string(res.ProfileProperties.MonitorConfig.ProfileMonitorStatus), nil
+}
+
+// GetEndpointStatus returns the status of one endpoint within an Azure Traffic Manager.
+func (c *client) GetEndpointStatus(ctx context.Context, local *azurev1alpha1.TrafficManager, name string) (string, error) {
+	profile, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
+	if err != nil {
+		return "", err
+	}
+	for _, ep := range *profile.ProfileProperties.Endpoints {
+		if *ep.Name == name {
+			return string(ep.EndpointMonitorStatus), nil
+		}
+	}
+	return "", errors.New("endpoint not found in current tm configuration")
 }
 
 // Delete handles deletion of a virtual network.

@@ -102,7 +102,7 @@ func (r *PublicIPReconciler) reconcileRemote(ctx context.Context, lastReconciled
 	}
 
 	log.Info("reconciling")
-	err := r.PublicIPsClient.Ensure(ctx, local, remote)
+	err := r.PublicIPsClient.Ensure(ctx, local)
 	if err != nil {
 		return true, err
 	}

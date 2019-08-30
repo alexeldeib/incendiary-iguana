@@ -36,32 +36,145 @@ spec:
         spec:
           description: TrafficManagerSpec defines the desired state of TrafficManager
           properties:
-            dnsName:
-              type: string
-            healthcheck:
-              type: string
-            intervalInSeconds:
-              type: integer
+            dnsConfig:
+              properties:
+                relativeName:
+                  type: string
+                ttl:
+                  format: int64
+                  type: integer
+              required:
+              - relativeName
+              type: object
+            endpoints:
+              items:
+                properties:
+                  location:
+                    type: string
+                  name:
+                    type: string
+                  properties:
+                    properties:
+                      customHeaders:
+                        description: CustomHeaders - List of custom headers.
+                        items:
+                          properties:
+                            name:
+                              description: Name - Header name.
+                              type: string
+                            value:
+                              description: Value - Header value.
+                              type: string
+                          type: object
+                        type: array
+                      endpointLocation:
+                        description: EndpointLocation - Specifies the location of
+                          the external or nested endpoints when using the 'Performance'
+                          traffic routing method.
+                        type: string
+                      priority:
+                        description: Priority - The priority of this endpoint when
+                          using the 'Priority' traffic routing method. Possible values
+                          are from 1 to 1000, lower values represent higher priority.
+                          This is an optional parameter.  If specified, it must be
+                          specified on all endpoints, and no two endpoints can share
+                          the same priority value.
+                        format: int64
+                        type: integer
+                      target:
+                        description: Target - The fully-qualified DNS name or IP address
+                          of the endpoint. Traffic Manager returns this value in DNS
+                          responses to direct traffic to this endpoint.
+                        type: string
+                      weight:
+                        description: Weight - The weight of this endpoint when using
+                          the 'Weighted' traffic routing method. Possible values are
+                          from 1 to 1000.
+                        format: int64
+                        type: integer
+                    type: object
+                required:
+                - location
+                - name
+                - properties
+                type: object
+              type: array
+            monitorConfig:
+              properties:
+                customHeaders:
+                  description: CustomHeaders - List of custom headers.
+                  items:
+                    properties:
+                      name:
+                        description: Name - Header name.
+                        type: string
+                      value:
+                        description: Value - Header value.
+                        type: string
+                    type: object
+                  type: array
+                expectedStatusCodeRanges:
+                  description: ExpectedStatusCodeRanges - List of expected status
+                    code ranges.
+                  items:
+                    properties:
+                      max:
+                        description: Max - Max status code.
+                        format: int32
+                        type: integer
+                      min:
+                        description: Min - Min status code.
+                        format: int32
+                        type: integer
+                    type: object
+                  type: array
+                intervalInSeconds:
+                  description: IntervalInSeconds - The monitor interval for endpoints
+                    in this profile. This is the interval at which Traffic Manager
+                    will check the health of each endpoint in this profile.
+                  format: int64
+                  type: integer
+                path:
+                  description: Path - The path relative to the endpoint domain name
+                    used to probe for endpoint health.
+                  type: string
+                port:
+                  description: Port - The TCP port used to probe for endpoint health.
+                  format: int64
+                  type: integer
+                protocol:
+                  description: 'Protocol - The protocol (HTTP, HTTPS or TCP) used
+                    to probe for endpoint health. Possible values include: ''HTTP'',
+                    ''HTTPS'', ''TCP'''
+                  type: string
+                timeoutInSeconds:
+                  description: TimeoutInSeconds - The monitor timeout for endpoints
+                    in this profile. This is the time that Traffic Manager allows
+                    endpoints in this profile to response to the health check.
+                  format: int64
+                  type: integer
+                toleratedNumberOfFailures:
+                  description: ToleratedNumberOfFailures - The number of consecutive
+                    failed health check that Traffic Manager tolerates before declaring
+                    an endpoint in this profile Degraded after the next failed health
+                    check.
+                  format: int64
+                  type: integer
+              type: object
             name:
               type: string
             profileStatus:
-              type: string
-            protocol:
               type: string
             resourceGroup:
               type: string
             subscriptionID:
               type: string
-            timeoutInSeconds:
-              type: integer
             trafficRoutingMethod:
               type: string
           required:
-          - dnsName
-          - healthcheck
+          - endpoints
           - name
           - profileStatus
-          - protocol
           - resourceGroup
           - subscriptionID
           - trafficRoutingMethod
@@ -69,6 +182,13 @@ spec:
         status:
           description: TrafficManagerStatus defines the observed state of TrafficManager
           properties:
+            endpointStatus:
+              items:
+                properties:
+                  monitorStatus:
+                    type: string
+                type: object
+              type: array
             fqdn:
               type: string
             id:

@@ -22,7 +22,7 @@ var _ Client = &client{}
 // Client is the interface for Azure load balancer. Defined for test mocks.
 type Client interface {
 	ForSubscription(string) error
-	Ensure(context.Context, *azurev1alpha1.LoadBalancer, network.LoadBalancer) error
+	Ensure(context.Context, *azurev1alpha1.LoadBalancer) error
 	Get(context.Context, *azurev1alpha1.LoadBalancer) (network.LoadBalancer, error)
 	Delete(context.Context, *azurev1alpha1.LoadBalancer) error
 }
@@ -57,7 +57,7 @@ func (c *client) ForSubscription(subID string) error {
 }
 
 // Ensure creates or updates a virtual network in an idempotent manner and sets its provisioning state.
-func (c *client) Ensure(ctx context.Context, local *azurev1alpha1.LoadBalancer, remote network.LoadBalancer) error {
+func (c *client) Ensure(ctx context.Context, local *azurev1alpha1.LoadBalancer) error {
 	spec := network.LoadBalancer{
 		Sku:                          &network.LoadBalancerSku{Name: network.LoadBalancerSkuNameStandard},
 		LoadBalancerPropertiesFormat: &network.LoadBalancerPropertiesFormat{},

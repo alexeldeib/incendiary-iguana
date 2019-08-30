@@ -3,12 +3,17 @@ kind: TrafficManager
 metadata:
   name: trafficmanager-sample
 spec:
-  # Add fields here
-  name: test-tm
-  subscriptionID: bd6a4e14-55fa-4160-a6a7-b718d7a2c95c
+  name: test-tm-cli
+  subscriptionID: 3f72cd65-6bb9-442c-b852-3a2b9bff1240
   resourceGroup: draft-global-int 
   profileStatus: enabled
   dnsName: testtmnew
   healthcheck: /
   protocol: HTTPS
   trafficRoutingMethod: weighted
+  endpoints:
+  - name: google-1
+    target: google.com
+    status: enabled
+    weight: 1
+    location: eastus

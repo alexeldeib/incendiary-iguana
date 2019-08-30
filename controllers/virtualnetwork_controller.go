@@ -100,7 +100,7 @@ func (r *VirtualNetworkReconciler) reconcileRemote(ctx context.Context, lastReco
 	}
 	if remote.IsHTTPStatus(http.StatusNotFound) || lastReconciled != local.ObjectMeta.Generation {
 		log.Info("reconciling virtual network")
-		err := r.VnetsClient.Ensure(ctx, local, remote)
+		err := r.VnetsClient.Ensure(ctx, local)
 		return true, err
 	}
 	log.Info("skipping reconciliation, smooth sailing")
