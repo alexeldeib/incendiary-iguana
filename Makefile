@@ -15,7 +15,7 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
-all: manager
+all: manifests manager
 
 # Run tests
 # alternatively ginkgo -v ./...
@@ -26,7 +26,7 @@ else
 	go test -v $(GO_TEST_OPTIONS) -ginkgo.v
 endif
 # Build manager binary
-manager: fmt vet
+manager: manifests fmt vet lint 
 	go build -gcflags '-N -l' -o bin/manager main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
@@ -44,7 +44,7 @@ deploy: manifests
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen generate
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./api/...;./controllers/..." output:crd:artifacts:config=config/crd/bases
 
 # Run go fmt against code
 fmt:
@@ -60,11 +60,11 @@ lint:
 	golangci-lint run --fix -j=2
 
 # Generate code
-generate: controller-gen mockgen
+generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./api/...
 
 # Build the docker image
-docker-build: test
+docker-build: #test
 	docker build . -t ${IMG}
 	@echo "updating kustomize image patch file for manager resource"
 	sed -i'' -e 's@image: .*@image: '"${IMG}"'@' ./config/default/manager_image_patch.yaml
@@ -77,7 +77,7 @@ docker-push:
 # download controller-gen if necessary
 controller-gen:
 ifeq (, $(shell which controller-gen))
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0-beta.4
+	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
@@ -117,4 +117,4 @@ else
 endif
 
 publish: bazel-image
-	bazel run publish
+	bazel run publish --host_force_python=PY2

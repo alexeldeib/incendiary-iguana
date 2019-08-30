@@ -102,19 +102,13 @@ func (r *KeyvaultReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 					Namespace: keyVault.Namespace,
 				}
 				err := r.Client.Get(ctx, namespacedName, &resourceGroup)
-				if err != nil && !apierrs.IsNotFound(err) {
+				if client.IgnoreNotFound(err) != nil {
 					return ctrl.Result{}, err
 				}
 
 				// Delete the managed resource group if necessary
 				if err == nil {
 					if _, ok := resourceGroup.Annotations[ManagedAnnotation]; ok {
-						// TODO(ace): improve deletion handling.
-						// Foreground deletion on single level depenency is a no-op
-						// because kubectl will set the policy to background for the top level object.
-						// It is still useful for multi-level ownership hierarchies where a user deletes
-						// an object which owns an object owning another object (user -> object -> object -> object).
-						// The middle object should wait for the final object's deletion, which this would enforce.
 						err = r.Client.Delete(ctx, &resourceGroup, client.PropagationPolicy(metav1.DeletePropagationForeground))
 						if err != nil {
 							return ctrl.Result{}, err
@@ -184,16 +178,24 @@ func (r *KeyvaultReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 					SubscriptionID: keyVault.Spec.SubscriptionID,
 				},
 			}
-			err := controllerutil.SetControllerReference(&keyVault, &resourceGroup, r.Scheme)
-			if err = r.Client.Create(ctx, &resourceGroup); err != nil {
+			err = controllerutil.SetControllerReference(&keyVault, &resourceGroup, r.Scheme)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			log.Info("creating resource group")
+			if err = r.Create(ctx, &resourceGroup); err != nil {
+				log.Info("failed creating resource group")
 				return ctrl.Result{}, err
 			}
 		}
+		log.Info("creating keyvault")
 		if err := r.VaultsClient.Ensure(ctx, &keyVault); err != nil {
+			log.Info("failed creating keyvault")
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{Requeue: true}, nil
 	}
+	log.Info("skipping reconciliation, smooth sailing.")
 	return ctrl.Result{}, nil
 }
 

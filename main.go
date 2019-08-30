@@ -11,14 +11,23 @@ import (
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/controllers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/nics"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secrets"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
 	// +kubebuilder:scaffold:imports
+	"github.com/sanity-io/litter"
 )
 
 var (
@@ -62,6 +71,13 @@ func main() {
 	log := ctrl.Log.WithName("controllers")
 	client := mgr.GetClient()
 
+	// Global client initialization
+	secretsclient, err := secrets.New(configuration)
+	if err != nil {
+		setupLog.Error(err, "failed to initialize keyvault secret client")
+		os.Exit(1)
+	}
+
 	if err = (&controllers.ResourceGroupReconciler{
 		Client:       client,
 		Log:          log.WithName("ResourceGroup"),
@@ -78,12 +94,86 @@ func main() {
 		Config:       configuration,
 		GroupsClient: resourcegroups.New(configuration),
 		VaultsClient: keyvaults.New(configuration),
-		Scheme:       mgr.GetScheme(),
+		Scheme:       scheme,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Keyvault")
 		os.Exit(1)
 	}
 
+	if err = (&controllers.SecretReconciler{
+		Client:        client,
+		Log:           ctrl.Log.WithName("controllers").WithName("Secret"),
+		SecretsClient: secretsclient,
+		Scheme:        scheme,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Secret")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.SecretBundleReconciler{
+		Client:        mgr.GetClient(),
+		Log:           ctrl.Log.WithName("controllers").WithName("SecretBundle"),
+		SecretsClient: secretsclient,
+		Scheme:        scheme,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "SecretBundle")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.VirtualNetworkReconciler{
+		Client:      mgr.GetClient(),
+		Log:         ctrl.Log.WithName("controllers").WithName("VirtualNetwork"),
+		VnetsClient: virtualnetworks.New(configuration),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "VirtualNetwork")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.SubnetReconciler{
+		Client:        mgr.GetClient(),
+		Log:           ctrl.Log.WithName("controllers").WithName("Subnet"),
+		SubnetsClient: subnets.New(configuration),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Subnet")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.SecurityGroupReconciler{
+		Client:               mgr.GetClient(),
+		Log:                  ctrl.Log.WithName("controllers").WithName("SecurityGroup"),
+		SecurityGroupsClient: securitygroups.New(configuration),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "SecurityGroup")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.PublicIPReconciler{
+		Client:          mgr.GetClient(),
+		Log:             ctrl.Log.WithName("controllers").WithName("PublicIP"),
+		PublicIPsClient: publicips.New(configuration),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "PublicIP")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.NetworkInterfaceReconciler{
+		Client:     mgr.GetClient(),
+		Log:        ctrl.Log.WithName("controllers").WithName("NetworkInterface"),
+		NICsClient: nics.New(configuration),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "NetworkInterface")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.TrafficManagerReconciler{
+		Client:                mgr.GetClient(),
+		Log:                   ctrl.Log.WithName("controllers").WithName("TrafficManager"),
+		TrafficManagersClient: trafficmanagers.New(configuration),
+	}).SetupWithManager(mgr); err != nil {
+		litter.Dump(err)
+		setupLog.Error(err, "unable to create controller", "controller", "TrafficManager")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")

@@ -1,0 +1,153 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: networkinterfaces.azure.alexeldeib.xyz
+spec:
+  group: azure.alexeldeib.xyz
+  names:
+    kind: NetworkInterface
+    plural: networkinterfaces
+  scope: ""
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: NetworkInterface is the Schema for the networkinterfaces API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: NetworkInterfaceSpec defines the desired state of NetworkInterface
+          properties:
+            ipConfigurations:
+              description: IPConfigurations is an array of IP configurations belonging
+                to this interface.
+              items:
+                description: InterfaceIPConfig describes a single IP configuration
+                  for a NIC.
+                properties:
+                  loadBalancers:
+                    description: BackendPoolReferences contains an optional reference
+                      to a Load Balancer backend pool for this configuration.
+                    items:
+                      description: BackendPoolReference contains a reference to a
+                        Load Balancer backend pool for this configuration.
+                      properties:
+                        loadBalancer:
+                          description: LoadBalancer is the name of the associated
+                            Load balancer.
+                          type: string
+                        name:
+                          description: Name is the name of the referenced resource.
+                          type: string
+                        resourceGroup:
+                          description: ResourceGroup contain the referenced resource.
+                          type: string
+                        subscriptionId:
+                          description: SubscriptionID contains the Resource group.
+                            Is a GUID.
+                          type: string
+                      required:
+                      - loadBalancer
+                      - name
+                      - resourceGroup
+                      - subscriptionId
+                      type: object
+                    type: array
+                  privateIP:
+                    description: PrivateIP contains an optional private IP address
+                      to bind to this NIC.
+                    type: string
+                  publicIP:
+                    description: PublicIP contains an optional reference to an existing
+                      IP address to bind to this NIC.
+                    properties:
+                      name:
+                        description: Name is the name of the referenced resource.
+                        type: string
+                      resourceGroup:
+                        description: ResourceGroup contain the referenced resource.
+                        type: string
+                      subscriptionId:
+                        description: SubscriptionID contains the Resource group. Is
+                          a GUID.
+                        type: string
+                    required:
+                    - name
+                    - resourceGroup
+                    - subscriptionId
+                    type: object
+                type: object
+              type: array
+            location:
+              description: Location osecurity group (e.g., eastus2)
+              type: string
+            name:
+              description: Name is the name of the security group.
+              type: string
+            network:
+              description: Network is the name of the VNet containing this subnet
+              type: string
+            resourceGroup:
+              description: ResourceGroup containsecurity group.
+              type: string
+            subnet:
+              description: Subnet contains the name to an Azure subnet which this
+                NIC should belong to.
+              type: string
+            subscriptionId:
+              description: SubscriptionID contains the Resource group. Is a GUID.
+              type: string
+          required:
+          - location
+          - name
+          - network
+          - resourceGroup
+          - subnet
+          - subscriptionId
+          type: object
+        status:
+          description: NetworkInterfaceStatus defines the observed state of NetworkInterface
+          properties:
+            id:
+              description: ID is the fully qualified Azure resource ID.
+              type: string
+            observedGeneration:
+              description: ObservedGeneration is the iteration of user-provided spec
+                which has already been reconciled. This is used to decide when to
+                re-reconcile changes.
+              format: int64
+              type: integer
+            provisioningState:
+              description: ProvisioningState sync the provisioning status of the resource
+                from Azure.
+              type: string
+          required:
+          - id
+          - observedGeneration
+          - provisioningState
+          type: object
+      type: object
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

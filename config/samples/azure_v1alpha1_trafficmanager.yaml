@@ -1,0 +1,19 @@
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: TrafficManager
+metadata:
+  name: trafficmanager-sample
+spec:
+  name: test-tm-cli
+  subscriptionID: 3f72cd65-6bb9-442c-b852-3a2b9bff1240
+  resourceGroup: draft-global-int 
+  profileStatus: enabled
+  dnsName: testtmnew
+  healthcheck: /
+  protocol: HTTPS
+  trafficRoutingMethod: weighted
+  endpoints:
+  - name: google-1
+    target: google.com
+    status: enabled
+    weight: 1
+    location: eastus

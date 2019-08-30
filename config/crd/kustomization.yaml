@@ -4,6 +4,14 @@
 resources:
 - bases/azure.alexeldeib.xyz_resourcegroups.yaml
 - bases/azure.alexeldeib.xyz_keyvaults.yaml
+- bases/azure.alexeldeib.xyz_secrets.yaml
+- bases/azure.alexeldeib.xyz_secretbundles.yaml
+- bases/azure.alexeldeib.xyz_virtualnetworks.yaml
+- bases/azure.alexeldeib.xyz_subnets.yaml
+- bases/azure.alexeldeib.xyz_securitygroups.yaml
+- bases/azure.alexeldeib.xyz_publicips.yaml
+- bases/azure.alexeldeib.xyz_networkinterfaces.yaml
+- bases/azure.alexeldeib.xyz_trafficmanagers.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:
@@ -11,12 +19,28 @@ patches:
 # patches here are for enabling the conversion webhook for each CRD
 #- patches/webhook_in_resourcegroups.yaml
 #- patches/webhook_in_keyvaults.yaml
+#- patches/webhook_in_secrets.yaml
+#- patches/webhook_in_secretbundles.yaml
+#- patches/webhook_in_virtualnetworks.yaml
+#- patches/webhook_in_subnets.yaml
+#- patches/webhook_in_securitygroups.yaml
+#- patches/webhook_in_publicips.yaml
+#- patches/webhook_in_networkinterfaces.yaml
+#- patches/webhook_in_trafficmanagers.yaml
 # +kubebuilder:scaffold:crdkustomizewebhookpatch
 
 # [CERTMANAGER] To enable webhook, uncomment all the sections with [CERTMANAGER] prefix.
 # patches here are for enabling the CA injection for each CRD
 #- patches/cainjection_in_resourcegroups.yaml
 #- patches/cainjection_in_keyvaults.yaml
+#- patches/cainjection_in_secrets.yaml
+#- patches/cainjection_in_secretbundles.yaml
+#- patches/cainjection_in_virtualnetworks.yaml
+#- patches/cainjection_in_subnets.yaml
+#- patches/cainjection_in_securitygroups.yaml
+#- patches/cainjection_in_publicips.yaml
+#- patches/cainjection_in_networkinterfaces.yaml
+#- patches/cainjection_in_trafficmanagers.yaml
 # +kubebuilder:scaffold:crdkustomizecainjectionpatch
 
 # the following config is for teaching kustomize how to do kustomization for CRDs.

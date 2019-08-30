@@ -8,3 +8,27 @@ resources:
 - group: azure
   version: v1alpha1
   kind: Keyvault
+- group: azure
+  version: v1alpha1
+  kind: Secret
+- group: azure
+  version: v1alpha1
+  kind: SecretBundle
+- group: azure
+  version: v1alpha1
+  kind: VirtualNetwork
+- group: azure
+  version: v1alpha1
+  kind: Subnet
+- group: azure
+  version: v1alpha1
+  kind: SecurityGroup
+- group: azure
+  version: v1alpha1
+  kind: PublicIP
+- group: azure
+  version: v1alpha1
+  kind: NetworkInterface
+- group: azure
+  version: v1alpha1
+  kind: TrafficManager
