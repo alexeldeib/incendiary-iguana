@@ -22,7 +22,7 @@ import (
 type VirtualNetworkReconciler struct {
 	client.Client
 	Log         logr.Logger
-	VnetsClient virtualnetworks.Client
+	VnetsClient *virtualnetworks.Client
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=virtualnetworks,verbs=get;list;watch;create;update;patch;delete

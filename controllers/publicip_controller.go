@@ -22,7 +22,7 @@ import (
 type PublicIPReconciler struct {
 	client.Client
 	Log             logr.Logger
-	PublicIPsClient publicips.Client
+	PublicIPsClient *publicips.Client
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=publicips,verbs=get;list;watch;create;update;patch;delete

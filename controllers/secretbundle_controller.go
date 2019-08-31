@@ -31,7 +31,7 @@ var BadHostRegex = regexp.MustCompile(`StatusCode=([0-9]{0,3})`)
 type SecretBundleReconciler struct {
 	client.Client
 	Log           logr.Logger
-	SecretsClient secrets.Client
+	SecretsClient *secrets.Client
 	Scheme        *runtime.Scheme
 }
 

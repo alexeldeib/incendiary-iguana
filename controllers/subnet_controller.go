@@ -22,7 +22,7 @@ import (
 type SubnetReconciler struct {
 	client.Client
 	Log           logr.Logger
-	SubnetsClient subnets.Client
+	SubnetsClient *subnets.Client
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=subnets,verbs=get;list;watch;create;update;patch;delete

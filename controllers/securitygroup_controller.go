@@ -22,7 +22,7 @@ import (
 type SecurityGroupReconciler struct {
 	client.Client
 	Log                  logr.Logger
-	SecurityGroupsClient securitygroups.Client
+	SecurityGroupsClient *securitygroups.Client
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=securitygroups,verbs=get;list;watch;create;update;patch;delete

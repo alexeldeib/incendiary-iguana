@@ -22,7 +22,7 @@ import (
 type NetworkInterfaceReconciler struct {
 	client.Client
 	Log        logr.Logger
-	NICsClient nics.Client
+	NICsClient *nics.Client
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=networkinterfaces,verbs=get;list;watch;create;update;patch;delete

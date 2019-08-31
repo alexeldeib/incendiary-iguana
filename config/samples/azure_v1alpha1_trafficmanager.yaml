@@ -5,15 +5,30 @@ metadata:
 spec:
   name: test-tm-cli
   subscriptionID: 3f72cd65-6bb9-442c-b852-3a2b9bff1240
-  resourceGroup: draft-global-int 
+  resourceGroup: ace-test-rg
   profileStatus: enabled
-  dnsName: testtmnew
-  healthcheck: /
-  protocol: HTTPS
   trafficRoutingMethod: weighted
+  dnsConfig:
+    relativeName: testtmnew
+    ttl: 30
+  monitorConfig:
+    customHeaders:
+    - name: host
+      value: something.alexeldeib.io
+    expectedStatusCodeRanges:
+    - max: 308
+      min: 200
+    intervalInSeconds: 10
+    path: /healthz
+    port: 443
+    protocol: HTTPS
+    timeoutInSeconds: 5
+    toleratedNumberOfFailures: 3
   endpoints:
   - name: google-1
-    target: google.com
-    status: enabled
-    weight: 1
-    location: eastus
+    properties:
+      target: google.com
+      status: enabled
+      weight: 1
+      priority: 1
+      endpointLocation: eastus

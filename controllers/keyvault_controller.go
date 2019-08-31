@@ -32,8 +32,8 @@ type KeyvaultReconciler struct {
 	config.Config
 	Scheme       *runtime.Scheme
 	Log          logr.Logger
-	VaultsClient keyvaults.Client
-	GroupsClient resourcegroups.Client
+	VaultsClient *keyvaults.Client
+	GroupsClient *resourcegroups.Client
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=keyvaults,verbs=get;list;watch;create;update;patch;delete

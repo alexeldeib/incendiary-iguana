@@ -29,7 +29,7 @@ type ResourceGroupReconciler struct {
 	client.Client
 	config.Config
 	Log          logr.Logger
-	GroupsClient resourcegroups.Client
+	GroupsClient *resourcegroups.Client
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=resourcegroups,verbs=get;list;watch;create;update;patch;delete

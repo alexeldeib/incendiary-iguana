@@ -15,18 +15,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-// Type assertion for interface/implementation
-var _ Client = &client{}
-
-// Client is the interface for Azure keyvaults. Defined for test mocks.
-type Client interface {
-	ForSubscription(string) error
-	Ensure(context.Context, *azurev1alpha1.Keyvault) error
-	Get(context.Context, *azurev1alpha1.Keyvault) (keyvault.Vault, error)
-	Delete(context.Context, *azurev1alpha1.Keyvault) error
-}
-
-type client struct {
+type Client struct {
 	factory  factoryFunc
 	internal keyvault.VaultsClient
 	config   config.Config
@@ -35,26 +24,26 @@ type client struct {
 type factoryFunc func(subscriptionID string) keyvault.VaultsClient
 
 // New returns a new client able to authenticate to multiple Azure subscriptions using the provided configuration.
-func New(configuration config.Config) Client {
+func New(configuration config.Config) *Client {
 	return NewWithFactory(configuration, keyvault.NewVaultsClient)
 }
 
 // NewWithFactory returns an interface which can authorize the configured client to many subscriptions.
-func NewWithFactory(configuration config.Config, factory factoryFunc) Client {
-	return &client{
+func NewWithFactory(configuration config.Config, factory factoryFunc) *Client {
+	return &Client{
 		config:  configuration,
 		factory: factory,
 	}
 }
 
 // ForSubscription authorizes the client for a given subscription
-func (c *client) ForSubscription(subID string) error {
+func (c *Client) ForSubscription(subID string) error {
 	c.internal = c.factory(subID)
 	return c.config.AuthorizeClient(&c.internal.Client)
 }
 
 // Ensure creates or updates a keyvault in an idempotent manner and sets its provisioning state.
-func (c *client) Ensure(ctx context.Context, vault *azurev1alpha1.Keyvault) error {
+func (c *Client) Ensure(ctx context.Context, vault *azurev1alpha1.Keyvault) error {
 	// TODO(ace): handle location/name changes? via status somehow
 	tenantId, err := uuid.FromString(vault.Spec.TenantID)
 	if err != nil {
@@ -76,12 +65,12 @@ func (c *client) Ensure(ctx context.Context, vault *azurev1alpha1.Keyvault) erro
 }
 
 // Get returns a keyvault.
-func (c *client) Get(ctx context.Context, vault *azurev1alpha1.Keyvault) (keyvault.Vault, error) {
+func (c *Client) Get(ctx context.Context, vault *azurev1alpha1.Keyvault) (keyvault.Vault, error) {
 	return c.internal.Get(ctx, vault.Spec.ResourceGroup, vault.Spec.Name)
 }
 
 // Delete handles deletion of a keyvault and returns its provisioning state.
-func (c *client) Delete(ctx context.Context, vault *azurev1alpha1.Keyvault) error {
+func (c *Client) Delete(ctx context.Context, vault *azurev1alpha1.Keyvault) error {
 	response, err := c.internal.Delete(ctx, vault.Spec.ResourceGroup, vault.Spec.Name)
 	if err != nil && !response.IsHTTPStatus(http.StatusNotFound) {
 		return err

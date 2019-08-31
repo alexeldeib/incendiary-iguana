@@ -22,7 +22,7 @@ import (
 type TrafficManagerReconciler struct {
 	client.Client
 	Log                   logr.Logger
-	TrafficManagersClient trafficmanagers.Client
+	TrafficManagersClient *trafficmanagers.Client
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=trafficmanagers,verbs=get;list;watch;create;update;patch;delete

@@ -17,16 +17,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 )
 
-// Type assertion for interface/implementation
-var _ Client = &client{}
-
-// Client is the interface for Azure resource groups. Defined for test mocks.
-type Client interface {
-	ForSubscription(string) error
-	Exists(context.Context, string) (bool, error)
-}
-
-type client struct {
+type Client struct {
 	factory  factoryFunc
 	internal resources.Client
 	config   config.Config
@@ -35,22 +26,22 @@ type client struct {
 type factoryFunc func(string, string) resources.Client
 
 // New returns a new client able to authenticate to multiple Azure subscriptions using the provided configuration.
-func New(configuration config.Config) Client {
+func New(configuration config.Config) *Client {
 	return NewWithFactory(configuration, resources.NewClientWithBaseURI)
 }
 
 // NewWithFactory returns an interface which can authorize the configured client to many subscriptions.
 // It uses the factory argument to instantiate new clients for a specific subscription.
 // This can be used to stub Azure client for testing.
-func NewWithFactory(configuration config.Config, factory factoryFunc) Client {
-	return &client{
+func NewWithFactory(configuration config.Config, factory factoryFunc) *Client {
+	return &Client{
 		config:  configuration,
 		factory: factory,
 	}
 }
 
 // ForSubscription authorizes the client for a given subscription
-func (c *client) ForSubscription(subID string) error {
+func (c *Client) ForSubscription(subID string) error {
 	c.internal = c.factory(subID, azure.PublicCloud.ResourceManagerEndpoint)
 	c.internal.RequestInspector = LogRequest()
 	c.internal.ResponseInspector = LogResponse()
@@ -58,7 +49,7 @@ func (c *client) ForSubscription(subID string) error {
 }
 
 // Exists returns if the resource ID exists in Azure.
-func (c *client) Exists(ctx context.Context, resource string) (bool, error) {
+func (c *Client) Exists(ctx context.Context, resource string) (bool, error) {
 	response, err := c.internal.CheckExistenceByID(ctx, resource)
 	if err != nil {
 		if response.IsHTTPStatus(http.StatusNotFound) {
