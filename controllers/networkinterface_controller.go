@@ -13,6 +13,7 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/nics"
@@ -47,7 +48,7 @@ func (r *NetworkInterfaceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 		return ctrl.Result{}, err
 	}
 
-	lastReconciled := r.setStatus(ctx, &local, remote)
+	r.setStatus(ctx, &local, remote)
 	err = r.Status().Update(ctx, &local)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -60,12 +61,10 @@ func (r *NetworkInterfaceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 		}
 	} else {
 		requeue, err = r.deleteRemote(ctx, &local, remote, log)
-		if requeue || err != nil {
-			return ctrl.Result{Requeue: requeue}, err
-		}
+		return ctrl.Result{Requeue: requeue}, err
 	}
 
-	requeue, err = r.reconcileRemote(ctx, lastReconciled, &local, remote, log)
+	requeue, err = r.reconcileRemote(ctx, &local, log)
 	return ctrl.Result{Requeue: requeue}, err
 }
 
@@ -79,7 +78,7 @@ func (r *NetworkInterfaceReconciler) fetchRemote(ctx context.Context, local azur
 	return r.NICsClient.Get(ctx, &local)
 }
 
-func (r *NetworkInterfaceReconciler) setStatus(ctx context.Context, local *azurev1alpha1.NetworkInterface, remote network.Interface) int64 {
+func (r *NetworkInterfaceReconciler) setStatus(ctx context.Context, local *azurev1alpha1.NetworkInterface, remote network.Interface) {
 	if !remote.IsHTTPStatus(http.StatusNotFound) {
 		if remote.ProvisioningState != nil {
 			local.Status.ProvisioningState = *remote.ProvisioningState
@@ -88,14 +87,10 @@ func (r *NetworkInterfaceReconciler) setStatus(ctx context.Context, local *azure
 			local.Status.ID = *remote.ID
 		}
 	}
-	old := local.Status.ObservedGeneration
-	local.Status.ObservedGeneration = local.ObjectMeta.Generation
-	return old
 }
 
-func (r *NetworkInterfaceReconciler) reconcileRemote(ctx context.Context, lastReconciled int64, local *azurev1alpha1.NetworkInterface, remote network.Interface, log logr.Logger) (bool, error) {
-	log = log.WithValues("rg", local.Spec.ResourceGroup)
-	requeue := r.shouldRequeue(lastReconciled, local, remote)
+func (r *NetworkInterfaceReconciler) reconcileRemote(ctx context.Context, local *azurev1alpha1.NetworkInterface, log logr.Logger) (bool, error) {
+	requeue := r.shouldRequeue(local)
 	if requeue {
 		log.Info("not done reconciling, will requeue")
 		return true, nil
@@ -109,7 +104,7 @@ func (r *NetworkInterfaceReconciler) reconcileRemote(ctx context.Context, lastRe
 	return false, nil
 }
 
-func (r *NetworkInterfaceReconciler) shouldRequeue(lastReconciled int64, local *azurev1alpha1.NetworkInterface, remote network.Interface) bool {
+func (r *NetworkInterfaceReconciler) shouldRequeue(local *azurev1alpha1.NetworkInterface) bool {
 	if local.Status.ProvisioningState != "" && local.Status.ProvisioningState != "Succeeded" {
 		return true
 	}
@@ -139,5 +134,6 @@ func (r *NetworkInterfaceReconciler) deleteRemote(ctx context.Context, local *az
 func (r *NetworkInterfaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&azurev1alpha1.NetworkInterface{}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }

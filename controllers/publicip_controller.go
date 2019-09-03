@@ -13,6 +13,7 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
@@ -47,7 +48,7 @@ func (r *PublicIPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	lastReconciled := r.setStatus(ctx, &local, remote)
+	r.setStatus(ctx, &local, remote)
 	err = r.Status().Update(ctx, &local)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -65,7 +66,7 @@ func (r *PublicIPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 	}
 
-	requeue, err = r.reconcileRemote(ctx, lastReconciled, &local, remote, log)
+	requeue, err = r.reconcileRemote(ctx, &local, log)
 	return ctrl.Result{Requeue: requeue}, err
 }
 
@@ -93,9 +94,9 @@ func (r *PublicIPReconciler) setStatus(ctx context.Context, local *azurev1alpha1
 	return old
 }
 
-func (r *PublicIPReconciler) reconcileRemote(ctx context.Context, lastReconciled int64, local *azurev1alpha1.PublicIP, remote network.PublicIPAddress, log logr.Logger) (bool, error) {
-	log = log.WithValues("rg", local.Spec.ResourceGroup)
-	requeue := r.shouldRequeue(lastReconciled, local, remote)
+func (r *PublicIPReconciler) reconcileRemote(ctx context.Context, local *azurev1alpha1.PublicIP, log logr.Logger) (bool, error) {
+	log = log.WithValues("ip", local.Spec.Name)
+	requeue := r.shouldRequeue(local)
 	if requeue {
 		log.Info("not done reconciling, will requeue")
 		return true, nil
@@ -106,10 +107,11 @@ func (r *PublicIPReconciler) reconcileRemote(ctx context.Context, lastReconciled
 	if err != nil {
 		return true, err
 	}
+	log.Info("successfully reconciled")
 	return false, nil
 }
 
-func (r *PublicIPReconciler) shouldRequeue(lastReconciled int64, local *azurev1alpha1.PublicIP, remote network.PublicIPAddress) bool {
+func (r *PublicIPReconciler) shouldRequeue(local *azurev1alpha1.PublicIP) bool {
 	if local.Status.ProvisioningState != "" && local.Status.ProvisioningState != "Succeeded" {
 		return true
 	}
@@ -139,5 +141,6 @@ func (r *PublicIPReconciler) deleteRemote(ctx context.Context, local *azurev1alp
 func (r *PublicIPReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&azurev1alpha1.PublicIP{}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }

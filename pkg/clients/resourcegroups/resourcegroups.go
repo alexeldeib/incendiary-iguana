@@ -44,18 +44,12 @@ func (c *Client) ForSubscription(subID string) error {
 }
 
 // Ensure creates or updates a resource group in an idempotent manner and sets its provisioning state.
-func (c *Client) Ensure(ctx context.Context, resourceGroup *azurev1alpha1.ResourceGroup) (resources.Group, error) {
-	// Check for existence of Resource group. We only care about location and name.
-	// TODO(ace): handle location/name changes? via status somehow
-	group, err := c.internal.Get(ctx, resourceGroup.Spec.Name)
-	if err != nil && !group.IsHTTPStatus(http.StatusNotFound) {
-		return resources.Group{}, err
-	}
+func (c *Client) Ensure(ctx context.Context, resourceGroup *azurev1alpha1.ResourceGroup) error {
 	spec := resources.Group{
 		Location: &resourceGroup.Spec.Location,
 	}
-	group, err = c.internal.CreateOrUpdate(ctx, resourceGroup.Spec.Name, spec)
-	return group, err
+	_, err := c.internal.CreateOrUpdate(ctx, resourceGroup.Spec.Name, spec)
+	return err
 }
 
 // Get returns a resource group and sets its provisioning state.
@@ -64,13 +58,13 @@ func (c *Client) Get(ctx context.Context, resourceGroup *azurev1alpha1.ResourceG
 }
 
 // Delete handles deletion of a resource groups and sets its provisioning state.
-func (c *Client) Delete(ctx context.Context, resourceGroup *azurev1alpha1.ResourceGroup) (string, error) {
+func (c *Client) Delete(ctx context.Context, resourceGroup *azurev1alpha1.ResourceGroup) error {
 	future, err := c.internal.Delete(ctx, resourceGroup.Spec.Name)
 	if err != nil {
 		// Not found is a successful delete
 		if resp := future.Response(); resp != nil && resp.StatusCode != http.StatusNotFound {
-			return "", err
+			return err
 		}
 	}
-	return future.Status(), nil
+	return nil
 }

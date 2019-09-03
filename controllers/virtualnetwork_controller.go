@@ -13,6 +13,7 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
@@ -47,7 +48,7 @@ func (r *VirtualNetworkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 		return ctrl.Result{}, err
 	}
 
-	lastReconciled := r.setStatus(ctx, &local, remote)
+	r.setStatus(ctx, &local, remote)
 	err = r.Status().Update(ctx, &local)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -65,7 +66,7 @@ func (r *VirtualNetworkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 		}
 	}
 
-	requeue, err = r.reconcileRemote(ctx, lastReconciled, &local, remote, log)
+	requeue, err = r.reconcileRemote(ctx, &local, log)
 	return ctrl.Result{Requeue: requeue}, err
 }
 
@@ -79,7 +80,7 @@ func (r *VirtualNetworkReconciler) fetchRemote(ctx context.Context, local azurev
 	return r.VnetsClient.Get(ctx, &local)
 }
 
-func (r *VirtualNetworkReconciler) setStatus(ctx context.Context, local *azurev1alpha1.VirtualNetwork, remote network.VirtualNetwork) int64 {
+func (r *VirtualNetworkReconciler) setStatus(ctx context.Context, local *azurev1alpha1.VirtualNetwork, remote network.VirtualNetwork) {
 	if remote.IsHTTPStatus(http.StatusOK) {
 		if remote.ProvisioningState != nil {
 			local.Status.ProvisioningState = *remote.ProvisioningState
@@ -88,23 +89,30 @@ func (r *VirtualNetworkReconciler) setStatus(ctx context.Context, local *azurev1
 			local.Status.ID = *remote.ID
 		}
 	}
-	old := local.Status.ObservedGeneration
-	local.Status.ObservedGeneration = local.ObjectMeta.Generation
-	return old
 }
 
-func (r *VirtualNetworkReconciler) reconcileRemote(ctx context.Context, lastReconciled int64, local *azurev1alpha1.VirtualNetwork, remote network.VirtualNetwork, log logr.Logger) (bool, error) {
+func (r *VirtualNetworkReconciler) reconcileRemote(ctx context.Context, local *azurev1alpha1.VirtualNetwork, log logr.Logger) (bool, error) {
 	log = log.WithValues("rg", local.Spec.ResourceGroup, "vnet", local.Spec.Name)
-	if remote.IsHTTPStatus(http.StatusOK) && *remote.ProvisioningState != "Succeeded" {
+	requeue := r.shouldRequeue(local)
+	if requeue {
+		log.Info("not done reconciling, will requeue")
 		return true, nil
 	}
-	if remote.IsHTTPStatus(http.StatusNotFound) || lastReconciled != local.ObjectMeta.Generation {
-		log.Info("reconciling virtual network")
-		err := r.VnetsClient.Ensure(ctx, local)
+
+	log.Info("reconciling")
+	err := r.VnetsClient.Ensure(ctx, local)
+	if err != nil {
 		return true, err
 	}
-	log.Info("skipping reconciliation, smooth sailing")
+	log.Info("successfully reconciled")
 	return false, nil
+}
+
+func (r *VirtualNetworkReconciler) shouldRequeue(local *azurev1alpha1.VirtualNetwork) bool {
+	if local.Status.ProvisioningState != "" && local.Status.ProvisioningState != "Succeeded" {
+		return true
+	}
+	return false
 }
 
 func (r *VirtualNetworkReconciler) deleteRemote(ctx context.Context, local *azurev1alpha1.VirtualNetwork, remote network.VirtualNetwork, log logr.Logger) (bool, error) {
@@ -130,5 +138,6 @@ func (r *VirtualNetworkReconciler) deleteRemote(ctx context.Context, local *azur
 func (r *VirtualNetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&azurev1alpha1.VirtualNetwork{}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }

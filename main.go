@@ -92,7 +92,6 @@ func main() {
 		Client:       client,
 		Log:          log.WithName("Keyvault"),
 		Config:       configuration,
-		GroupsClient: resourcegroups.New(configuration),
 		VaultsClient: keyvaults.New(configuration),
 		Scheme:       scheme,
 	}).SetupWithManager(mgr); err != nil {

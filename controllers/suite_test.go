@@ -12,8 +12,11 @@ import (
 	. "github.com/onsi/gomega"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -25,9 +28,12 @@ import (
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
-var cfg *rest.Config
-var k8sClient client.Client
-var testEnv *envtest.Environment
+var (
+	cfg       *rest.Config
+	k8sClient client.Client
+	testEnv   *envtest.Environment
+	mgr       manager.Manager
+)
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -56,6 +62,19 @@ var _ = BeforeSuite(func(done Done) {
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sClient).ToNot(BeNil())
+
+	configuration := config.New(ctrl.Log.WithName("configuration"))
+
+	mgr, err = manager.New(cfg, manager.Options{MetricsBindAddress: "0"})
+	Expect(err).ShouldNot(HaveOccurred())
+
+	err = (&ResourceGroupReconciler{
+		Client:       k8sClient,
+		Log:          ctrl.Log.WithName("ResourceGroup"),
+		Config:       configuration,
+		GroupsClient: resourcegroups.New(configuration),
+	}).SetupWithManager(mgr)
+	Expect(err).ToNot(HaveOccurred())
 
 	close(done)
 }, 60)

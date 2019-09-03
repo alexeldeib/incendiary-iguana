@@ -75,9 +75,9 @@ func AddFinalizer(o metav1.Object, finalizer string) {
 	o.SetFinalizers(append(f, finalizer))
 }
 
-// AddFinalizerWithError tries to convert a runtime object to a metav1 object and add the provided finalizer.
+// AddFinalizerIfPossible tries to convert a runtime object to a metav1 object and add the provided finalizer.
 // It returns an error if the provided object cannot provide an accessor.
-func AddFinalizerWithError(o runtime.Object, finalizer string) error {
+func AddFinalizerIfPossible(o runtime.Object, finalizer string) error {
 	m, err := meta.Accessor(o)
 	if err != nil {
 		return err
@@ -109,9 +109,9 @@ func HasFinalizer(o metav1.Object, finalizer string) bool {
 	return false
 }
 
-// RemoveFinalizerWithError tries to convert a runtime object to a metav1 object and remove the provided finalizer.
+// RemoveFinalizerIfPossible tries to convert a runtime object to a metav1 object and remove the provided finalizer.
 // It returns an error if the provided object cannot provide an accessor.
-func RemoveFinalizerWithError(o runtime.Object, finalizer string) error {
+func RemoveFinalizerIfPossible(o runtime.Object, finalizer string) error {
 	m, err := meta.Accessor(o)
 	if err != nil {
 		return err

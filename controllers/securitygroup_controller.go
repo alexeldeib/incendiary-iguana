@@ -13,6 +13,7 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
@@ -47,7 +48,7 @@ func (r *SecurityGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		return ctrl.Result{}, err
 	}
 
-	lastReconciled := r.setStatus(ctx, &local, remote)
+	r.setStatus(ctx, &local, remote)
 	err = r.Status().Update(ctx, &local)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -65,7 +66,7 @@ func (r *SecurityGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		}
 	}
 
-	requeue, err = r.reconcileRemote(ctx, lastReconciled, &local, remote, log)
+	requeue, err = r.reconcileRemote(ctx, &local, log)
 	return ctrl.Result{Requeue: requeue}, err
 }
 
@@ -79,7 +80,7 @@ func (r *SecurityGroupReconciler) fetchRemote(ctx context.Context, local azurev1
 	return r.SecurityGroupsClient.Get(ctx, &local)
 }
 
-func (r *SecurityGroupReconciler) setStatus(ctx context.Context, local *azurev1alpha1.SecurityGroup, remote network.SecurityGroup) int64 {
+func (r *SecurityGroupReconciler) setStatus(ctx context.Context, local *azurev1alpha1.SecurityGroup, remote network.SecurityGroup) {
 	if !remote.IsHTTPStatus(http.StatusNotFound) {
 		if remote.ProvisioningState != nil {
 			local.Status.ProvisioningState = *remote.ProvisioningState
@@ -88,14 +89,10 @@ func (r *SecurityGroupReconciler) setStatus(ctx context.Context, local *azurev1a
 			local.Status.ID = *remote.ID
 		}
 	}
-	old := local.Status.ObservedGeneration
-	local.Status.ObservedGeneration = local.ObjectMeta.Generation
-	return old
 }
 
-func (r *SecurityGroupReconciler) reconcileRemote(ctx context.Context, lastReconciled int64, local *azurev1alpha1.SecurityGroup, remote network.SecurityGroup, log logr.Logger) (bool, error) {
-	log = log.WithValues("rg", local.Spec.ResourceGroup)
-	requeue := r.shouldRequeue(lastReconciled, local, remote)
+func (r *SecurityGroupReconciler) reconcileRemote(ctx context.Context, local *azurev1alpha1.SecurityGroup, log logr.Logger) (bool, error) {
+	requeue := r.shouldRequeue(local)
 	if requeue {
 		log.Info("not done reconciling, will requeue")
 		return true, nil
@@ -106,11 +103,11 @@ func (r *SecurityGroupReconciler) reconcileRemote(ctx context.Context, lastRecon
 	if err != nil {
 		return true, err
 	}
-	log.Info("skipping reconciliation, smooth sailing")
+	log.Info("successfully reconciled")
 	return false, nil
 }
 
-func (r *SecurityGroupReconciler) shouldRequeue(lastReconciled int64, local *azurev1alpha1.SecurityGroup, remote network.SecurityGroup) bool {
+func (r *SecurityGroupReconciler) shouldRequeue(local *azurev1alpha1.SecurityGroup) bool {
 	if local.Status.ProvisioningState != "" && local.Status.ProvisioningState != "Succeeded" {
 		return true
 	}
@@ -140,5 +137,6 @@ func (r *SecurityGroupReconciler) deleteRemote(ctx context.Context, local *azure
 func (r *SecurityGroupReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&azurev1alpha1.SecurityGroup{}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }

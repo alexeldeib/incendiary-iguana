@@ -110,7 +110,6 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.TrafficManager
 			*spec.ProfileProperties.Endpoints = append(*spec.ProfileProperties.Endpoints, endpointSpec)
 		}
 	}
-
 	_, err := c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec)
 	return err
 }

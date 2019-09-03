@@ -13,6 +13,7 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
@@ -47,7 +48,7 @@ func (r *SubnetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	lastReconciled := r.setStatus(ctx, &local, remote)
+	r.setStatus(ctx, &local, remote)
 	err = r.Status().Update(ctx, &local)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -65,8 +66,15 @@ func (r *SubnetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 	}
 
-	requeue, err = r.reconcileRemote(ctx, lastReconciled, &local, remote, log)
+	requeue, err = r.reconcileRemote(ctx, &local, log)
 	return ctrl.Result{Requeue: requeue}, err
+}
+
+func (r *SubnetReconciler) shouldRequeue(local *azurev1alpha1.Subnet) bool {
+	if local.Status.ProvisioningState != "" && local.Status.ProvisioningState != "Succeeded" {
+		return true
+	}
+	return false
 }
 
 func (r *SubnetReconciler) fetchRemote(ctx context.Context, local azurev1alpha1.Subnet) (network.Subnet, error) {
@@ -79,7 +87,7 @@ func (r *SubnetReconciler) fetchRemote(ctx context.Context, local azurev1alpha1.
 	return r.SubnetsClient.Get(ctx, &local)
 }
 
-func (r *SubnetReconciler) setStatus(ctx context.Context, local *azurev1alpha1.Subnet, remote network.Subnet) int64 {
+func (r *SubnetReconciler) setStatus(ctx context.Context, local *azurev1alpha1.Subnet, remote network.Subnet) {
 	if !remote.IsHTTPStatus(http.StatusNotFound) {
 		if remote.ProvisioningState != nil {
 			local.Status.ProvisioningState = *remote.ProvisioningState
@@ -88,22 +96,22 @@ func (r *SubnetReconciler) setStatus(ctx context.Context, local *azurev1alpha1.S
 			local.Status.ID = *remote.ID
 		}
 	}
-	old := local.Status.ObservedGeneration
-	local.Status.ObservedGeneration = local.ObjectMeta.Generation
-	return old
 }
 
-func (r *SubnetReconciler) reconcileRemote(ctx context.Context, lastReconciled int64, local *azurev1alpha1.Subnet, remote network.Subnet, log logr.Logger) (bool, error) {
+func (r *SubnetReconciler) reconcileRemote(ctx context.Context, local *azurev1alpha1.Subnet, log logr.Logger) (bool, error) {
 	log = log.WithValues("rg", local.Spec.ResourceGroup, "vnet", local.Spec.Network)
-	if remote.IsHTTPStatus(http.StatusOK) && *remote.ProvisioningState != "Succeeded" {
+	requeue := r.shouldRequeue(local)
+	if requeue {
+		log.Info("not done reconciling, will requeue")
 		return true, nil
 	}
-	if remote.IsHTTPStatus(http.StatusNotFound) || lastReconciled != local.ObjectMeta.Generation {
-		log.Info("reconciling subnet")
-		err := r.SubnetsClient.Ensure(ctx, local)
+
+	log.Info("reconciling")
+	err := r.SubnetsClient.Ensure(ctx, local)
+	if err != nil {
 		return true, err
 	}
-	log.Info("skipping reconciliation, smooth sailing")
+	log.Info("successfully reconciled")
 	return false, nil
 }
 
@@ -130,5 +138,6 @@ func (r *SubnetReconciler) deleteRemote(ctx context.Context, local *azurev1alpha
 func (r *SubnetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&azurev1alpha1.Subnet{}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }

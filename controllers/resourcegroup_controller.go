@@ -6,8 +6,10 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
+	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/go-logr/logr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,9 +21,10 @@ import (
 )
 
 const (
-	finalizerName             string = "azure.alexeldeib.xyz/finalizer"
-	provisioningStateDeleting string = "Deleting"
-	provisioningStateNotFound string = "NotFound"
+	finalizerName              string = "azure.alexeldeib.xyz/finalizer"
+	provisioningStateDeleting  string = "Deleting"
+	provisioningStateNotFound  string = "NotFound"
+	provisioningStateSucceeded string = "Succeeded"
 )
 
 // ResourceGroupReconciler reconciles a ResourceGroup object
@@ -40,104 +43,81 @@ func (r *ResourceGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 	ctx := context.Background()
 	log := r.Log.WithValues("resourcegroup", req.NamespacedName)
 
-	// Fetch object from Kubernetes API server
-	var resourceGroup azurev1alpha1.ResourceGroup
-	if err := r.Get(ctx, req.NamespacedName, &resourceGroup); err != nil {
-		log.Info("unable to fetch ResourceGroup")
+	var local azurev1alpha1.ResourceGroup
+
+	if err := r.Get(ctx, req.NamespacedName, &local); err != nil {
+		log.Info("error during fetch from api server")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Authorize client
-	err := r.GroupsClient.ForSubscription(resourceGroup.Spec.SubscriptionID)
-	if err != nil {
-		// Don't requeue if fail to instantiate Azure client.
-		return ctrl.Result{Requeue: false}, err
-	}
-
-	// Fetch state of world
-	group, err := r.GroupsClient.Get(ctx, &resourceGroup)
-	if err != nil && !group.IsHTTPStatus(http.StatusNotFound) {
-		return ctrl.Result{}, err
-	}
-
-	// Update our awareness of the state
-	oldGeneration := resourceGroup.Status.Generation
-	resourceGroup.Status.Generation = resourceGroup.ObjectMeta.GetGeneration()
-	if group.Response.IsHTTPStatus(http.StatusNotFound) {
-		resourceGroup.Status.ProvisioningState = provisioningStateNotFound
-	}
-	if group.Properties != nil {
-		resourceGroup.Status.ProvisioningState = *group.Properties.ProvisioningState
-	}
-	if err := r.Status().Update(ctx, &resourceGroup); err != nil {
-		log.Info("failed to update status after reconcile")
-		return ctrl.Result{}, err
-	}
-
-	// The object is being deleted
-	if !resourceGroup.ObjectMeta.DeletionTimestamp.IsZero() {
-		if containsString(resourceGroup.ObjectMeta.Finalizers, finalizerName) {
-			// We either have 404 or 200. If 200, we may need to begin deletion, wait for deletion to finish,
-			if group.IsHTTPStatus(http.StatusOK) {
-				// Deletion started; wait for completion.
-				if *group.Properties.ProvisioningState == provisioningStateDeleting {
-					r.Log.Info("deletion in progress, will requeue")
-				} else {
-					// Should delete; start async deletion.
-					_, err := r.GroupsClient.Delete(ctx, &resourceGroup)
-					if err != nil {
-						r.Log.Info("error while deleting external resources")
-						return ctrl.Result{}, err
-					} else {
-						r.Log.Info("started deletion of resource group")
-						resourceGroup.Status.ProvisioningState = provisioningStateDeleting
-						if err := r.Status().Update(ctx, &resourceGroup); err != nil {
-							log.Info("failed to update status after reconcile")
-							return ctrl.Result{}, err
-						}
-					}
-				}
-				// Requeue while we wait for deletion, returning either/both error(s) if appropriate
-				return ctrl.Result{Requeue: true}, nil
-			}
-			r.Log.Info("finished deletion of resource group")
-			if err := RemoveFinalizerAndUpdate(ctx, r.Client, finalizerName, &resourceGroup); err != nil {
+	if local.DeletionTimestamp.IsZero() {
+		if !HasFinalizer(&local, finalizerName) {
+			AddFinalizer(&local, finalizerName)
+			if err := r.Update(ctx, &local); err != nil {
 				return ctrl.Result{}, err
 			}
+		}
+	} else {
+		if HasFinalizer(&local, finalizerName) {
+			if err := r.GroupsClient.Delete(ctx, &local); err != nil {
+				return ctrl.Result{}, err
+			}
+			RemoveFinalizer(&local, finalizerName)
+			if err := r.Update(ctx, &local); err != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, nil
 	}
 
-	if err := AddFinalizerAndUpdate(ctx, r.Client, finalizerName, &resourceGroup); err != nil {
-		return ctrl.Result{}, err
+	return ctrl.Result{}, r.reconcileExternal(ctx, &local)
+}
+
+func (r *ResourceGroupReconciler) reconcileExternal(ctx context.Context, local *azurev1alpha1.ResourceGroup) error {
+	// Authorize
+	err := r.GroupsClient.ForSubscription(local.Spec.SubscriptionID)
+	if err != nil {
+		return err
 	}
 
-	// Reconcile Azure resources.
-	if oldGeneration != resourceGroup.ObjectMeta.GetGeneration() || resourceGroup.Status.ProvisioningState == provisioningStateNotFound {
-		group, err = r.GroupsClient.Ensure(ctx, &resourceGroup)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-	} else {
-		log.Info("skipping reconciliation, smooth sailing.")
+	remote, err := r.GroupsClient.Get(ctx, local)
+	if err != nil && !remote.IsHTTPStatus(http.StatusNotFound) {
+		return err
 	}
 
-	// Attempt to update status in API server, since resource group usually creates immediately.
-	// TODO(ace): consider removing this and requeuing request to get status updates on next loop?
-	if group.Properties != nil && group.Properties.ProvisioningState != nil {
-		resourceGroup.Status.ProvisioningState = *group.Properties.ProvisioningState
+	if err := r.updateStatus(ctx, local, remote); err != nil {
+		return err
 	}
-	if err := r.Status().Update(ctx, &resourceGroup); err != nil {
-		log.Info("failed to update status after reconcile")
-		return ctrl.Result{}, err
+
+	if err = r.GroupsClient.Ensure(ctx, local); err != nil {
+		return err
 	}
-	return ctrl.Result{}, nil
+
+	if local.Status.ProvisioningState == nil || *local.Status.ProvisioningState != provisioningStateSucceeded {
+		return errors.New("not provisioned, should requeue")
+	}
+
+	return nil
+}
+
+func (r *ResourceGroupReconciler) updateStatus(ctx context.Context, local *azurev1alpha1.ResourceGroup, remote resources.Group) error {
+	r.setStatus(ctx, local, remote)
+	return r.Status().Update(ctx, local)
+}
+
+func (r *ResourceGroupReconciler) setStatus(ctx context.Context, local *azurev1alpha1.ResourceGroup, remote resources.Group) {
+	local.Status.ID = remote.ID
+	local.Status.ProvisioningState = nil
+	if remote.Properties != nil {
+		local.Status.ProvisioningState = remote.Properties.ProvisioningState
+	}
 }
 
 // SetupWithManager sets up this controller for use.
 func (r *ResourceGroupReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&azurev1alpha1.ResourceGroup{}).
-		WithOptions(controller.Options{MaxConcurrentReconciles: 5}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }
