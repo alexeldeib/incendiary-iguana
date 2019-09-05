@@ -54,3 +54,48 @@ type ResourceGroupList struct {
 func init() {
 	SchemeBuilder.Register(&ResourceGroup{}, &ResourceGroupList{})
 }
+
+type rgoption func(*ResourceGroup)
+
+func (rg *ResourceGroup) Option(opts ...rgoption) {
+	for _, opt := range opts {
+		opt(rg)
+	}
+}
+
+func Name(name string) rgoption {
+	return func(rg *ResourceGroup) {
+		rg.Spec.Name = name
+	}
+}
+
+func Location(location string) rgoption {
+	return func(rg *ResourceGroup) {
+		rg.Spec.Location = location
+	}
+}
+
+func Subscription(subscription string) rgoption {
+	return func(rg *ResourceGroup) {
+		rg.Spec.SubscriptionID = subscription
+	}
+}
+
+func ID(id *string) rgoption {
+	return func(rg *ResourceGroup) {
+		rg.Status.ID = id
+	}
+}
+
+func State(state *string) rgoption {
+	return func(rg *ResourceGroup) {
+		rg.Status.ProvisioningState = state
+	}
+}
+
+func (rg *ResourceGroup) ID() *string {
+	if rg == nil {
+		return nil
+	}
+	return rg.Status.ID
+}

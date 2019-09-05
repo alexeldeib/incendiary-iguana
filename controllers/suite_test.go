@@ -10,6 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sanity-io/litter"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
@@ -29,10 +30,18 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 var (
-	cfg       *rest.Config
-	k8sClient client.Client
-	testEnv   *envtest.Environment
-	mgr       manager.Manager
+	cfg          *rest.Config
+	k8sClient    client.Client
+	k8sManager   ctrl.Manager
+	testEnv      *envtest.Environment
+	mgr          manager.Manager
+	subscription string
+	group        string
+	location     string
+)
+
+var (
+	groupsClient *resourcegroups.Client
 )
 
 func TestAPIs(t *testing.T) {
@@ -51,9 +60,8 @@ var _ = BeforeSuite(func(done Done) {
 		CRDDirectoryPaths: []string{filepath.Join("..", "config", "crd", "bases")},
 	}
 
-	var err error
-	cfg, err = testEnv.Start()
-	Expect(err).ToNot(HaveOccurred())
+	cfg, err := testEnv.Start()
+	Expect(err).To(BeNil())
 	Expect(cfg).ToNot(BeNil())
 
 	err = azurev1alpha1.AddToScheme(scheme.Scheme)
@@ -63,18 +71,29 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sClient).ToNot(BeNil())
 
-	configuration := config.New(ctrl.Log.WithName("configuration"))
+	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
+		Scheme: scheme.Scheme,
+	})
+	Expect(err).ToNot(HaveOccurred())
 
-	mgr, err = manager.New(cfg, manager.Options{MetricsBindAddress: "0"})
+	configuration := config.New(ctrl.Log.WithName("configuration"))
+	settings, err := configuration.Settings()
+
+	litter.Dump(settings)
 	Expect(err).ShouldNot(HaveOccurred())
 
-	err = (&ResourceGroupReconciler{
-		Client:       k8sClient,
-		Log:          ctrl.Log.WithName("ResourceGroup"),
-		Config:       configuration,
-		GroupsClient: resourcegroups.New(configuration),
-	}).SetupWithManager(mgr)
-	Expect(err).ToNot(HaveOccurred())
+	groupsClient = resourcegroups.New(configuration)
+
+	// err = (&ResourceGroupReconciler{
+	// 	Client:       k8sClient,
+	// 	Log:          ctrl.Log.WithName("ResourceGroup"),
+	// 	GroupsClient: groupsClient,
+	// }).SetupWithManager(mgr)
+	// Expect(err).ToNot(HaveOccurred())
+	go func() {
+		err = k8sManager.Start(ctrl.SetupSignalHandler())
+		Expect(err).ToNot(HaveOccurred())
+	}()
 
 	close(done)
 }, 60)
@@ -84,16 +103,3 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
 })
-
-// StartTestManager adds recFn
-func StartTestManager(mgr manager.Manager, t *testing.T) chan struct{} {
-	t.Helper()
-
-	stop := make(chan struct{})
-	go func() {
-		if err := mgr.Start(stop); err != nil {
-			Fail("error starting test manager: %v")
-		}
-	}()
-	return stop
-}

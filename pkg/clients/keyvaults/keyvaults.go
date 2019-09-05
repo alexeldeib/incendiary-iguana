@@ -18,18 +18,18 @@ import (
 type Client struct {
 	factory  factoryFunc
 	internal keyvault.VaultsClient
-	config   config.Config
+	config   *config.Config
 }
 
 type factoryFunc func(subscriptionID string) keyvault.VaultsClient
 
 // New returns a new client able to authenticate to multiple Azure subscriptions using the provided configuration.
-func New(configuration config.Config) *Client {
+func New(configuration *config.Config) *Client {
 	return NewWithFactory(configuration, keyvault.NewVaultsClient)
 }
 
 // NewWithFactory returns an interface which can authorize the configured client to many subscriptions.
-func NewWithFactory(configuration config.Config, factory factoryFunc) *Client {
+func NewWithFactory(configuration *config.Config, factory factoryFunc) *Client {
 	return &Client{
 		config:  configuration,
 		factory: factory,
@@ -60,8 +60,16 @@ func (c *Client) Ensure(ctx context.Context, vault *azurev1alpha1.Keyvault) erro
 		},
 		Location: &vault.Spec.Location,
 	}
-	_, err = c.internal.CreateOrUpdate(ctx, vault.Spec.ResourceGroup, vault.Spec.Name, opts)
-	return err
+
+	if _, err := c.internal.CreateOrUpdate(ctx, vault.Spec.ResourceGroup, vault.Spec.Name, opts); err != nil {
+		return err
+	}
+
+	if err := c.SetStatus(ctx, vault); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Get returns a keyvault.
@@ -76,4 +84,10 @@ func (c *Client) Delete(ctx context.Context, vault *azurev1alpha1.Keyvault) erro
 		return err
 	}
 	return nil
+}
+
+func (c *Client) SetStatus(ctx context.Context, vault *azurev1alpha1.Keyvault) error {
+	remote, err := c.internal.Get(ctx, vault.Spec.ResourceGroup, vault.Spec.Name)
+	vault.Status.ID = remote.ID
+	return err
 }

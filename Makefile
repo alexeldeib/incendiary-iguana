@@ -19,9 +19,10 @@ all: manifests manager
 
 # Run tests
 # alternatively ginkgo -v ./...
-test: fmt vet
+test: # fmt vet
 ifeq (,$(DEBUG))
-	go test -v $(GO_TEST_OPTIONS)
+	docker run --rm ace/kbtest ./api/... ./controllers/... -coverprofile cover.out
+	# go test -v $(GO_TEST_OPTIONS)
 else
 	go test -v $(GO_TEST_OPTIONS) -ginkgo.v
 endif

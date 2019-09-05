@@ -7,17 +7,15 @@ package controllers
 import (
 	"context"
 	"errors"
-	"net/http"
 
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/go-logr/logr"
+	multierror "github.com/hashicorp/go-multierror"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
-	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 )
 
 const (
@@ -30,7 +28,6 @@ const (
 // ResourceGroupReconciler reconciles a ResourceGroup object
 type ResourceGroupReconciler struct {
 	client.Client
-	config.Config
 	Log          logr.Logger
 	GroupsClient *resourcegroups.Client
 }
@@ -50,6 +47,11 @@ func (r *ResourceGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	// Authorize
+	if err := r.GroupsClient.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	if local.DeletionTimestamp.IsZero() {
 		if !HasFinalizer(&local, finalizerName) {
 			AddFinalizer(&local, finalizerName)
@@ -59,59 +61,28 @@ func (r *ResourceGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		}
 	} else {
 		if HasFinalizer(&local, finalizerName) {
-			if err := r.GroupsClient.Delete(ctx, &local); err != nil {
+			found, err := r.GroupsClient.Delete(ctx, &local)
+			result := multierror.Append(err, r.Status().Update(ctx, &local))
+			if err = result.ErrorOrNil(); err != nil {
 				return ctrl.Result{}, err
 			}
-			RemoveFinalizer(&local, finalizerName)
-			if err := r.Update(ctx, &local); err != nil {
-				return ctrl.Result{}, err
+			if !found {
+				RemoveFinalizer(&local, finalizerName)
+				if err := r.Update(ctx, &local); err != nil {
+					return ctrl.Result{}, err
+				}
+				return ctrl.Result{}, nil
 			}
-			return ctrl.Result{}, nil
+			return ctrl.Result{}, errors.New("requeuing, deletion unfinished")
 		}
 		return ctrl.Result{}, nil
 	}
 
-	return ctrl.Result{}, r.reconcileExternal(ctx, &local)
-}
+	var final *multierror.Error
+	final = multierror.Append(final, r.GroupsClient.Ensure(ctx, &local))
+	final = multierror.Append(final, r.Status().Update(ctx, &local))
 
-func (r *ResourceGroupReconciler) reconcileExternal(ctx context.Context, local *azurev1alpha1.ResourceGroup) error {
-	// Authorize
-	err := r.GroupsClient.ForSubscription(local.Spec.SubscriptionID)
-	if err != nil {
-		return err
-	}
-
-	remote, err := r.GroupsClient.Get(ctx, local)
-	if err != nil && !remote.IsHTTPStatus(http.StatusNotFound) {
-		return err
-	}
-
-	if err := r.updateStatus(ctx, local, remote); err != nil {
-		return err
-	}
-
-	if err = r.GroupsClient.Ensure(ctx, local); err != nil {
-		return err
-	}
-
-	if local.Status.ProvisioningState == nil || *local.Status.ProvisioningState != provisioningStateSucceeded {
-		return errors.New("not provisioned, should requeue")
-	}
-
-	return nil
-}
-
-func (r *ResourceGroupReconciler) updateStatus(ctx context.Context, local *azurev1alpha1.ResourceGroup, remote resources.Group) error {
-	r.setStatus(ctx, local, remote)
-	return r.Status().Update(ctx, local)
-}
-
-func (r *ResourceGroupReconciler) setStatus(ctx context.Context, local *azurev1alpha1.ResourceGroup, remote resources.Group) {
-	local.Status.ID = remote.ID
-	local.Status.ProvisioningState = nil
-	if remote.Properties != nil {
-		local.Status.ProvisioningState = remote.Properties.ProvisioningState
-	}
+	return ctrl.Result{}, final.ErrorOrNil()
 }
 
 // SetupWithManager sets up this controller for use.

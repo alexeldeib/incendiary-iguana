@@ -14,20 +14,6 @@ import (
 
 const userAgent = "ace/incendiary-iguana"
 
-var _ Config = &config{}
-
-// Config defines authorization and configuration helpers for Azure clients.
-type Config interface {
-	// DetectAuthorizer detects the kind of authorizer and logs it on controller startup.
-	DetectAuthorizer() error
-	// GetAuthorizer returns an autorest.Authorizer configured for a given environment.
-	GetAuthorizer() (autorest.Authorizer, error)
-	// GetKeyvaultAuthorizer returns an autorest.Authorizer configured for Keyvault in a given environment.
-	GetKeyvaultAuthorizer() (autorest.Authorizer, error)
-	// AuthorizerClient configures the provided client with an authorizer or returns an error.
-	AuthorizeClient(client *autorest.Client) error
-}
-
 // AuthorizationMode is a string to identify the Azure authentication mode at startup.
 type AuthorizationMode string
 
@@ -41,21 +27,25 @@ var (
 	mode AuthorizationMode
 )
 
-type config struct {
+type Config struct {
 	log        logr.Logger
 	internal   autorest.Authorizer
 	kvinternal *autorest.Authorizer
 }
 
 // New returns a concrete implementation of the Config interface
-func New(log logr.Logger) Config {
-	return &config{
+func New(log logr.Logger) *Config {
+	return &Config{
 		log: log,
 	}
 }
 
+func (c *Config) Settings() (auth.EnvironmentSettings, error) {
+	return auth.GetSettingsFromEnvironment()
+}
+
 // GetAuthorizer creates a new ARM authorizer, preferring cli => file => env vars => msi.
-func (c *config) DetectAuthorizer() error {
+func (c *Config) DetectAuthorizer() error {
 	internal, err := auth.NewAuthorizerFromFile(azure.PublicCloud.ResourceManagerEndpoint)
 	if err == nil {
 		mode = FileMode
@@ -83,7 +73,7 @@ func (c *config) DetectAuthorizer() error {
 // AuthorizerClient configures the provided client with an authorizer or returns an error.
 
 // GetAuthorizer creates a new ARM authorizer, preferring cli => file => env vars => msi.
-func (c *config) GetAuthorizer() (autorest.Authorizer, error) {
+func (c *Config) GetAuthorizer() (autorest.Authorizer, error) {
 	// TODO(ace): use detected mode and don't do the whole loop every time.
 	// authorizer, err := auth.NewAuthorizerFromFile(azure.PublicCloud.ResourceManagerEndpoint)
 	// if err == nil {
@@ -98,7 +88,7 @@ func (c *config) GetAuthorizer() (autorest.Authorizer, error) {
 }
 
 // GetKeyvaultAuthorizer creates a new Keyvault authorizer, preferring cli => file => env vars => msi.
-func (c *config) GetKeyvaultAuthorizer() (autorest.Authorizer, error) {
+func (c *Config) GetKeyvaultAuthorizer() (autorest.Authorizer, error) {
 	// TODO(ace): use detected mode and don't do the whole loop every time.
 	if c.kvinternal != nil {
 		return *c.kvinternal, nil
@@ -123,7 +113,7 @@ func (c *config) GetKeyvaultAuthorizer() (autorest.Authorizer, error) {
 
 // AuthorizerClient configures the provided client with an authorizer or returns an error.
 // It takes an autorest client and configures its user agent as well as Azure credentials.
-func (c *config) AuthorizeClient(client *autorest.Client) error {
+func (c *Config) AuthorizeClient(client *autorest.Client) error {
 	authorizer, err := c.GetAuthorizer()
 	if err != nil {
 		return err

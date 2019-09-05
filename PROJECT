@@ -32,3 +32,6 @@ resources:
 - group: azure
   version: v1alpha1
   kind: TrafficManager
+- group: azure
+  version: v1alpha1
+  kind: Fake

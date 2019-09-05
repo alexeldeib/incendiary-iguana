@@ -81,7 +81,6 @@ func main() {
 	if err = (&controllers.ResourceGroupReconciler{
 		Client:       client,
 		Log:          log.WithName("ResourceGroup"),
-		Config:       configuration,
 		GroupsClient: resourcegroups.New(configuration),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ResourceGroup")
@@ -173,6 +172,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "TrafficManager")
 		os.Exit(1)
 	}
+
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")

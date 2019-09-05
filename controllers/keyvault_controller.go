@@ -6,10 +6,9 @@ package controllers
 
 import (
 	"context"
-	"net/http"
 
-	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2018-02-14/keyvault"
 	"github.com/go-logr/logr"
+	multierror "github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,7 +24,7 @@ const ManagedAnnotation string = "managed"
 // KeyvaultReconciler reconciles a Keyvault object
 type KeyvaultReconciler struct {
 	client.Client
-	config.Config
+	*config.Config
 	Scheme       *runtime.Scheme
 	Log          logr.Logger
 	VaultsClient *keyvaults.Client
@@ -61,11 +60,15 @@ func (r *KeyvaultReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			if err := r.Update(ctx, &local); err != nil {
 				return ctrl.Result{}, err
 			}
-			return ctrl.Result{}, nil
 		}
+		return ctrl.Result{}, nil
 	}
 
-	return ctrl.Result{}, r.reconcileExternal(ctx, &local)
+	var final *multierror.Error
+	final = multierror.Append(final, r.reconcileExternal(ctx, &local))
+	final = multierror.Append(final, r.Status().Update(ctx, &local))
+
+	return ctrl.Result{}, final.ErrorOrNil()
 }
 
 func (r *KeyvaultReconciler) reconcileExternal(ctx context.Context, local *azurev1alpha1.Keyvault) error {
@@ -73,21 +76,11 @@ func (r *KeyvaultReconciler) reconcileExternal(ctx context.Context, local *azure
 		return err
 	}
 
-	remote, err := r.VaultsClient.Get(ctx, local)
-	if err != nil && !remote.IsHTTPStatus(http.StatusNotFound) {
-
-	}
-
-	if err := r.updateStatus(ctx, local, remote); err != nil {
+	if err := r.VaultsClient.Ensure(ctx, local); err != nil {
 		return err
 	}
 
-	return r.VaultsClient.Ensure(ctx, local)
-}
-
-func (r *KeyvaultReconciler) updateStatus(ctx context.Context, local *azurev1alpha1.Keyvault, remote keyvault.Vault) error {
-	local.Status.ID = remote.ID
-	return r.Status().Update(ctx, local)
+	return nil
 }
 
 func (r *KeyvaultReconciler) SetupWithManager(mgr ctrl.Manager) error {

@@ -14,7 +14,6 @@ require (
 	github.com/google/go-cmp v0.3.0
 	github.com/google/wire v0.3.0
 	github.com/hashicorp/go-multierror v1.0.0
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/onsi/ginkgo v1.8.0
 	github.com/onsi/gomega v1.5.0
 	github.com/pkg/errors v0.8.1
@@ -26,4 +25,5 @@ require (
 	k8s.io/apimachinery v0.0.0-20190404173353-6a84e37a896d
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	sigs.k8s.io/controller-runtime v0.0.0-20190826084422-d90bbc6ec9fc
+	sigs.k8s.io/kubebuilder v0.0.0-20190822233119-b31cc5d96dbc // indirect
 )

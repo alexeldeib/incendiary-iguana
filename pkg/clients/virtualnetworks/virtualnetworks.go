@@ -19,20 +19,20 @@ const expand string = ""
 type Client struct {
 	factory  factoryFunc
 	internal network.VirtualNetworksClient
-	config   config.Config
+	config   *config.Config
 }
 
 type factoryFunc func(subscriptionID string) network.VirtualNetworksClient
 
 // New returns a new client able to authenticate to multiple Azure subscriptions using the provided configuration.
-func New(configuration config.Config) *Client {
+func New(configuration *config.Config) *Client {
 	return NewWithFactory(configuration, network.NewVirtualNetworksClient)
 }
 
 // NewWithFactory returns an interface which can authorize the configured client to many subscriptions.
 // It uses the factory argument to instantiate new clients for a specific subscription.
 // This can be used to stub Azure client for testing.
-func NewWithFactory(configuration config.Config, factory factoryFunc) *Client {
+func NewWithFactory(configuration *config.Config, factory factoryFunc) *Client {
 	return &Client{
 		config:  configuration,
 		factory: factory,

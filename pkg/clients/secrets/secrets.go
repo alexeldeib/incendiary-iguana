@@ -19,7 +19,7 @@ type Client struct {
 	internal keyvault.BaseClient
 }
 
-func New(configuration config.Config) (*Client, error) {
+func New(configuration *config.Config) (*Client, error) {
 	kvclient := keyvault.New()
 	authorizer, err := configuration.GetKeyvaultAuthorizer()
 	if err != nil {
