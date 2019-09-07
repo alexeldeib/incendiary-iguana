@@ -79,10 +79,11 @@ func (r *ResourceGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 	}
 
 	var final *multierror.Error
-	final = multierror.Append(final, r.GroupsClient.Ensure(ctx, &local))
+	done, err := r.GroupsClient.Ensure(ctx, &local)
+	final = multierror.Append(final, err)
 	final = multierror.Append(final, r.Status().Update(ctx, &local))
 
-	return ctrl.Result{}, final.ErrorOrNil()
+	return ctrl.Result{Requeue: !done}, final.ErrorOrNil()
 }
 
 // SetupWithManager sets up this controller for use.

@@ -9,7 +9,9 @@ spec:
   group: azure.alexeldeib.xyz
   names:
     kind: PublicIP
+    listKind: PublicIPList
     plural: publicips
+    singular: publicip
   scope: ""
   subresources:
     status: {}
@@ -71,9 +73,7 @@ spec:
                 from Azure.
               type: string
           required:
-          - id
           - observedGeneration
-          - provisioningState
           type: object
       type: object
   version: v1alpha1

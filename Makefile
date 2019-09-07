@@ -27,7 +27,7 @@ else
 	go test -v $(GO_TEST_OPTIONS) -ginkgo.v
 endif
 # Build manager binary
-manager: manifests fmt vet lint 
+manager: manifests fmt vet # lint 
 	go build -gcflags '-N -l' -o bin/manager main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config

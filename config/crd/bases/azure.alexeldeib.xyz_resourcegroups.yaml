@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: ResourceGroup
+    listKind: ResourceGroupList
     plural: resourcegroups
     shortNames:
     - rg
+    singular: resourcegroup
   scope: Namespaced
   subresources:
     status: {}

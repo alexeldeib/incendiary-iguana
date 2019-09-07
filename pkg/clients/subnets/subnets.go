@@ -6,6 +6,7 @@ package subnets
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2019-04-01/network"
@@ -52,8 +53,20 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.Subnet) error 
 			AddressPrefix: &local.Spec.Subnet,
 		},
 	}
-	_, err := c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Network, local.Spec.Name, spec)
-	return err
+
+	if _, err := c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Network, local.Spec.Name, spec); err != nil {
+		return err
+	}
+
+	if _, err := c.SetStatus(ctx, local); err != nil {
+		return err
+	}
+
+	if !c.Done(ctx, local) {
+		return errors.New("not finished reconciling, requeueing")
+	}
+
+	return nil
 }
 
 // Get returns a virtual network.
@@ -62,13 +75,38 @@ func (c *Client) Get(ctx context.Context, local *azurev1alpha1.Subnet) (network.
 }
 
 // Delete handles deletion of a virtual network.
-func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.Subnet) error {
+func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.Subnet) (bool, error) {
 	future, err := c.internal.Delete(ctx, local.Spec.ResourceGroup, local.Spec.Network, local.Spec.Name)
 	if err != nil {
 		// Not found is a successful delete
 		if resp := future.Response(); resp != nil && resp.StatusCode != http.StatusNotFound {
-			return err
+			return false, err
 		}
 	}
-	return nil
+	return c.SetStatus(ctx, local)
+}
+
+// SetStatus sets the status subresource fields of the CRD reflecting the state of the object in Azure.
+func (c *Client) SetStatus(ctx context.Context, local *azurev1alpha1.Subnet) (bool, error) {
+	remote, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Network, local.Spec.Name, expand)
+	// Care about 400 and 5xx, not 404.
+	found := !remote.IsHTTPStatus(http.StatusNotFound)
+	if err != nil && found {
+		if remote.IsHTTPStatus(http.StatusConflict) {
+			return found, nil
+		}
+		return found, err
+	}
+
+	local.Status.ID = remote.ID
+	local.Status.ProvisioningState = remote.ProvisioningState
+	return found, nil
+}
+
+// Done checks the current state of the CRD against the desired end state.
+func (c *Client) Done(ctx context.Context, local *azurev1alpha1.Subnet) bool {
+	if local.Status.ProvisioningState == nil || *local.Status.ProvisioningState != "Succeeded" {
+		return false
+	}
+	return true
 }

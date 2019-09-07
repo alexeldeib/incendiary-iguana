@@ -25,9 +25,9 @@ type PublicIPSpec struct {
 // PublicIPStatus defines the observed state of PublicIP
 type PublicIPStatus struct {
 	// ProvisioningState sync the provisioning status of the resource from Azure.
-	ProvisioningState string `json:"provisioningState"`
+	ProvisioningState *string `json:"provisioningState,omitempty"`
 	// ID is the fully qualified Azure resource ID.
-	ID string `json:"id"`
+	ID *string `json:"id,omitempty"`
 	// ObservedGeneration is the iteration of user-provided spec which has already been reconciled.
 	// This is used to decide when to re-reconcile changes.
 	ObservedGeneration int64 `json:"observedGeneration"`

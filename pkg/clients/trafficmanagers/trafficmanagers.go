@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/trafficmanager/mgmt/2018-04-01/trafficmanager"
 	"github.com/Azure/go-autorest/autorest/to"
@@ -114,11 +115,42 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.TrafficManager
 	return err
 }
 
+// Delete handles deletion of a virtual network.
+func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.TrafficManager) error {
+	_, err := c.internal.Delete(ctx, local.Spec.ResourceGroup, local.Spec.Name)
+	return err
+}
+
+// SetStatus sets the status subresource fields of the CRD reflecting the state of the object in Azure.
+func (c *Client) SetStatus(ctx context.Context, local *azurev1alpha1.TrafficManager) (bool, error) {
+	remote, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
+	// Care about 400 and 5xx, not 404.
+	found := !remote.IsHTTPStatus(http.StatusNotFound)
+	if err != nil && found {
+		if remote.IsHTTPStatus(http.StatusConflict) {
+			return found, nil
+		}
+		return found, err
+	}
+
+	local.Status.ID = remote.ID
+	local.Status.FQDN = remote.ProfileProperties.DNSConfig.Fqdn
+	local.Status.ProfileMonitorStatus = string(remote.ProfileProperties.MonitorConfig.ProfileMonitorStatus)
+	return found, nil
+}
+
+// Done checks the current state of the CRD against the desired end state.
+func (c *Client) Done(ctx context.Context, local *azurev1alpha1.TrafficManager) bool {
+	// TODO(ace): make this check individual endpoints? what about ICMs?
+	return local.Status.ProfileMonitorStatus != "Online"
+}
+
 // Get returns a virtual network.
 func (c *Client) Get(ctx context.Context, local *azurev1alpha1.TrafficManager) (trafficmanager.Profile, error) {
 	return c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 }
 
+// remove?
 // GetProfileStatus returns the status of an entire Azure TM.
 func (c *Client) GetProfileStatus(ctx context.Context, local *azurev1alpha1.TrafficManager) (string, error) {
 	res, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
@@ -128,6 +160,7 @@ func (c *Client) GetProfileStatus(ctx context.Context, local *azurev1alpha1.Traf
 	return string(res.ProfileProperties.MonitorConfig.ProfileMonitorStatus), nil
 }
 
+// remove?
 // GetEndpointStatus returns the status of one endpoint within an Azure Traffic Manager.
 func (c *Client) GetEndpointStatus(ctx context.Context, local *azurev1alpha1.TrafficManager, name string) (string, error) {
 	profile, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
@@ -140,10 +173,4 @@ func (c *Client) GetEndpointStatus(ctx context.Context, local *azurev1alpha1.Tra
 		}
 	}
 	return "", errors.New("endpoint not found in current tm configuration")
-}
-
-// Delete handles deletion of a virtual network.
-func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.TrafficManager) error {
-	_, err := c.internal.Delete(ctx, local.Spec.ResourceGroup, local.Spec.Name)
-	return err
 }

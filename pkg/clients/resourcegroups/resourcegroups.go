@@ -6,7 +6,6 @@ package resourcegroups
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
@@ -44,30 +43,33 @@ func NewWithFactory(configuration *config.Config, factory factoryFunc) *Client {
 // ForSubscription authorizes the client for a given subscription
 func (c *Client) ForSubscription(subID string) error {
 	c.internal = c.factory(subID)
-	c.internal.RequestInspector = LogRequest()
-	c.internal.ResponseInspector = LogResponse()
+	// c.internal.RequestInspector = LogRequest()
+	// c.internal.ResponseInspector = LogResponse()
 	return c.config.AuthorizeClient(&c.internal.Client)
 }
 
 // Ensure creates or updates a resource group in an idempotent manner.
-func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.ResourceGroup) error {
+func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.ResourceGroup) (bool, error) {
 	spec := resources.Group{
 		Location: &local.Spec.Location,
 	}
 
-	if _, err := c.internal.CreateOrUpdate(ctx, local.Spec.Name, spec); err != nil {
-		return err
+	if remote, err := c.internal.CreateOrUpdate(ctx, local.Spec.Name, spec); err != nil {
+		if !remote.IsHTTPStatus(http.StatusConflict) {
+			return false, err
+		}
+		return false, nil
 	}
 
 	if _, err := c.SetStatus(ctx, local); err != nil {
-		return err
+		return false, err
 	}
 
 	if !c.Done(ctx, local) {
-		return errors.New("not finished reconciling, requeueing")
+		return false, nil
 	}
 
-	return nil
+	return true, nil
 }
 
 // Get returns a resource group.
@@ -80,7 +82,8 @@ func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.ResourceGroup)
 	future, err := c.internal.Delete(ctx, local.Spec.Name)
 	if err != nil {
 		// Not found is a successful delete
-		if resp := future.Response(); resp != nil && resp.StatusCode != http.StatusNotFound {
+		resp := future.Response()
+		if resp != nil && resp.StatusCode != http.StatusNotFound && resp.StatusCode != http.StatusConflict {
 			return false, err
 		}
 	}
@@ -92,16 +95,13 @@ func (c *Client) SetStatus(ctx context.Context, local *azurev1alpha1.ResourceGro
 	remote, err := c.internal.Get(ctx, local.Spec.Name)
 	// Care about 400 and 5xx, not 404.
 	found := !remote.IsHTTPStatus(http.StatusNotFound)
-	if err != nil && found {
+	if err != nil && found && !remote.IsHTTPStatus(http.StatusConflict) {
 		return found, err
 	}
 
 	local.Status.ID = remote.ID
-	if local.Status.ProvisioningState == nil {
-		local.Status.ProvisioningState = new(string)
-	}
-	if remote.Properties != nil && remote.Properties.ProvisioningState != nil {
-		*local.Status.ProvisioningState = *remote.Properties.ProvisioningState
+	if remote.Properties != nil {
+		local.Status.ProvisioningState = remote.Properties.ProvisioningState
 	}
 	return found, nil
 }

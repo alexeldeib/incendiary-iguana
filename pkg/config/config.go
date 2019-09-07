@@ -53,6 +53,7 @@ func (c *Config) DetectAuthorizer() error {
 		c.log.WithValues("authorization_mode", "file").Info("")
 		return nil
 	}
+	c.log.WithValues("authorization_mode", "file").Error(err, "failed to get authorizer")
 	internal, err = auth.NewAuthorizerFromCLI()
 	if err == nil {
 		c.internal = internal
@@ -60,6 +61,7 @@ func (c *Config) DetectAuthorizer() error {
 		c.log.WithValues("authorization_mode", "cli").Info("")
 		return nil
 	}
+	c.log.WithValues("authorization_mode", "cli").Error(err, "failed to get authorizer")
 	internal, err = auth.NewAuthorizerFromEnvironment()
 	if err == nil {
 		mode = EnvironmentMode
@@ -67,6 +69,7 @@ func (c *Config) DetectAuthorizer() error {
 		c.log.WithValues("authorization_mode", "environment").Info("")
 		return nil
 	}
+	c.log.WithValues("authorization_mode", "environment").Error(err, "failed to get authorizer")
 	return err
 }
 

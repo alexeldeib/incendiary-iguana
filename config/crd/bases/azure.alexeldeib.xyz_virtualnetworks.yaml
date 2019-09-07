@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: VirtualNetwork
+    listKind: VirtualNetworkList
     plural: virtualnetworks
     shortNames:
     - vnet
+    singular: virtualnetwork
   scope: Namespaced
   subresources:
     status: {}
@@ -65,8 +67,7 @@ spec:
           description: VirtualNetworkStatus defines the observed state of VirtualNetwork
           properties:
             id:
-              description: ID is the fully qualified Azure resource ID of the virtual
-                network.
+              description: ID is the fully qualified Azure resource ID.
               type: string
             observedGeneration:
               description: ObservedGeneration is the iteration of user-provided spec
@@ -79,9 +80,7 @@ spec:
                 from Azure.
               type: string
           required:
-          - id
           - observedGeneration
-          - provisioningState
           type: object
       type: object
   version: v1alpha1

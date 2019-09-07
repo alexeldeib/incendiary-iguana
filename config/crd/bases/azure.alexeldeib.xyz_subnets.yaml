@@ -11,7 +11,9 @@ spec:
     categories:
     - all
     kind: Subnet
+    listKind: SubnetList
     plural: subnets
+    singular: subnet
   scope: Namespaced
   subresources:
     status: {}
@@ -61,8 +63,7 @@ spec:
           description: SubnetStatus defines the observed state of Subnet
           properties:
             id:
-              description: ID is the fully qualified Azure resource ID of the virtual
-                network.
+              description: ID is the fully qualified Azure resource ID.
               type: string
             observedGeneration:
               description: ObservedGeneration is the iteration of user-provided spec
@@ -75,9 +76,7 @@ spec:
                 from Azure.
               type: string
           required:
-          - id
           - observedGeneration
-          - provisioningState
           type: object
       type: object
   version: v1alpha1

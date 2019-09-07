@@ -123,16 +123,14 @@ func (c *Client) SetStatus(ctx context.Context, local *azurev1alpha1.NetworkInte
 	// Care about 400 and 5xx, not 404.
 	found := !remote.IsHTTPStatus(http.StatusNotFound)
 	if err != nil && found {
+		if remote.IsHTTPStatus(http.StatusConflict) {
+			return found, nil
+		}
 		return found, err
 	}
 
 	local.Status.ID = remote.ID
-	if local.Status.ProvisioningState == nil {
-		local.Status.ProvisioningState = new(string)
-	}
-	if remote.ProvisioningState != nil {
-		*local.Status.ProvisioningState = *remote.ProvisioningState
-	}
+	local.Status.ProvisioningState = remote.ProvisioningState
 	return found, nil
 }
 

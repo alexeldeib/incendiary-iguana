@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: LoadBalancer
+    listKind: LoadBalancerList
     plural: loadbalancers
     shortNames:
     - lb
+    singular: loadbalancer
   scope: Namespaced
   subresources:
     status: {}
@@ -62,8 +64,7 @@ spec:
           description: LoadBalancerStatus defines the observed state of Load Balancer
           properties:
             id:
-              description: ID is the fully qualified Azure resource ID of the virtual
-                network.
+              description: ID is the fully qualified Azure resource ID.
               type: string
             observedGeneration:
               description: ObservedGeneration is the iteration of user-provided spec
@@ -76,9 +77,7 @@ spec:
                 from Azure.
               type: string
           required:
-          - id
           - observedGeneration
-          - provisioningState
           type: object
       type: object
   version: v1alpha1

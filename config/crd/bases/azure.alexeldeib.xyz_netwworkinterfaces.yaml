@@ -11,10 +11,12 @@ spec:
     categories:
     - all
     kind: NetworkInterface
+    listKind: NetworkInterfaceList
     plural: netwworkinterfaces
     shortNames:
     - nic
     - nics
+    singular: networkinterface
   scope: Namespaced
   subresources:
     status: {}
@@ -141,9 +143,7 @@ spec:
                 from Azure.
               type: string
           required:
-          - id
           - observedGeneration
-          - provisioningState
           type: object
       type: object
   version: v1alpha1
