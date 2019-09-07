@@ -45,13 +45,11 @@ const (
 )
 
 var (
-	log           = ctrl.Log.WithName("tinker")
-	scheme        *runtime.Scheme
-	configuration *config.Config
+	log    = ctrl.Log.WithName("tinker")
+	scheme = runtime.NewScheme()
 )
 
 func init() {
-	scheme = runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = azurev1alpha1.AddToScheme(scheme)
 

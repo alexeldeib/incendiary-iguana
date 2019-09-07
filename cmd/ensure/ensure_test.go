@@ -1,7 +1,6 @@
 package ensure_test
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,14 +17,29 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 )
 
-var testdata = "./testdata/group.yaml"
+const testdata = "./testdata/group.yaml"
+
+var (
+	log           = ctrl.Log.WithName("test")
+	configuration = config.New(log)
+	rgclient      *resourcegroups.Client
+	vnetclient    *virtualnetworks.Client
+)
 
 func TestEnsure(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "cli")
 }
 
-var _ = Describe("read", func() {
+var _ = BeforeSuite(func() {
+	if err := configuration.DetectAuthorizer(); err != nil {
+		Fail(err.Error())
+	}
+	rgclient = resourcegroups.New(configuration)
+	vnetclient = virtualnetworks.New(configuration)
+})
+
+var _ = Describe("read yaml + parse resources", func() {
 	wd, err := os.Getwd()
 	if err != nil {
 		Fail(err.Error())
@@ -56,15 +70,7 @@ var _ = Describe("read", func() {
 	})
 })
 
-var _ = Describe("ensure", func() {
-	log := ctrl.Log.WithName("test")
-
-	configuration := config.New(log)
-	if err := configuration.DetectAuthorizer(); err != nil {
-		Fail(fmt.Sprintf("%#+v\n", err))
-	}
-	rgclient := resourcegroups.New(configuration)
-	vnetclient := virtualnetworks.New(configuration)
+var _ = Describe("reconcile", func() {
 
 	rg := &azurev1alpha1.ResourceGroup{
 		ObjectMeta: metav1.ObjectMeta{
@@ -93,23 +99,27 @@ var _ = Describe("ensure", func() {
 		},
 	}
 
-	It("should create rg successfully", func() {
-		err := ensure.EnsureResourceGroup(rgclient, rg, log)
-		Expect(err).ToNot(HaveOccurred())
+	Context("ensure", func() {
+		It("should create rg successfully", func() {
+			err := ensure.EnsureResourceGroup(rgclient, rg, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should create vnet successfully", func() {
+			err := ensure.EnsureVirtualNetwork(vnetclient, vnet, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 	})
 
-	It("should create vnet successfully", func() {
-		err := ensure.EnsureVirtualNetwork(vnetclient, vnet, log)
-		Expect(err).ToNot(HaveOccurred())
-	})
+	Context("delete", func() {
+		It("should delete vnet successfully", func() {
+			err := ensure.DeleteVirtualNetwork(vnetclient, vnet, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-	It("should delete vnet successfully", func() {
-		err := ensure.DeleteVirtualNetwork(vnetclient, vnet, log)
-		Expect(err).ToNot(HaveOccurred())
-	})
-
-	It("should delete rg successfully", func() {
-		err := ensure.DeleteResourceGroup(rgclient, rg, log)
-		Expect(err).ToNot(HaveOccurred())
+		It("should delete rg successfully", func() {
+			err := ensure.DeleteResourceGroup(rgclient, rg, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 	})
 })
