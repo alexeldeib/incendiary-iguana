@@ -27,56 +27,7 @@ type SecurityGroupReconciler struct {
 
 func (r *SecurityGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	// ctx := context.Background()
-	// log := r.Log.WithValues("securitygroup", req.NamespacedName)
-
-	var local azurev1alpha1.SecurityGroup
-
-	return r.Reconciler.Reconcile(req, &local)
-
-	// if err := r.SecurityGroupsClient.ForSubscription(local.Spec.SubscriptionID); err != nil {
-	// 	return ctrl.Result{}, err
-	// }
-
-	// if err := r.Get(ctx, req.NamespacedName, &local); err != nil {
-	// 	log.Info("error during fetch from api server")
-	// 	return ctrl.Result{}, client.IgnoreNotFound(err)
-	// }
-
-	// if err := r.SecurityGroupsClient.ForSubscription(local.Spec.SubscriptionID); err != nil {
-	// 	return ctrl.Result{}, err
-	// }
-
-	// if local.DeletionTimestamp.IsZero() {
-	// 	if !HasFinalizer(&local, finalizerName) {
-	// 		AddFinalizer(&local, finalizerName)
-	// 		if err := r.Update(ctx, &local); err != nil {
-	// 			return ctrl.Result{}, err
-	// 		}
-	// 	}
-	// } else {
-	// 	if HasFinalizer(&local, finalizerName) {
-	// 		found, err := r.SecurityGroupsClient.Delete(ctx, &local)
-	// 		result := multierror.Append(err, r.Status().Update(ctx, &local))
-	// 		if err = result.ErrorOrNil(); err != nil {
-	// 			return ctrl.Result{}, err
-	// 		}
-	// 		if !found {
-	// 			RemoveFinalizer(&local, finalizerName)
-	// 			if err := r.Update(ctx, &local); err != nil {
-	// 				return ctrl.Result{}, err
-	// 			}
-	// 			return ctrl.Result{}, nil
-	// 		}
-	// 		return ctrl.Result{}, errors.New("requeuing, deletion unfinished")
-	// 	}
-	// 	return ctrl.Result{}, nil
-	// }
-
-	// var final *multierror.Error
-	// done, err := r.SecurityGroupsClient.Ensure(ctx, &local)
-	// final = multierror.Append(final, err)
-	// final = multierror.Append(final, r.Status().Update(ctx, &local))
-	// return ctrl.Result{Requeue: !done}, final.ErrorOrNil()
+	return r.Reconciler.Reconcile(req, &azurev1alpha1.SecurityGroup{})
 }
 
 func (r *SecurityGroupReconciler) SetupWithManager(mgr ctrl.Manager) error {

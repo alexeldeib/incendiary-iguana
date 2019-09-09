@@ -88,7 +88,7 @@ type EndpointStatus struct {
 // TrafficManagerStatus defines the observed state of TrafficManager
 type TrafficManagerStatus struct {
 	// ID is the fully qualified Azure resource ID.
-	ID                   *string           `json:"id"`
+	ID                   *string           `json:"id,omitempty"`
 	FQDN                 *string           `json:"fqdn,omitempty"`
 	ProfileStatus        string            `json:"profileStatus"`
 	ProfileMonitorStatus string            `json:"profileMonitorStatus"`

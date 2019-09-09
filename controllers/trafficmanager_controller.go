@@ -6,10 +6,11 @@ package controllers
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	multierror "github.com/hashicorp/go-multierror"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -23,6 +24,7 @@ type TrafficManagerReconciler struct {
 	client.Client
 	Log                   logr.Logger
 	TrafficManagersClient *trafficmanagers.Client
+	Recorder              record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=trafficmanagers,verbs=get;list;watch;create;update;patch;delete
@@ -30,7 +32,7 @@ type TrafficManagerReconciler struct {
 
 func (r *TrafficManagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
-	log := r.Log.WithValues("trafficmanager", req.NamespacedName)
+	log := r.Log.WithValues("trafficmanager", fmt.Sprintf("%s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name))
 
 	var local azurev1alpha1.TrafficManager
 
@@ -46,15 +48,17 @@ func (r *TrafficManagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	if local.DeletionTimestamp.IsZero() {
 		if !HasFinalizer(&local, finalizerName) {
 			AddFinalizer(&local, finalizerName)
-			if err := r.Update(ctx, &local); err != nil {
-				return ctrl.Result{}, err
-			}
+			r.Recorder.Event(&local, "Normal", "Added", "Object finalizer is added")
+			return ctrl.Result{}, r.Update(ctx, &local)
 		}
 	} else {
 		if HasFinalizer(&local, finalizerName) {
-			if err := r.TrafficManagersClient.Delete(ctx, &local); err != nil {
-				return ctrl.Result{}, err
+			err := multierror.Append(r.TrafficManagersClient.Delete(ctx, &local), r.Status().Update(ctx, &local))
+			if final := err.ErrorOrNil(); final != nil {
+				r.Recorder.Event(&local, "Warning", "FailedDelete", fmt.Sprintf("Failed to delete resource: %s", final.Error()))
+				return ctrl.Result{}, final
 			}
+			r.Recorder.Event(&local, "Normal", "Deleted", "Successfully deleted")
 			RemoveFinalizer(&local, finalizerName)
 			if err := r.Update(ctx, &local); err != nil {
 				return ctrl.Result{}, err
@@ -63,15 +67,15 @@ func (r *TrafficManagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 		return ctrl.Result{}, nil
 	}
 
-	var final *multierror.Error
-	done, err := r.TrafficManagersClient.Ensure(ctx, &local)
-	final = multierror.Append(final, err)
-	final = multierror.Append(final, r.Status().Update(ctx, &local))
-
-	if err := final.ErrorOrNil(); err != nil {
-		return ctrl.Result{}, errors.New(final.GoString())
+	done, ensureErr := r.TrafficManagersClient.Ensure(ctx, &local)
+	final := multierror.Append(ensureErr, r.Status().Update(ctx, &local))
+	err := final.ErrorOrNil()
+	if err != nil {
+		r.Recorder.Event(&local, "Warning", "FailedReconcile", fmt.Sprintf("Failed to reconcile resource: %s", err.Error()))
+	} else if done {
+		r.Recorder.Event(&local, "Normal", "Reconciled", "Successfully reconciled")
 	}
-	return ctrl.Result{Requeue: !done}, nil
+	return ctrl.Result{Requeue: !done}, err
 }
 
 func (r *TrafficManagerReconciler) SetupWithManager(mgr ctrl.Manager) error {

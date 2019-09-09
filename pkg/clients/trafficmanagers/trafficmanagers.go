@@ -139,8 +139,10 @@ func (c *Client) SetStatus(ctx context.Context, local *azurev1alpha1.TrafficMana
 	}
 
 	local.Status.ID = remote.ID
-	local.Status.FQDN = remote.ProfileProperties.DNSConfig.Fqdn
-	local.Status.ProfileMonitorStatus = string(remote.ProfileProperties.MonitorConfig.ProfileMonitorStatus)
+	if remote.ProfileProperties != nil {
+		local.Status.FQDN = remote.ProfileProperties.DNSConfig.Fqdn
+		local.Status.ProfileMonitorStatus = string(remote.ProfileProperties.MonitorConfig.ProfileMonitorStatus)
+	}
 	return found, nil
 }
 

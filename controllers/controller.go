@@ -44,6 +44,7 @@ func (r *AzureReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctr
 	ctx := context.Background()
 	kind := strings.ToLower(local.GetObjectKind().GroupVersionKind().Kind)
 	log := r.Log.WithValues("type", kind, "namespacedName", fmt.Sprintf("%s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name))
+
 	if err := r.Get(ctx, req.NamespacedName, local); err != nil {
 		log.Info("error during fetch from api server")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -53,9 +54,9 @@ func (r *AzureReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctr
 		return ctrl.Result{}, err
 	}
 
-	res, err := meta.Accessor(local)
-	if err != nil {
-		return ctrl.Result{}, err
+	res, convertErr := meta.Accessor(local)
+	if convertErr != nil {
+		return ctrl.Result{}, convertErr
 	}
 
 	if res.GetDeletionTimestamp().IsZero() {
@@ -66,10 +67,10 @@ func (r *AzureReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctr
 		}
 	} else {
 		if HasFinalizer(res, finalizerName) {
-			found, err := r.Az.TryDelete(ctx, local)
-			result := multierror.Append(err, r.Status().Update(ctx, local))
-			if err = result.ErrorOrNil(); err != nil {
-				r.Recorder.Event(local, "Warning", "FailedDelete", "Failed to delete resource")
+			found, deleteErr := r.Az.TryDelete(ctx, local)
+			final := multierror.Append(deleteErr, r.Status().Update(ctx, local))
+			if err := final.ErrorOrNil(); err != nil {
+				r.Recorder.Event(local, "Warning", "FailedDelete", fmt.Sprintf("Failed to delete resource: %s", err.Error()))
 				return ctrl.Result{}, err
 			}
 			if !found {
@@ -82,13 +83,11 @@ func (r *AzureReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctr
 		return ctrl.Result{}, nil
 	}
 
-	var final *multierror.Error
-	done, err := r.Az.TryEnsure(ctx, local)
-	final = multierror.Append(final, err)
-	final = multierror.Append(final, r.Status().Update(ctx, local))
-	err = final.ErrorOrNil()
+	done, ensureErr := r.Az.TryEnsure(ctx, local)
+	final := multierror.Append(ensureErr, r.Status().Update(ctx, local))
+	err := final.ErrorOrNil()
 	if err != nil {
-		r.Recorder.Event(local, "Warning", "FailedReconcile", "Failed to reconcile resource")
+		r.Recorder.Event(local, "Warning", "FailedReconcile", fmt.Sprintf("Failed to reconcile resource: %s", err.Error()))
 	} else if done {
 		r.Recorder.Event(local, "Normal", "Reconciled", "Successfully reconciled")
 	}

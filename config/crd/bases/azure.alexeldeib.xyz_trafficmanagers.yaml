@@ -198,7 +198,6 @@ spec:
             profileStatus:
               type: string
           required:
-          - id
           - profileMonitorStatus
           - profileStatus
           type: object

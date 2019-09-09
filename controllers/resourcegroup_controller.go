@@ -27,57 +27,7 @@ type ResourceGroupReconciler struct {
 
 // Reconcile reconciles a user request for a Resource Group against Azure.
 func (r *ResourceGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	// log := r.Log.WithValues("resourcegroup", req.NamespacedName)
-
-	var local azurev1alpha1.ResourceGroup
-
-	return r.Reconciler.Reconcile(req, &local)
-
-	// if err := r.Get(ctx, req.NamespacedName, &local); err != nil {
-	// 	log.Info("error during fetch from api server")
-	// 	return ctrl.Result{}, client.IgnoreNotFound(err)
-	// }
-
-	// // Authorize
-	// if err := r.GroupsClient.ForSubscription(local.Spec.SubscriptionID); err != nil {
-	// 	return ctrl.Result{}, err
-	// }
-
-	// if local.DeletionTimestamp.IsZero() {
-	// 	if !HasFinalizer(&local, finalizerName) {
-	// 		AddFinalizer(&local, finalizerName)
-	// 		if err := r.Update(ctx, &local); err != nil {
-	// 			return ctrl.Result{}, err
-	// 		}
-	// 	}
-	// } else {
-	// 	if HasFinalizer(&local, finalizerName) {
-	// 		found, err := r.GroupsClient.Delete(ctx, &local)
-	// 		result := multierror.Append(err, r.Status().Update(ctx, &local))
-	// 		if err = result.ErrorOrNil(); err != nil {
-	// 			return ctrl.Result{}, err
-	// 		}
-	// 		if !found {
-	// 			RemoveFinalizer(&local, finalizerName)
-	// 			if err := r.Update(ctx, &local); err != nil {
-	// 				return ctrl.Result{}, err
-	// 			}
-	// 			return ctrl.Result{}, nil
-	// 		}
-	// 		return ctrl.Result{}, errors.New("requeuing, deletion unfinished")
-	// 	}
-	// 	return ctrl.Result{}, nil
-	// }
-
-	// var final *multierror.Error
-	// done, err := r.GroupsClient.Ensure(ctx, &local)
-	// final = multierror.Append(final, err)
-	// final = multierror.Append(final, r.Status().Update(ctx, &local))
-
-	// if err := final.ErrorOrNil(); err != nil {
-	// 	return ctrl.Result{}, errors.New(final.GoString())
-	// }
-	// return ctrl.Result{Requeue: !done}, nil
+	return r.Reconciler.Reconcile(req, &azurev1alpha1.ResourceGroup{})
 }
 
 // SetupWithManager sets up this controller for use.

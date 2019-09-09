@@ -198,6 +198,7 @@ func main() {
 		Client:                mgr.GetClient(),
 		Log:                   ctrl.Log.WithName("controllers").WithName("TrafficManager"),
 		TrafficManagersClient: trafficmanagers.New(configuration),
+		Recorder:              recorder,
 	}).SetupWithManager(mgr); err != nil {
 		litter.Dump(err)
 		setupLog.Error(err, "unable to create controller", "controller", "TrafficManager")
