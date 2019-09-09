@@ -1,4 +1,4 @@
-package yamlutil
+package decoder
 
 import (
 	"bufio"

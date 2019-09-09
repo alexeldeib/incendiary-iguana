@@ -51,8 +51,6 @@ spec:
             endpoints:
               items:
                 properties:
-                  location:
-                    type: string
                   name:
                     type: string
                   properties:
@@ -96,7 +94,6 @@ spec:
                         type: integer
                     type: object
                 required:
-                - location
                 - name
                 - properties
                 type: object

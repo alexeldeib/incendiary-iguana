@@ -9,6 +9,8 @@ import (
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2019-04-01/network"
+	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
@@ -67,11 +69,7 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.VirtualNetwork
 		return false, err
 	}
 
-	if !c.Done(ctx, local) {
-		return false, nil
-	}
-
-	return true, nil
+	return c.Done(ctx, local), nil
 }
 
 // Get returns a virtual network.
@@ -121,4 +119,28 @@ func (c *Client) Done(ctx context.Context, local *azurev1alpha1.VirtualNetwork) 
 		return false
 	}
 	return true
+}
+
+func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {
+	local, ok := obj.(*azurev1alpha1.VirtualNetwork)
+	if !ok {
+		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+	}
+	return c.ForSubscription(local.Spec.SubscriptionID)
+}
+
+func (c *Client) TryEnsure(ctx context.Context, obj runtime.Object) (bool, error) {
+	local, ok := obj.(*azurev1alpha1.VirtualNetwork)
+	if !ok {
+		return false, errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+	}
+	return c.Ensure(ctx, local)
+}
+
+func (c *Client) TryDelete(ctx context.Context, obj runtime.Object) (bool, error) {
+	local, ok := obj.(*azurev1alpha1.VirtualNetwork)
+	if !ok {
+		return false, errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+	}
+	return c.Delete(ctx, local)
 }

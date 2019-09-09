@@ -21,14 +21,15 @@ all: manifests manager
 # alternatively ginkgo -v ./...
 test: # fmt vet
 ifeq (,$(DEBUG))
-	docker run --rm ace/kbtest ./api/... ./controllers/... -coverprofile cover.out
-	# go test -v $(GO_TEST_OPTIONS)
+	# n.b., should set $env:AZURE_AUTH_LOCATION first.
+	# $$env:AZURE_AUTH_LOCATION="$(pwd)/sp.json" => can't get this to work on windows
+	ginkgo -randomizeSuites -stream --slowSpecThreshold=180 -v -r .\cmd
 else
 	go test -v $(GO_TEST_OPTIONS) -ginkgo.v
 endif
 # Build manager binary
 manager: manifests fmt vet # lint 
-	go build -gcflags '-N -l' -o bin/manager main.go
+	go build -gcflags '-N -l' -o manager.exe main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet

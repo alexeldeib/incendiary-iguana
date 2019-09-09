@@ -8,6 +8,13 @@ import (
 	"flag"
 	"os"
 
+	"github.com/sanity-io/litter"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/controllers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults"
@@ -20,14 +27,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
-	"k8s.io/apimachinery/pkg/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
 	// +kubebuilder:scaffold:imports
-	"github.com/sanity-io/litter"
 )
 
 var (
@@ -68,7 +68,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	log := ctrl.Log.WithName("controllers")
+	log := ctrl.Log.WithName("incendiaryiguana")
+	recorder := mgr.GetEventRecorderFor("incendiaryiguana")
 	client := mgr.GetClient()
 
 	// Global client initialization
@@ -82,6 +83,12 @@ func main() {
 		Client:       client,
 		Log:          log.WithName("ResourceGroup"),
 		GroupsClient: resourcegroups.New(configuration),
+		Reconciler: &controllers.AzureReconciler{
+			Client:   client,
+			Az:       resourcegroups.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ResourceGroup")
 		os.Exit(1)
@@ -122,6 +129,12 @@ func main() {
 		Client:      mgr.GetClient(),
 		Log:         ctrl.Log.WithName("controllers").WithName("VirtualNetwork"),
 		VnetsClient: virtualnetworks.New(configuration),
+		Reconciler: &controllers.AzureReconciler{
+			Client:   client,
+			Az:       virtualnetworks.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VirtualNetwork")
 		os.Exit(1)
@@ -131,6 +144,12 @@ func main() {
 		Client:        mgr.GetClient(),
 		Log:           ctrl.Log.WithName("controllers").WithName("Subnet"),
 		SubnetsClient: subnets.New(configuration),
+		Reconciler: &controllers.AzureReconciler{
+			Client:   client,
+			Az:       subnets.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Subnet")
 		os.Exit(1)
@@ -140,6 +159,12 @@ func main() {
 		Client:               mgr.GetClient(),
 		Log:                  ctrl.Log.WithName("controllers").WithName("SecurityGroup"),
 		SecurityGroupsClient: securitygroups.New(configuration),
+		Reconciler: &controllers.AzureReconciler{
+			Client:   client,
+			Az:       securitygroups.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SecurityGroup")
 		os.Exit(1)
@@ -149,6 +174,12 @@ func main() {
 		Client:          mgr.GetClient(),
 		Log:             ctrl.Log.WithName("controllers").WithName("PublicIP"),
 		PublicIPsClient: publicips.New(configuration),
+		Reconciler: &controllers.AzureReconciler{
+			Client:   client,
+			Az:       publicips.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PublicIP")
 		os.Exit(1)

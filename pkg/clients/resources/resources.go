@@ -43,8 +43,8 @@ func NewWithFactory(configuration *config.Config, factory factoryFunc) *Client {
 // ForSubscription authorizes the client for a given subscription
 func (c *Client) ForSubscription(subID string) error {
 	c.internal = c.factory(subID, azure.PublicCloud.ResourceManagerEndpoint)
-	c.internal.RequestInspector = LogRequest()
-	c.internal.ResponseInspector = LogResponse()
+	// c.internal.RequestInspector = LogRequest()
+	// c.internal.ResponseInspector = LogResponse()
 	return c.config.AuthorizeClient(&c.internal.Client)
 }
 

@@ -6,10 +6,11 @@ package securitygroups
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2019-04-01/network"
+	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
@@ -47,7 +48,7 @@ func (c *Client) ForSubscription(subID string) error {
 }
 
 // Ensure creates or updates a virtual network in an idempotent manner and sets its provisioning state.
-func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.SecurityGroup) error {
+func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.SecurityGroup) (bool, error) {
 	spec := network.SecurityGroup{
 		Location: &local.Spec.Location,
 		SecurityGroupPropertiesFormat: &network.SecurityGroupPropertiesFormat{
@@ -71,19 +72,18 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.SecurityGroup)
 		*spec.SecurityGroupPropertiesFormat.SecurityRules = append(*spec.SecurityGroupPropertiesFormat.SecurityRules, newRule)
 	}
 
-	if _, err := c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec); err != nil {
-		return err
+	if future, err := c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec); err != nil {
+		if resp := future.Response(); resp != nil && resp.StatusCode != http.StatusConflict {
+			return false, err
+		}
+		return false, nil
 	}
 
 	if _, err := c.SetStatus(ctx, local); err != nil {
-		return err
+		return false, err
 	}
 
-	if !c.Done(ctx, local) {
-		return errors.New("not finished reconciling, requeueing")
-	}
-
-	return nil
+	return c.Done(ctx, local), nil
 }
 
 // Get returns a virtual network.
@@ -116,7 +116,9 @@ func (c *Client) SetStatus(ctx context.Context, local *azurev1alpha1.SecurityGro
 	}
 
 	local.Status.ID = remote.ID
-	local.Status.ProvisioningState = remote.ProvisioningState
+	if remote.SecurityGroupPropertiesFormat != nil {
+		local.Status.ProvisioningState = remote.ProvisioningState
+	}
 	return found, nil
 }
 
@@ -126,4 +128,28 @@ func (c *Client) Done(ctx context.Context, local *azurev1alpha1.SecurityGroup) b
 		return false
 	}
 	return true
+}
+
+func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {
+	local, ok := obj.(*azurev1alpha1.SecurityGroup)
+	if !ok {
+		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+	}
+	return c.ForSubscription(local.Spec.SubscriptionID)
+}
+
+func (c *Client) TryEnsure(ctx context.Context, obj runtime.Object) (bool, error) {
+	local, ok := obj.(*azurev1alpha1.SecurityGroup)
+	if !ok {
+		return false, errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+	}
+	return c.Ensure(ctx, local)
+}
+
+func (c *Client) TryDelete(ctx context.Context, obj runtime.Object) (bool, error) {
+	local, ok := obj.(*azurev1alpha1.SecurityGroup)
+	if !ok {
+		return false, errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+	}
+	return c.Delete(ctx, local)
 }

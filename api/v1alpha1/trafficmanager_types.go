@@ -76,7 +76,6 @@ type EndpointProperties struct {
 
 type EndpointSpec struct {
 	Name       string             `json:"name"`
-	Location   string             `json:"location"`
 	Properties EndpointProperties `json:"properties"`
 }
 

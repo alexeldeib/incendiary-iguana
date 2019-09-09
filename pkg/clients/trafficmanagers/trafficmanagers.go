@@ -47,7 +47,7 @@ func (c *Client) ForSubscription(subID string) error {
 }
 
 // Ensure creates or updates a virtual network in an idempotent manner and sets its provisioning state.
-func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.TrafficManager) error {
+func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.TrafficManager) (bool, error) {
 	spec := trafficmanager.Profile{
 		ProfileProperties: &trafficmanager.ProfileProperties{
 			ProfileStatus:        trafficmanager.ProfileStatus(local.Spec.ProfileStatus),
@@ -111,8 +111,16 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.TrafficManager
 			*spec.ProfileProperties.Endpoints = append(*spec.ProfileProperties.Endpoints, endpointSpec)
 		}
 	}
-	_, err := c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec)
-	return err
+
+	if _, err := c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec); err != nil {
+		return false, err
+	}
+
+	if _, err := c.SetStatus(ctx, local); err != nil {
+		return false, err
+	}
+
+	return c.Done(ctx, local), nil
 }
 
 // Delete handles deletion of a virtual network.
@@ -126,10 +134,7 @@ func (c *Client) SetStatus(ctx context.Context, local *azurev1alpha1.TrafficMana
 	remote, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 	// Care about 400 and 5xx, not 404.
 	found := !remote.IsHTTPStatus(http.StatusNotFound)
-	if err != nil && found {
-		if remote.IsHTTPStatus(http.StatusConflict) {
-			return found, nil
-		}
+	if err != nil && !remote.HasHTTPStatus(http.StatusNotFound, http.StatusConflict) {
 		return found, err
 	}
 
@@ -142,7 +147,7 @@ func (c *Client) SetStatus(ctx context.Context, local *azurev1alpha1.TrafficMana
 // Done checks the current state of the CRD against the desired end state.
 func (c *Client) Done(ctx context.Context, local *azurev1alpha1.TrafficManager) bool {
 	// TODO(ace): make this check individual endpoints? what about ICMs?
-	return local.Status.ProfileMonitorStatus != "Online"
+	return local.Status.ProfileMonitorStatus == "Online"
 }
 
 // Get returns a virtual network.

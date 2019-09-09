@@ -26,11 +26,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
-	"github.com/alexeldeib/incendiary-iguana/pkg/yamlutil"
+	"github.com/alexeldeib/incendiary-iguana/pkg/decoder"
 )
 
 type token struct{}
@@ -146,8 +149,8 @@ func (opts *EnsureOptions) Read() ([]metav1.Object, error) {
 		}
 	}
 
-	decoder := yamlutil.NewYAMLDecoder(reader, scheme)
-	defer decoder.Close()
+	d := decoder.NewYAMLDecoder(reader, scheme)
+	defer d.Close()
 
 	// accumulators
 	// gvks := []schema.GroupVersionKind{}
@@ -155,7 +158,7 @@ func (opts *EnsureOptions) Read() ([]metav1.Object, error) {
 
 	// parsing
 	for {
-		obj, _, err := decoder.Decode(nil, nil)
+		obj, _, err := d.Decode(nil, nil)
 		if err == io.EOF {
 			break
 		} else if err != nil {
@@ -349,17 +352,16 @@ func EnsureTrafficManager(client *trafficmanagers.Client, obj metav1.Object, log
 		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
 	}
 
-	log = log.WithValues("name", local.Spec.Name)
+	log = log.WithValues("type", "trafficmanager", "name", local.Spec.Name)
 
 	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
 		return errors.Wrap(err, "failed to get client for subscription")
 	}
 
-	if err := client.Ensure(context.Background(), local); err != nil {
-		return errors.Wrap(err, "failed to reconcile")
-	}
-
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		if _, err := client.Ensure(context.Background(), local); err != nil {
+			return false, errors.Wrap(err, "failed to reconcile")
+		}
 		status, err := client.GetProfileStatus(context.Background(), local)
 		log.Info("waiting for appropriate status", "status", status)
 		if err != nil {
@@ -369,6 +371,138 @@ func EnsureTrafficManager(client *trafficmanagers.Client, obj metav1.Object, log
 			return true, nil
 		}
 		return false, nil
+	})
+}
+
+func DeleteTrafficManager(client *trafficmanagers.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.TrafficManager)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "trafficmanager", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("deleting")
+		// n.b.: returning true *should* allow failing with an error.
+		// implementation:
+		// https://github.com/kubernetes/apimachinery/blob/461753078381c979582f217a28eb759ebee5295d/pkg/util/wait/wait.go#L290-L301
+		return true, client.Delete(context.Background(), local)
+	})
+}
+
+func EnsureSubnet(client *subnets.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.Subnet)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "subnet", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("reconciling")
+		return client.Ensure(context.Background(), local)
+	})
+}
+
+func DeleteSubnet(client *subnets.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.Subnet)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "subnet", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("deleting")
+		found, err := client.Delete(context.Background(), local)
+		return !found, err
+	})
+}
+
+func EnsurePublicIP(client *publicips.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.PublicIP)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "publicip", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("reconciling")
+		return client.Ensure(context.Background(), local)
+	})
+}
+
+func DeletePublicIP(client *publicips.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.PublicIP)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "publicip", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("deleting")
+		found, err := client.Delete(context.Background(), local)
+		return !found, err
+	})
+}
+
+func EnsureSecurityGroup(client *securitygroups.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.SecurityGroup)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "securitygroup", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("reconciling")
+		return client.Ensure(context.Background(), local)
+	})
+}
+
+func DeleteSecurityGroup(client *securitygroups.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.SecurityGroup)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "securitygroup", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("deleting")
+		found, err := client.Delete(context.Background(), local)
+		return !found, err
 	})
 }
 

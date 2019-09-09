@@ -6,6 +6,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 
 	"github.com/go-logr/logr"
 	multierror "github.com/hashicorp/go-multierror"
@@ -33,13 +34,13 @@ func (r *TrafficManagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 
 	var local azurev1alpha1.TrafficManager
 
-	if err := r.TrafficManagersClient.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return ctrl.Result{}, err
-	}
-
 	if err := r.Get(ctx, req.NamespacedName, &local); err != nil {
 		log.Info("error during fetch from api server")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	if err := r.TrafficManagersClient.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	if local.DeletionTimestamp.IsZero() {
@@ -63,10 +64,14 @@ func (r *TrafficManagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	}
 
 	var final *multierror.Error
-	final = multierror.Append(final, r.TrafficManagersClient.Ensure(ctx, &local))
+	done, err := r.TrafficManagersClient.Ensure(ctx, &local)
+	final = multierror.Append(final, err)
 	final = multierror.Append(final, r.Status().Update(ctx, &local))
 
-	return ctrl.Result{}, final.ErrorOrNil()
+	if err := final.ErrorOrNil(); err != nil {
+		return ctrl.Result{}, errors.New(final.GoString())
+	}
+	return ctrl.Result{Requeue: !done}, nil
 }
 
 func (r *TrafficManagerReconciler) SetupWithManager(mgr ctrl.Manager) error {
