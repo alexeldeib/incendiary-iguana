@@ -369,6 +369,7 @@ func EnsureTrafficManager(client *trafficmanagers.Client, obj metav1.Object, log
 	}
 
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("reconciling")
 		if _, err := client.Ensure(context.Background(), local); err != nil {
 			return false, errors.Wrap(err, "failed to reconcile")
 		}
