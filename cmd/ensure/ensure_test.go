@@ -14,11 +14,12 @@ import (
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/cmd/ensure"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/redis"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebus"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
-
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 )
@@ -26,14 +27,16 @@ import (
 const testdata = "./testdata/group.yaml"
 
 var (
-	log            = ctrl.Log.WithName("test")
-	configuration  = config.New(log)
-	publicIPClient *publicips.Client
-	rgClient       *resourcegroups.Client
-	sgClient       *securitygroups.Client
-	subnetClient   *subnets.Client
-	tmClient       *trafficmanagers.Client
-	vnetClient     *virtualnetworks.Client
+	log               = ctrl.Log.WithName("test")
+	configuration     = config.New(log)
+	publicIPClient    *publicips.Client
+	redisClient       *redis.Client
+	rgClient          *resourcegroups.Client
+	sbnamespaceClient *servicebus.Client
+	sgClient          *securitygroups.Client
+	subnetClient      *subnets.Client
+	tmClient          *trafficmanagers.Client
+	vnetClient        *virtualnetworks.Client
 )
 
 func TestEnsure(t *testing.T) {
@@ -47,6 +50,8 @@ var _ = BeforeSuite(func() {
 	}
 	publicIPClient = publicips.New(configuration)
 	rgClient = resourcegroups.New(configuration)
+	redisClient = redis.New(configuration)
+	sbnamespaceClient = servicebus.New(configuration)
 	sgClient = securitygroups.New(configuration)
 	subnetClient = subnets.New(configuration)
 	tmClient = trafficmanagers.New(configuration)
@@ -211,67 +216,131 @@ var _ = Describe("reconcile", func() {
 		},
 	}
 
+	cache := &azurev1alpha1.Redis{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-crd",
+		},
+		Spec: azurev1alpha1.RedisSpec{
+			Name:             "ace-redis-1",
+			SubscriptionID:   "bd6a4e14-55fa-4160-a6a7-b718d7a2c95c",
+			ResourceGroup:    "test-crd",
+			Location:         "westus2",
+			EnableNonSslPort: false,
+			Sku: azurev1alpha1.RedisSku{
+				Name:     "premium",
+				Family:   "p",
+				Capacity: 1,
+			},
+		},
+	}
+
+	sbnamespace := &azurev1alpha1.ServiceBusNamespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-crd",
+		},
+		Spec: azurev1alpha1.ServiceBusNamespaceSpec{
+			Name:           "ace-redis-2",
+			SubscriptionID: "bd6a4e14-55fa-4160-a6a7-b718d7a2c95c",
+			ResourceGroup:  "test-crd",
+			Location:       "westus2",
+			SKU: azurev1alpha1.ServiceBusNamespaceSku{
+				Name:     "Premium",
+				Tier:     "Premium",
+				Capacity: 1,
+			},
+		},
+	}
+
+	_ = vnet
+	_ = subnet
+	_ = sg
+	_ = ip
+	_ = tm
+	_ = cache
+	_ = sbnamespace
+
 	Context("ensure", func() {
 		It("should create rg successfully", func() {
 			err := ensure.EnsureResourceGroup(rgClient, rg, log)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should create vnet successfully", func() {
-			err := ensure.EnsureVirtualNetwork(vnetClient, vnet, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should create vnet successfully", func() {
+		// 	err := ensure.EnsureVirtualNetwork(vnetClient, vnet, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should create subnet successfully", func() {
-			err := ensure.EnsureSubnet(subnetClient, subnet, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should create subnet successfully", func() {
+		// 	err := ensure.EnsureSubnet(subnetClient, subnet, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should create sg successfully", func() {
-			err := ensure.EnsureSecurityGroup(sgClient, sg, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should create sg successfully", func() {
+		// 	err := ensure.EnsureSecurityGroup(sgClient, sg, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should create ip successfully", func() {
-			err := ensure.EnsurePublicIP(publicIPClient, ip, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should create ip successfully", func() {
+		// 	err := ensure.EnsurePublicIP(publicIPClient, ip, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should create tm successfully", func() {
-			err := ensure.EnsureTrafficManager(tmClient, tm, log)
+		// It("should create tm successfully", func() {
+		// 	err := ensure.EnsureTrafficManager(tmClient, tm, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
+
+		// It("should create redis successfully", func() {
+		// 	err := ensure.EnsureRedis(redisClient, cache, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
+
+		It("should create servicebus namespace successfully", func() {
+			err := ensure.EnsureServiceBusNamespace(sbnamespaceClient, sbnamespace, log)
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
 	Context("delete", func() {
-		It("should delete tm successfully", func() {
-			err := ensure.DeleteTrafficManager(tmClient, tm, log)
+		It("should delete servicebus namespace successfully", func() {
+			err := ensure.DeleteServiceBusNamespace(sbnamespaceClient, sbnamespace, log)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should delete ip successfully", func() {
-			err := ensure.DeletePublicIP(publicIPClient, ip, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should delete redis successfully", func() {
+		// 	err := ensure.DeleteRedis(redisClient, cache, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should delete sg successfully", func() {
-			err := ensure.DeleteSecurityGroup(sgClient, sg, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should delete tm successfully", func() {
+		// 	err := ensure.DeleteTrafficManager(tmClient, tm, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should delete subnet successfully", func() {
-			err := ensure.DeleteSubnet(subnetClient, subnet, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should delete ip successfully", func() {
+		// 	err := ensure.DeletePublicIP(publicIPClient, ip, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should delete vnet successfully", func() {
-			err := ensure.DeleteVirtualNetwork(vnetClient, vnet, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should delete sg successfully", func() {
+		// 	err := ensure.DeleteSecurityGroup(sgClient, sg, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should delete rg successfully", func() {
-			err := ensure.DeleteResourceGroup(rgClient, rg, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should delete subnet successfully", func() {
+		// 	err := ensure.DeleteSubnet(subnetClient, subnet, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
+
+		// It("should delete vnet successfully", func() {
+		// 	err := ensure.DeleteVirtualNetwork(vnetClient, vnet, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
+
+		// It("should delete rg successfully", func() {
+		// 	err := ensure.DeleteResourceGroup(rgClient, rg, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
+
 	})
 })

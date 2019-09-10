@@ -69,6 +69,26 @@ rules:
 - apiGroups:
   - azure.alexeldeib.xyz
   resources:
+  - redis
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - redis/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
   - resourcegroups
   verbs:
   - create
@@ -142,6 +162,26 @@ rules:
   - azure.alexeldeib.xyz
   resources:
   - securitygroups/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - servicebus
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - servicebus/status
   verbs:
   - get
   - patch

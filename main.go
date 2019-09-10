@@ -20,9 +20,11 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/nics"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/redis"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebus"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
@@ -202,6 +204,36 @@ func main() {
 	}).SetupWithManager(mgr); err != nil {
 		litter.Dump(err)
 		setupLog.Error(err, "unable to create controller", "controller", "TrafficManager")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.RedisReconciler{
+		Client:      mgr.GetClient(),
+		Log:         ctrl.Log.WithName("controllers").WithName("Redis"),
+		RedisClient: redis.New(configuration),
+		Reconciler: &controllers.AzureReconciler{
+			Client:   client,
+			Az:       redis.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Redis")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.ServiceBusNamespaceReconciler{
+		Client:                    mgr.GetClient(),
+		Log:                       ctrl.Log.WithName("controllers").WithName("ServiceBusNamespace"),
+		ServiceBusNamespaceClient: servicebus.New(configuration),
+		Reconciler: &controllers.AzureReconciler{
+			Client:   client,
+			Az:       servicebus.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ServiceBusNamespace")
 		os.Exit(1)
 	}
 

@@ -27,8 +27,10 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/redis"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebus"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
@@ -40,11 +42,11 @@ type token struct{}
 
 const (
 	limit           = 1
-	backoffSteps    = 10
-	backoffFactor   = 1.5
-	backoffInterval = 4 * time.Second
-	backoffJitter   = 1.0
-	backoffLimit    = 600 * time.Second
+	backoffSteps    = 30
+	backoffFactor   = 1.25
+	backoffInterval = 5 * time.Second
+	backoffJitter   = 1
+	backoffLimit    = 900 * time.Second
 )
 
 var (
@@ -229,8 +231,12 @@ func Ensure(obj metav1.Object, configuration *config.Config, errs chan error) {
 	switch obj.(type) {
 	case *appsv1.Deployment:
 		log.Info("Deployment!")
+	case *azurev1alpha1.Redis:
+		err = EnsureRedis(redis.New(configuration), obj, log)
 	case *azurev1alpha1.ResourceGroup:
 		err = EnsureResourceGroup(resourcegroups.New(configuration), obj, log)
+	case *azurev1alpha1.ServiceBusNamespace:
+		err = EnsureServiceBusNamespace(servicebus.New(configuration), obj, log)
 	case *azurev1alpha1.TrafficManager:
 		err = EnsureTrafficManager(trafficmanagers.New(configuration), obj, log)
 	case *azurev1alpha1.VirtualNetwork:
@@ -241,7 +247,7 @@ func Ensure(obj metav1.Object, configuration *config.Config, errs chan error) {
 	if err != nil {
 		errs <- err
 		log.Info("failed to reconcile")
-		fmt.Printf("%+v", err)
+		fmt.Printf("%s\n", err.Error())
 		return
 	}
 	log.Info("sucessfully reconciled")
@@ -254,8 +260,12 @@ func Delete(obj metav1.Object, configuration *config.Config, errs chan error) {
 	switch obj.(type) {
 	case *appsv1.Deployment:
 		log.Info("Deployment!")
+	case *azurev1alpha1.Redis:
+		err = DeleteRedis(redis.New(configuration), obj, log)
 	case *azurev1alpha1.ResourceGroup:
 		err = DeleteResourceGroup(resourcegroups.New(configuration), obj, log)
+	case *azurev1alpha1.ServiceBusNamespace:
+		err = DeleteServiceBusNamespace(servicebus.New(configuration), obj, log)
 	case *azurev1alpha1.TrafficManager:
 		log.Info("Traffic Manager!")
 	case *azurev1alpha1.VirtualNetwork:
@@ -266,7 +276,7 @@ func Delete(obj metav1.Object, configuration *config.Config, errs chan error) {
 	if err != nil {
 		errs <- err
 		log.Info("failed to delete")
-		fmt.Printf("%+v", err)
+		fmt.Printf("%s\n", err.Error())
 		return
 	}
 	log.Info("sucessfully deleted")
@@ -494,6 +504,80 @@ func DeleteSecurityGroup(client *securitygroups.Client, obj metav1.Object, log l
 	}
 
 	log = log.WithValues("type", "securitygroup", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("deleting")
+		found, err := client.Delete(context.Background(), local)
+		return !found, err
+	})
+}
+
+func EnsureRedis(client *redis.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.Redis)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "redis", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("reconciling")
+		return client.Ensure(context.Background(), local)
+	})
+}
+
+func DeleteRedis(client *redis.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.Redis)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "redis", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("deleting")
+		found, err := client.Delete(context.Background(), local)
+		return !found, err
+	})
+}
+
+func EnsureServiceBusNamespace(client *servicebus.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.ServiceBusNamespace)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "servicebus", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("reconciling")
+		return client.Ensure(context.Background(), local)
+	})
+}
+
+func DeleteServiceBusNamespace(client *servicebus.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.ServiceBusNamespace)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "servicebus", "name", local.Spec.Name)
 
 	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
 		return errors.Wrap(err, "failed to get client for subscription")

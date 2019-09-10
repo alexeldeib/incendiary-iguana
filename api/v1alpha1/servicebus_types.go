@@ -8,8 +8,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// PublicIPSpec defines the desired state of PublicIP
-type PublicIPSpec struct {
+// ServiceBusNamespaceSpec defines the desired state of ServiceBusNamespace
+type ServiceBusNamespaceSpec struct {
 	// Name is the name of the security group.
 	Name string `json:"name"`
 	// Location osecurity group (e.g., eastus2)
@@ -19,11 +19,20 @@ type PublicIPSpec struct {
 	// SubscriptionID contains the Resource group. Is a GUID.
 	SubscriptionID string `json:"subscriptionId"`
 	// SKU is either basic or standard, representing the SKU of the IP in Azure.
-	SKU *string `json:"sku,omitempty"`
+	SKU ServiceBusNamespaceSku `json:"sku"`
 }
 
-// PublicIPStatus defines the observed state of PublicIP
-type PublicIPStatus struct {
+type ServiceBusNamespaceSku struct {
+	// Name of sku. Required for account creation; optional for update. Possible values include: 'Basic', 'Standard', 'Premium'
+	Name SkuName `json:"name"`
+	// Tier of corresponding SKU. Possible values include: 'C' (basic/standard), P (premium)
+	Tier SkuName `json:"tier"`
+	// Capacity of the cache to deploy. Valid values: for C (Basic/Standard) family (0, 1, 2, 3, 4, 5, 6), for P (Premium) family (1, 2, 3, 4).
+	Capacity int32 `json:"capacity"`
+}
+
+// ServiceBusNamespaceStatus defines the observed state of ServiceBusNamespace
+type ServiceBusNamespaceStatus struct {
 	// ProvisioningState sync the provisioning status of the resource from Azure.
 	ProvisioningState *string `json:"provisioningState,omitempty"`
 	// ID is the fully qualified Azure resource ID.
@@ -35,27 +44,27 @@ type PublicIPStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=publicip,shortName={ip,pip,ips},categories=all
+// +kubebuilder:resource:path=servicebus,shortName=sb,categories=all
 
-// PublicIP is the Schema for the publicips API
-type PublicIP struct {
+// ServiceBusNamespace is the Schema for the publicips API
+type ServiceBusNamespace struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   PublicIPSpec   `json:"spec,omitempty"`
-	Status PublicIPStatus `json:"status,omitempty"`
+	Spec   ServiceBusNamespaceSpec   `json:"spec,omitempty"`
+	Status ServiceBusNamespaceStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
-// PublicIPList contains a list of PublicIP
-type PublicIPList struct {
+// ServiceBusNamespaceList contains a list of ServiceBusNamespace
+type ServiceBusNamespaceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []PublicIP `json:"items"`
+	Items           []ServiceBusNamespace `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&PublicIP{}, &PublicIPList{})
+	SchemeBuilder.Register(&ServiceBusNamespace{}, &ServiceBusNamespaceList{})
 }
