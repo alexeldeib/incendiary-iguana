@@ -1,0 +1,20 @@
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: Redis
+metadata:
+  name: redis-sample
+spec:
+  subscriptionId: 6ab827b9-84a1-422a-96cb-dc60d60cb35b
+  resourceGroup: test-rg-crd-2
+  location: westus2
+  name: ace-redis-10
+  enableNonSslPort: false
+  sku: 
+    name: premium
+    family: p
+    capacity: 1
+  primaryKeyRef:
+    name: redis-key
+    key: primary
+  secondaryKeyRef:
+    name: redis-key # name of secret in same namespace containing secondary key
+    key: secondary # key in the above secret where the actual content is stored

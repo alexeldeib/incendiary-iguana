@@ -1,0 +1,18 @@
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: ServiceBusNamespace
+metadata:
+  name: sb-sample
+spec:
+  subscriptionId: 6ab827b9-84a1-422a-96cb-dc60d60cb35b
+  resourceGroup: test-rg-crd-2
+  location: westus2
+  name: ace-redis-3
+  sku: 
+    name: premium
+    tier: premium
+    capacity: 1
+  targetSecret: sb-secret # name of corev1.Secret object in same namespace
+  primaryKey: blah # in sb-secret, the key blah will contain the primary key
+  secondaryKey: blah2
+  primaryConnectionString: blah3
+  secondaryConnectionString: blah4

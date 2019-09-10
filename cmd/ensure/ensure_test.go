@@ -50,8 +50,8 @@ var _ = BeforeSuite(func() {
 	}
 	publicIPClient = publicips.New(configuration)
 	rgClient = resourcegroups.New(configuration)
-	redisClient = redis.New(configuration)
-	sbnamespaceClient = servicebus.New(configuration)
+	redisClient = redis.New(configuration, nil)
+	sbnamespaceClient = servicebus.New(configuration, nil)
 	sgClient = securitygroups.New(configuration)
 	subnetClient = subnets.New(configuration)
 	tmClient = trafficmanagers.New(configuration)
@@ -221,12 +221,12 @@ var _ = Describe("reconcile", func() {
 			Name: "test-crd",
 		},
 		Spec: azurev1alpha1.RedisSpec{
-			Name:             "ace-redis-1",
+			Name:             "ace-redis-test",
 			SubscriptionID:   "bd6a4e14-55fa-4160-a6a7-b718d7a2c95c",
 			ResourceGroup:    "test-crd",
 			Location:         "westus2",
 			EnableNonSslPort: false,
-			Sku: azurev1alpha1.RedisSku{
+			SKU: azurev1alpha1.RedisSku{
 				Name:     "premium",
 				Family:   "p",
 				Capacity: 1,
@@ -239,7 +239,7 @@ var _ = Describe("reconcile", func() {
 			Name: "test-crd",
 		},
 		Spec: azurev1alpha1.ServiceBusNamespaceSpec{
-			Name:           "ace-redis-2",
+			Name:           "ace-sb-test",
 			SubscriptionID: "bd6a4e14-55fa-4160-a6a7-b718d7a2c95c",
 			ResourceGroup:  "test-crd",
 			Location:       "westus2",
@@ -290,10 +290,10 @@ var _ = Describe("reconcile", func() {
 		// 	Expect(err).ToNot(HaveOccurred())
 		// })
 
-		// It("should create redis successfully", func() {
-		// 	err := ensure.EnsureRedis(redisClient, cache, log)
-		// 	Expect(err).ToNot(HaveOccurred())
-		// })
+		It("should create redis successfully", func() {
+			err := ensure.EnsureRedis(redisClient, cache, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
 		It("should create servicebus namespace successfully", func() {
 			err := ensure.EnsureServiceBusNamespace(sbnamespaceClient, sbnamespace, log)
@@ -307,10 +307,10 @@ var _ = Describe("reconcile", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		// It("should delete redis successfully", func() {
-		// 	err := ensure.DeleteRedis(redisClient, cache, log)
-		// 	Expect(err).ToNot(HaveOccurred())
-		// })
+		It("should delete redis successfully", func() {
+			err := ensure.DeleteRedis(redisClient, cache, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
 		// It("should delete tm successfully", func() {
 		// 	err := ensure.DeleteTrafficManager(tmClient, tm, log)

@@ -232,11 +232,11 @@ func Ensure(obj metav1.Object, configuration *config.Config, errs chan error) {
 	case *appsv1.Deployment:
 		log.Info("Deployment!")
 	case *azurev1alpha1.Redis:
-		err = EnsureRedis(redis.New(configuration), obj, log)
+		err = EnsureRedis(redis.New(configuration, nil), obj, log)
 	case *azurev1alpha1.ResourceGroup:
 		err = EnsureResourceGroup(resourcegroups.New(configuration), obj, log)
 	case *azurev1alpha1.ServiceBusNamespace:
-		err = EnsureServiceBusNamespace(servicebus.New(configuration), obj, log)
+		err = EnsureServiceBusNamespace(servicebus.New(configuration, nil), obj, log)
 	case *azurev1alpha1.TrafficManager:
 		err = EnsureTrafficManager(trafficmanagers.New(configuration), obj, log)
 	case *azurev1alpha1.VirtualNetwork:
@@ -261,11 +261,11 @@ func Delete(obj metav1.Object, configuration *config.Config, errs chan error) {
 	case *appsv1.Deployment:
 		log.Info("Deployment!")
 	case *azurev1alpha1.Redis:
-		err = DeleteRedis(redis.New(configuration), obj, log)
+		err = DeleteRedis(redis.New(configuration, nil), obj, log)
 	case *azurev1alpha1.ResourceGroup:
 		err = DeleteResourceGroup(resourcegroups.New(configuration), obj, log)
 	case *azurev1alpha1.ServiceBusNamespace:
-		err = DeleteServiceBusNamespace(servicebus.New(configuration), obj, log)
+		err = DeleteServiceBusNamespace(servicebus.New(configuration, nil), obj, log)
 	case *azurev1alpha1.TrafficManager:
 		log.Info("Traffic Manager!")
 	case *azurev1alpha1.VirtualNetwork:

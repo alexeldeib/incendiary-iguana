@@ -20,6 +20,16 @@ type ServiceBusNamespaceSpec struct {
 	SubscriptionID string `json:"subscriptionId"`
 	// SKU is either basic or standard, representing the SKU of the IP in Azure.
 	SKU ServiceBusNamespaceSku `json:"sku"`
+	// TargetSecret +optional
+	TargetSecret *string `json:"targetSecret,omitempty"`
+	// PrimaryKey +optional
+	PrimaryKey *string `json:"primaryKey,omitempty"`
+	// SecondaryKey +optional
+	SecondaryKey *string `json:"secondaryKey,omitempty"`
+	// PrimaryConnectionString +optional
+	PrimaryConnectionString *string `json:"primaryConnectionString,omitempty"`
+	// SecondaryConnectionString +optional
+	SecondaryConnectionString *string `json:"secondaryConnectionString,omitempty"`
 }
 
 type ServiceBusNamespaceSku struct {

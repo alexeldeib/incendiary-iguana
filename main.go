@@ -118,7 +118,7 @@ func main() {
 	}
 
 	if err = (&controllers.SecretBundleReconciler{
-		Client:        mgr.GetClient(),
+		Client:        client,
 		Log:           ctrl.Log.WithName("controllers").WithName("SecretBundle"),
 		SecretsClient: secretsclient,
 		Scheme:        scheme,
@@ -128,7 +128,7 @@ func main() {
 	}
 
 	if err = (&controllers.VirtualNetworkReconciler{
-		Client:      mgr.GetClient(),
+		Client:      client,
 		Log:         ctrl.Log.WithName("controllers").WithName("VirtualNetwork"),
 		VnetsClient: virtualnetworks.New(configuration),
 		Reconciler: &controllers.AzureReconciler{
@@ -143,7 +143,7 @@ func main() {
 	}
 
 	if err = (&controllers.SubnetReconciler{
-		Client:        mgr.GetClient(),
+		Client:        client,
 		Log:           ctrl.Log.WithName("controllers").WithName("Subnet"),
 		SubnetsClient: subnets.New(configuration),
 		Reconciler: &controllers.AzureReconciler{
@@ -158,7 +158,7 @@ func main() {
 	}
 
 	if err = (&controllers.SecurityGroupReconciler{
-		Client:               mgr.GetClient(),
+		Client:               client,
 		Log:                  ctrl.Log.WithName("controllers").WithName("SecurityGroup"),
 		SecurityGroupsClient: securitygroups.New(configuration),
 		Reconciler: &controllers.AzureReconciler{
@@ -173,7 +173,7 @@ func main() {
 	}
 
 	if err = (&controllers.PublicIPReconciler{
-		Client:          mgr.GetClient(),
+		Client:          client,
 		Log:             ctrl.Log.WithName("controllers").WithName("PublicIP"),
 		PublicIPsClient: publicips.New(configuration),
 		Reconciler: &controllers.AzureReconciler{
@@ -188,7 +188,7 @@ func main() {
 	}
 
 	if err = (&controllers.NetworkInterfaceReconciler{
-		Client:     mgr.GetClient(),
+		Client:     client,
 		Log:        ctrl.Log.WithName("controllers").WithName("NetworkInterface"),
 		NICsClient: nics.New(configuration),
 	}).SetupWithManager(mgr); err != nil {
@@ -197,7 +197,7 @@ func main() {
 	}
 
 	if err = (&controllers.TrafficManagerReconciler{
-		Client:                mgr.GetClient(),
+		Client:                client,
 		Log:                   ctrl.Log.WithName("controllers").WithName("TrafficManager"),
 		TrafficManagersClient: trafficmanagers.New(configuration),
 		Recorder:              recorder,
@@ -208,12 +208,12 @@ func main() {
 	}
 
 	if err = (&controllers.RedisReconciler{
-		Client:      mgr.GetClient(),
+		Client:      client,
 		Log:         ctrl.Log.WithName("controllers").WithName("Redis"),
-		RedisClient: redis.New(configuration),
+		RedisClient: redis.New(configuration, &client),
 		Reconciler: &controllers.AzureReconciler{
 			Client:   client,
-			Az:       redis.New(configuration),
+			Az:       redis.New(configuration, &client),
 			Log:      log,
 			Recorder: recorder,
 		},
@@ -223,12 +223,12 @@ func main() {
 	}
 
 	if err = (&controllers.ServiceBusNamespaceReconciler{
-		Client:                    mgr.GetClient(),
+		Client:                    client,
 		Log:                       ctrl.Log.WithName("controllers").WithName("ServiceBusNamespace"),
-		ServiceBusNamespaceClient: servicebus.New(configuration),
+		ServiceBusNamespaceClient: servicebus.New(configuration, &client),
 		Reconciler: &controllers.AzureReconciler{
 			Client:   client,
-			Az:       servicebus.New(configuration),
+			Az:       servicebus.New(configuration, &client),
 			Log:      log,
 			Recorder: recorder,
 		},

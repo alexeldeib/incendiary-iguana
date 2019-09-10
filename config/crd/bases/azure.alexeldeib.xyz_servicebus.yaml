@@ -44,8 +44,20 @@ spec:
             name:
               description: Name is the name of the security group.
               type: string
+            primaryConnectionString:
+              description: PrimaryConnectionString +optional
+              type: string
+            primaryKey:
+              description: PrimaryKey +optional
+              type: string
             resourceGroup:
               description: ResourceGroup containsecurity group.
+              type: string
+            secondaryConnectionString:
+              description: SecondaryConnectionString +optional
+              type: string
+            secondaryKey:
+              description: SecondaryKey +optional
               type: string
             sku:
               description: SKU is either basic or standard, representing the SKU of
@@ -73,6 +85,9 @@ spec:
               type: object
             subscriptionId:
               description: SubscriptionID contains the Resource group. Is a GUID.
+              type: string
+            targetSecret:
+              description: TargetSecret +optional
               type: string
           required:
           - location

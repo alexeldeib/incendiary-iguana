@@ -5,6 +5,7 @@ Copyright 2019 Alexander Eldeib.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -18,8 +19,12 @@ type RedisSpec struct {
 	ResourceGroup string `json:"resourceGroup"`
 	// SubscriptionID contains the Resource group. Is a GUID.
 	SubscriptionID   string   `json:"subscriptionId"`
-	Sku              RedisSku `json:"sku"`
+	SKU              RedisSku `json:"sku"`
 	EnableNonSslPort bool     `json:"enableNonSslPort"`
+	// PrimaryKey +optional
+	PrimaryKey *corev1.SecretKeySelector `json:"primaryKeyRef,omitempty"`
+	// SecondaryKey +optional
+	SecondaryKey *corev1.SecretKeySelector `json:"secondaryKeyRef,omitempty"`
 }
 
 type RedisSku struct {
