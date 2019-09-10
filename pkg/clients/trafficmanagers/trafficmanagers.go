@@ -108,6 +108,16 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.TrafficManager
 					EndpointLocation: to.StringPtr(ep.Properties.EndpointLocation),
 				},
 			}
+			if ep.Properties.CustomHeaders != nil {
+				endpointSpec.CustomHeaders = &[]trafficmanager.EndpointPropertiesCustomHeadersItem{}
+				for _, header := range *ep.Properties.CustomHeaders {
+					item := trafficmanager.EndpointPropertiesCustomHeadersItem{
+						Name:  header.Name,
+						Value: header.Value,
+					}
+					*endpointSpec.CustomHeaders = append(*endpointSpec.CustomHeaders, item)
+				}
+			}
 			*spec.ProfileProperties.Endpoints = append(*spec.ProfileProperties.Endpoints, endpointSpec)
 		}
 	}
