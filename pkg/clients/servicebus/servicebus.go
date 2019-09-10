@@ -28,23 +28,25 @@ type Client struct {
 	internal   servicebus.NamespacesClient
 	config     *config.Config
 	kubeclient *ctrl.Client
+	scheme     *runtime.Scheme
 }
 
 type factoryFunc func(subscriptionID string) servicebus.NamespacesClient
 
 // New returns a new client able to authenticate to multiple Azure subscriptions using the provided configuration.
-func New(configuration *config.Config, kubeclient *ctrl.Client) *Client {
-	return NewWithFactory(configuration, kubeclient, servicebus.NewNamespacesClient)
+func New(configuration *config.Config, kubeclient *ctrl.Client, scheme *runtime.Scheme) *Client {
+	return NewWithFactory(configuration, kubeclient, servicebus.NewNamespacesClient, scheme)
 }
 
 // NewWithFactory returns an interface which can authorize the configured client to many subscriptions.
 // It uses the factory argument to instantiate new clients for a specific subscription.
 // This can be used to stub Azure client for testing.
-func NewWithFactory(configuration *config.Config, kubeclient *ctrl.Client, factory factoryFunc) *Client {
+func NewWithFactory(configuration *config.Config, kubeclient *ctrl.Client, factory factoryFunc, scheme *runtime.Scheme) *Client {
 	return &Client{
 		config:     configuration,
 		factory:    factory,
 		kubeclient: kubeclient,
+		scheme:     scheme,
 	}
 }
 
@@ -119,9 +121,13 @@ func (c *Client) SyncSecrets(ctx context.Context, local *azurev1alpha1.ServiceBu
 	_, err = controllerutil.CreateOrUpdate(ctx, *c.kubeclient, targetSecret, func() error {
 		spew.Dump("set primary")
 		var final *multierror.Error
+
 		if targetSecret.Data == nil {
 			targetSecret.Data = map[string][]byte{}
 		}
+
+		final = multierror.Append(final, controllerutil.SetControllerReference(local, targetSecret, c.scheme))
+
 		if local.Spec.PrimaryKey != nil {
 			if keys.PrimaryKey != nil {
 				targetSecret.Data[*local.Spec.PrimaryKey] = []byte(*keys.PrimaryKey)

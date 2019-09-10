@@ -210,10 +210,10 @@ func main() {
 	if err = (&controllers.RedisReconciler{
 		Client:      client,
 		Log:         ctrl.Log.WithName("controllers").WithName("Redis"),
-		RedisClient: redis.New(configuration, &client),
+		RedisClient: redis.New(configuration, &client, scheme),
 		Reconciler: &controllers.AzureReconciler{
 			Client:   client,
-			Az:       redis.New(configuration, &client),
+			Az:       redis.New(configuration, &client, scheme),
 			Log:      log,
 			Recorder: recorder,
 		},
@@ -225,10 +225,10 @@ func main() {
 	if err = (&controllers.ServiceBusNamespaceReconciler{
 		Client:                    client,
 		Log:                       ctrl.Log.WithName("controllers").WithName("ServiceBusNamespace"),
-		ServiceBusNamespaceClient: servicebus.New(configuration, &client),
+		ServiceBusNamespaceClient: servicebus.New(configuration, &client, scheme),
 		Reconciler: &controllers.AzureReconciler{
 			Client:   client,
-			Az:       servicebus.New(configuration, &client),
+			Az:       servicebus.New(configuration, &client, scheme),
 			Log:      log,
 			Recorder: recorder,
 		},

@@ -50,8 +50,8 @@ var _ = BeforeSuite(func() {
 	}
 	publicIPClient = publicips.New(configuration)
 	rgClient = resourcegroups.New(configuration)
-	redisClient = redis.New(configuration, nil)
-	sbnamespaceClient = servicebus.New(configuration, nil)
+	redisClient = redis.New(configuration, nil, nil)
+	sbnamespaceClient = servicebus.New(configuration, nil, nil)
 	sgClient = securitygroups.New(configuration)
 	subnetClient = subnets.New(configuration)
 	tmClient = trafficmanagers.New(configuration)

@@ -12,9 +12,16 @@ spec:
     name: premium
     family: p
     capacity: 1
-  primaryKeyRef:
-    name: redis-key
-    key: primary
-  secondaryKeyRef:
-    name: redis-key # name of secret in same namespace containing secondary key
-    key: secondary # key in the above secret where the actual content is stored
+  targetSecret: sb-secret
+  primaryKey: blah
+  secondaryKey: blah2
+---
+# Applying this will automatically create the following object
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: redis-sample
+#   namespace: default # matches what you applied
+# data:
+#   blah: $BASE64_ENCODED_PRIMARY_KEY
+#   blah2: $BASE64_ENCODED_SECONDARY_KEY

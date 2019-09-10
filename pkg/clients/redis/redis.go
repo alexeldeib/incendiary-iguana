@@ -29,23 +29,25 @@ type Client struct {
 	internal   redis.Client
 	config     *config.Config
 	kubeclient *ctrl.Client
+	scheme     *runtime.Scheme
 }
 
 type factoryFunc func(subscriptionID string) redis.Client
 
 // New returns a new client able to authenticate to multiple Azure subscriptions using the provided configuration.
-func New(configuration *config.Config, kubeclient *ctrl.Client) *Client {
-	return NewWithFactory(configuration, kubeclient, redis.NewClient)
+func New(configuration *config.Config, kubeclient *ctrl.Client, scheme *runtime.Scheme) *Client {
+	return NewWithFactory(configuration, kubeclient, redis.NewClient, scheme)
 }
 
 // NewWithFactory returns an interface which can authorize the configured client to many subscriptions.
 // It uses the factory argument to instantiate new clients for a specific subscription.
 // This can be used to stub Azure client for testing.
-func NewWithFactory(configuration *config.Config, kubeclient *ctrl.Client, factory factoryFunc) *Client {
+func NewWithFactory(configuration *config.Config, kubeclient *ctrl.Client, factory factoryFunc, scheme *runtime.Scheme) *Client {
 	return &Client{
 		config:     configuration,
 		factory:    factory,
 		kubeclient: kubeclient,
+		scheme:     scheme,
 	}
 }
 
@@ -117,47 +119,44 @@ func (c *Client) SyncSecrets(ctx context.Context, local *azurev1alpha1.Redis, re
 		return err
 	}
 
-	var final *multierror.Error
-	// TODO(ace): batch? force same secret?
-	if local.Spec.PrimaryKey != nil {
-		if keys.PrimaryKey == nil {
-			final = multierror.Append(final, errors.New("primary key is nil"))
-		}
-		targetSecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      local.Spec.PrimaryKey.Name,
-				Namespace: local.ObjectMeta.Namespace,
-			},
-			Data: map[string][]byte{},
-		}
-		_, err := controllerutil.CreateOrUpdate(ctx, *c.kubeclient, targetSecret, func() error {
-			spew.Dump("set primary")
-			targetSecret.Data[local.Spec.PrimaryKey.Key] = []byte(*keys.PrimaryKey)
-			return nil
-		})
-		final = multierror.Append(final, err)
+	targetSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      *local.Spec.TargetSecret,
+			Namespace: local.ObjectMeta.Namespace,
+		},
 	}
-	if local.Spec.SecondaryKey != nil {
-		if keys.SecondaryKey == nil {
-			final = multierror.Append(final, errors.New("primary key is nil"))
-		}
-		targetSecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      local.Spec.SecondaryKey.Name,
-				Namespace: local.ObjectMeta.Namespace,
-			},
-			Data: map[string][]byte{},
-		}
-		_, err := controllerutil.CreateOrUpdate(ctx, *c.kubeclient, targetSecret, func() error {
-			spew.Dump("set set secondary")
-			targetSecret.Data[local.Spec.SecondaryKey.Key] = []byte(*keys.SecondaryKey)
-			return nil
-		})
-		final = multierror.Append(final, err)
-	}
-	spew.Dump("returning listkey")
 
-	return final.ErrorOrNil()
+	_, err = controllerutil.CreateOrUpdate(ctx, *c.kubeclient, targetSecret, func() error {
+		spew.Dump("set primary")
+		var final *multierror.Error
+
+		if targetSecret.Data == nil {
+			targetSecret.Data = map[string][]byte{}
+		}
+
+		final = multierror.Append(final, controllerutil.SetControllerReference(targetSecret, local, c.scheme))
+
+		if local.Spec.PrimaryKey != nil {
+			if keys.PrimaryKey != nil {
+				targetSecret.Data[*local.Spec.PrimaryKey] = []byte(*keys.PrimaryKey)
+			} else {
+				final = multierror.Append(final, errors.New("expected primary key but found nil"))
+			}
+		}
+
+		if local.Spec.SecondaryKey != nil {
+			if keys.SecondaryKey != nil {
+				targetSecret.Data[*local.Spec.SecondaryKey] = []byte(*keys.SecondaryKey)
+			} else {
+				final = multierror.Append(final, errors.New("expected primary key but found nil"))
+			}
+
+		}
+
+		return final.ErrorOrNil()
+	})
+	spew.Dump("returning listkey")
+	return err
 }
 
 // Delete handles deletion of a resource groups.

@@ -44,43 +44,15 @@ spec:
             name:
               description: Name is the name of the security group.
               type: string
-            primaryKeyRef:
+            primaryKey:
               description: PrimaryKey +optional
-              properties:
-                key:
-                  description: The key of the secret to select from.  Must be a valid
-                    secret key.
-                  type: string
-                name:
-                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                    TODO: Add other useful fields. apiVersion, kind, uid?'
-                  type: string
-                optional:
-                  description: Specify whether the Secret or it's key must be defined
-                  type: boolean
-              required:
-              - key
-              type: object
+              type: string
             resourceGroup:
               description: ResourceGroup containsecurity group.
               type: string
-            secondaryKeyRef:
+            secondaryKey:
               description: SecondaryKey +optional
-              properties:
-                key:
-                  description: The key of the secret to select from.  Must be a valid
-                    secret key.
-                  type: string
-                name:
-                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                    TODO: Add other useful fields. apiVersion, kind, uid?'
-                  type: string
-                optional:
-                  description: Specify whether the Secret or it's key must be defined
-                  type: boolean
-              required:
-              - key
-              type: object
+              type: string
             sku:
               properties:
                 capacity:
@@ -105,6 +77,9 @@ spec:
               type: object
             subscriptionId:
               description: SubscriptionID contains the Resource group. Is a GUID.
+              type: string
+            targetSecret:
+              description: TargetSecret +optional
               type: string
           required:
           - enableNonSslPort

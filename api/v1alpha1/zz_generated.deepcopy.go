@@ -9,7 +9,6 @@ Copyright 2019 Alexander Eldeib.
 package v1alpha1
 
 import (
-	v1 "k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -771,15 +770,20 @@ func (in *RedisSku) DeepCopy() *RedisSku {
 func (in *RedisSpec) DeepCopyInto(out *RedisSpec) {
 	*out = *in
 	out.SKU = in.SKU
+	if in.TargetSecret != nil {
+		in, out := &in.TargetSecret, &out.TargetSecret
+		*out = new(string)
+		**out = **in
+	}
 	if in.PrimaryKey != nil {
 		in, out := &in.PrimaryKey, &out.PrimaryKey
-		*out = new(v1.SecretKeySelector)
-		(*in).DeepCopyInto(*out)
+		*out = new(string)
+		**out = **in
 	}
 	if in.SecondaryKey != nil {
 		in, out := &in.SecondaryKey, &out.SecondaryKey
-		*out = new(v1.SecretKeySelector)
-		(*in).DeepCopyInto(*out)
+		*out = new(string)
+		**out = **in
 	}
 }
 
