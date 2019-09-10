@@ -134,7 +134,7 @@ func (c *Client) SyncSecrets(ctx context.Context, local *azurev1alpha1.Redis, re
 			targetSecret.Data = map[string][]byte{}
 		}
 
-		final = multierror.Append(final, controllerutil.SetControllerReference(targetSecret, local, c.scheme))
+		final = multierror.Append(final, controllerutil.SetControllerReference(local, targetSecret, c.scheme))
 
 		if local.Spec.PrimaryKey != nil {
 			if keys.PrimaryKey != nil {

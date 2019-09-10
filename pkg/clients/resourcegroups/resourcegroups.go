@@ -52,26 +52,36 @@ func (c *Client) ForSubscription(subID string) error {
 
 // Ensure creates or updates a resource group in an idempotent manner.
 func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.ResourceGroup) (bool, error) {
+	remote, err := c.internal.Get(ctx, local.Spec.Name)
+	found := !remote.IsHTTPStatus(http.StatusNotFound)
+	c.SetStatus(local, remote)
+	if err != nil && found {
+		return false, err
+	}
+
+	if found {
+		if c.Done(ctx, local) {
+			if !c.NeedsUpdate(local, remote) {
+				return true, nil
+			}
+		} else {
+			return false, nil
+		}
+	}
+
 	spec := resources.Group{
 		Location: &local.Spec.Location,
 	}
 
-	if remote, err := c.internal.CreateOrUpdate(ctx, local.Spec.Name, spec); err != nil {
-		if !remote.IsHTTPStatus(http.StatusConflict) {
-			return false, err
-		}
-		return false, nil
-	}
-
-	if _, err := c.SetStatus(ctx, local); err != nil {
+	if _, err := c.internal.CreateOrUpdate(ctx, local.Spec.Name, spec); err != nil {
 		return false, err
 	}
 
-	return c.Done(ctx, local), nil
+	return false, nil
 }
 
 // Get returns a resource group.
-func (c *Client) Get(ctx context.Context, local *azurev1alpha1.ResourceGroup) (resources.Group, error) {
+func (c *Client) Get(ctx context.Context, local *azurev1alpha1.ResourceGroup, remote resources.Group) (resources.Group, error) {
 	return c.internal.Get(ctx, local.Spec.Name)
 }
 
@@ -85,31 +95,36 @@ func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.ResourceGroup)
 			return false, err
 		}
 	}
-	return c.SetStatus(ctx, local)
+	remote, err := c.internal.Get(ctx, local.Spec.Name)
+	found := !remote.IsHTTPStatus(http.StatusNotFound)
+	c.SetStatus(local, remote)
+	if err != nil && remote.IsHTTPStatus(http.StatusNotFound) {
+		return false, nil
+	}
+	return found, err
 }
 
 // SetStatus sets the status subresource fields of the CRD reflecting the state of the object in Azure.
-func (c *Client) SetStatus(ctx context.Context, local *azurev1alpha1.ResourceGroup) (bool, error) {
-	remote, err := c.internal.Get(ctx, local.Spec.Name)
-	// Care about 400 and 5xx, not 404.
-	found := !remote.IsHTTPStatus(http.StatusNotFound)
-	if err != nil && found && !remote.IsHTTPStatus(http.StatusConflict) {
-		return found, err
-	}
-
+func (c *Client) SetStatus(local *azurev1alpha1.ResourceGroup, remote resources.Group) {
 	local.Status.ID = remote.ID
 	if remote.Properties != nil {
 		local.Status.ProvisioningState = remote.Properties.ProvisioningState
 	}
-	return found, nil
 }
 
 // Done checks the current state of the CRD against the desired end state.
 func (c *Client) Done(ctx context.Context, local *azurev1alpha1.ResourceGroup) bool {
-	if local.Status.ProvisioningState == nil || *local.Status.ProvisioningState != "Succeeded" {
-		return false
+	return local.Status.ProvisioningState != nil && *local.Status.ProvisioningState == "Succeeded"
+}
+
+func (c *Client) NeedsUpdate(local *azurev1alpha1.ResourceGroup, remote resources.Group) bool {
+	if remote.Name != nil && local.Spec.Name != *remote.Name {
+		return true
 	}
-	return true
+	if remote.Location != nil && local.Spec.Location != *remote.Location {
+		return true
+	}
+	return false
 }
 
 // TODO(ace): improve naming and the structure of this pattern across all gvks

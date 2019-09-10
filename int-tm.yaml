@@ -1,0 +1,143 @@
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: TrafficManager
+metadata:
+  name: ade-proxy-ai-ame
+  namespace: ade-proxy-ai
+spec:
+  dnsConfig:
+    relativeName: ade-proxy-ai-ame
+    ttl: 30
+  endpoints:
+  - name: draft-int-genesys
+    properties:
+      endpointLocation: eastus
+      priority: 1
+      status: enabled
+      target: draft-int-genesys-ingress-ade-proxy-ai.eastus.cloudapp.azure.com
+      weight: 1
+  monitorConfig:
+    customHeaders:
+    - name: host
+      value: ade.int.applicationinsights.io
+    expectedStatusCodeRanges:
+    - max: 308
+      min: 200
+    intervalInSeconds: 10
+    path: /health
+    port: 443
+    protocol: HTTPS
+    timeoutInSeconds: 5
+    toleratedNumberOfFailures: 3
+  name: ade-proxy-ai-ame
+  profileStatus: enabled
+  resourceGroup: draft-int-genesys-infra
+  subscriptionID: 5d3d4b48-4355-49ad-890d-c49efc3a211d
+  trafficRoutingMethod: weighted
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: TrafficManager
+metadata:
+  name: ade-proxy-la-ame
+  namespace: ade-proxy-ai
+spec:
+  dnsConfig:
+    relativeName: ade-proxy-la-ame
+    ttl: 30
+  endpoints:
+  - name: draft-int-genesys
+    properties:
+      endpointLocation: eastus
+      priority: 1
+      status: enabled
+      target: draft-int-genesys-ingress-ade-proxy-ai.eastus.cloudapp.azure.com
+      weight: 1
+  monitorConfig:
+    customHeaders:
+    - name: host
+      value: ade.int.loganalytics.io
+    expectedStatusCodeRanges:
+    - max: 308
+      min: 200
+    intervalInSeconds: 10
+    path: /health
+    port: 443
+    protocol: HTTPS
+    timeoutInSeconds: 5
+    toleratedNumberOfFailures: 3
+  name: ade-proxy-la-ame
+  profileStatus: enabled
+  resourceGroup: draft-int-genesys-infra
+  subscriptionID: 5d3d4b48-4355-49ad-890d-c49efc3a211d
+  trafficRoutingMethod: weighted
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: TrafficManager
+metadata:
+  name: airint-ame
+  namespace: air-oms
+spec:
+  dnsConfig:
+    relativeName: airint-ame
+    ttl: 30
+  endpoints:
+  - name: draft-int-genesys
+    properties:
+      endpointLocation: eastus
+      priority: 1
+      status: enabled
+      target: draft-int-genesys-ingress-air.eastus.cloudapp.azure.com
+      weight: 1
+  monitorConfig:
+    customHeaders:
+    - name: host
+      value: dev.int.applicationinsights.io
+    expectedStatusCodeRanges:
+    - max: 308
+      min: 200
+    intervalInSeconds: 10
+    path: /
+    port: 443
+    protocol: HTTPS
+    timeoutInSeconds: 5
+    toleratedNumberOfFailures: 3
+  name: airint-ame
+  profileStatus: enabled
+  resourceGroup: draft-int-genesys-infra
+  subscriptionID: 5d3d4b48-4355-49ad-890d-c49efc3a211d
+  trafficRoutingMethod: weighted
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: TrafficManager
+metadata:
+  name: airomsint-ame
+  namespace: air-oms
+spec:
+  dnsConfig:
+    relativeName: airomsint-ame
+    ttl: 30
+  endpoints:
+  - name: draft-int-genesys
+    properties:
+      endpointLocation: eastus
+      priority: 1
+      status: enabled
+      target: draft-int-genesys-ingress-air-oms.eastus.cloudapp.azure.com
+      weight: 1
+  monitorConfig:
+    customHeaders:
+    - name: host
+      value: dev.int.loganalytics.io
+    expectedStatusCodeRanges:
+    - max: 308
+      min: 200
+    intervalInSeconds: 10
+    path: /
+    port: 443
+    protocol: HTTPS
+    timeoutInSeconds: 5
+    toleratedNumberOfFailures: 3
+  name: airomsint-ame
+  profileStatus: enabled
+  resourceGroup: draft-int-genesys-infra
+  subscriptionID: 5d3d4b48-4355-49ad-890d-c49efc3a211d
+  trafficRoutingMethod: weighted

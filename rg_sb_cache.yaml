@@ -1,0 +1,45 @@
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: ResourceGroup
+metadata:
+  name: test-crd-2
+spec:
+  subscriptionId: bd6a4e14-55fa-4160-a6a7-b718d7a2c95c
+  name: test-rg-crd-2
+  location: westus2
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: ServiceBusNamespace
+metadata:
+  name: sbns-sample
+spec:
+  subscriptionId: bd6a4e14-55fa-4160-a6a7-b718d7a2c95c
+  resourceGroup: test-rg-crd-2
+  location: westus2
+  name: ace-redis-3
+  sku: 
+    name: premium
+    tier: premium
+    capacity: 1
+  targetSecret: sb-secret
+  primaryKey: blah
+  secondaryKey: blah2
+  primaryConnectionString: blah3
+  secondaryConnectionString: blah4
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: Redis
+metadata:
+  name: redis-sample
+spec:
+  subscriptionId: bd6a4e14-55fa-4160-a6a7-b718d7a2c95c
+  resourceGroup: test-rg-crd-2
+  location: westus2
+  name: ace-redis-10
+  enableNonSslPort: false
+  sku: 
+    name: premium
+    family: p
+    capacity: 1
+  targetSecret: redis-key
+  primaryKey: primary
+  secondaryKey: secondary
