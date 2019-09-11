@@ -27,6 +27,11 @@ ifeq (,$(DEBUG))
 else
 	go test -v $(GO_TEST_OPTIONS) -ginkgo.v
 endif
+
+# Build cli binary
+cli: fmt vet # lint 
+	go build -gcflags '-N -l' -o tinker.exe ./cmd/
+
 # Build manager binary
 manager: manifests fmt vet # lint 
 	go build -gcflags '-N -l' -o manager.exe main.go
