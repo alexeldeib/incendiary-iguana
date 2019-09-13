@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/nics"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/redis"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
@@ -34,6 +35,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/vms"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	"github.com/alexeldeib/incendiary-iguana/pkg/decoder"
 )
@@ -42,7 +44,7 @@ type token struct{}
 
 const (
 	limit           = 1
-	backoffSteps    = 30
+	backoffSteps    = 5
 	backoffFactor   = 1.25
 	backoffInterval = 5 * time.Second
 	backoffJitter   = 1
@@ -231,16 +233,22 @@ func Ensure(obj metav1.Object, configuration *config.Config, errs chan error) {
 	switch obj.(type) {
 	case *appsv1.Deployment:
 		log.Info("Deployment!")
+	case *azurev1alpha1.NetworkInterface:
+		err = EnsureNIC(nics.New(configuration), obj, log)
 	case *azurev1alpha1.Redis:
 		err = EnsureRedis(redis.New(configuration, nil, nil), obj, log)
 	case *azurev1alpha1.ResourceGroup:
 		err = EnsureResourceGroup(resourcegroups.New(configuration), obj, log)
 	case *azurev1alpha1.ServiceBusNamespace:
 		err = EnsureServiceBusNamespace(servicebus.New(configuration, nil, nil), obj, log)
+	case *azurev1alpha1.Subnet:
+		err = EnsureSubnet(subnets.New(configuration), obj, log)
 	case *azurev1alpha1.TrafficManager:
 		err = EnsureTrafficManager(trafficmanagers.New(configuration), obj, log)
 	case *azurev1alpha1.VirtualNetwork:
 		err = EnsureVirtualNetwork(virtualnetworks.New(configuration), obj, log)
+	case *azurev1alpha1.VM:
+		err = EnsureVM(vms.New(configuration), obj, log)
 	default:
 		log.Info("nothing to do.")
 	}
@@ -260,16 +268,22 @@ func Delete(obj metav1.Object, configuration *config.Config, errs chan error) {
 	switch obj.(type) {
 	case *appsv1.Deployment:
 		log.Info("Deployment!")
+	case *azurev1alpha1.NetworkInterface:
+		err = DeleteNIC(nics.New(configuration), obj, log)
 	case *azurev1alpha1.Redis:
 		err = DeleteRedis(redis.New(configuration, nil, nil), obj, log)
 	case *azurev1alpha1.ResourceGroup:
 		err = DeleteResourceGroup(resourcegroups.New(configuration), obj, log)
 	case *azurev1alpha1.ServiceBusNamespace:
 		err = DeleteServiceBusNamespace(servicebus.New(configuration, nil, nil), obj, log)
+	case *azurev1alpha1.Subnet:
+		err = DeleteSubnet(subnets.New(configuration), obj, log)
 	case *azurev1alpha1.TrafficManager:
 		log.Info("Traffic Manager!")
 	case *azurev1alpha1.VirtualNetwork:
 		err = DeleteVirtualNetwork(virtualnetworks.New(configuration), obj, log)
+	case *azurev1alpha1.VM:
+		err = DeleteVM(vms.New(configuration), obj, log)
 	default:
 		log.Info("nothing to do.")
 	}
@@ -554,6 +568,43 @@ func DeleteRedis(client *redis.Client, obj metav1.Object, log logr.Logger) error
 	})
 }
 
+func EnsureNIC(client *nics.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.NetworkInterface)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "nics", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("reconciling")
+		return client.Ensure(context.Background(), local)
+	})
+}
+
+func DeleteNIC(client *nics.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.NetworkInterface)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "nics", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("deleting")
+		found, err := client.Delete(context.Background(), local)
+		return !found, err
+	})
+}
+
 func EnsureServiceBusNamespace(client *servicebus.Client, obj metav1.Object, log logr.Logger) error {
 	local, ok := obj.(*azurev1alpha1.ServiceBusNamespace)
 	if !ok {
@@ -579,6 +630,43 @@ func DeleteServiceBusNamespace(client *servicebus.Client, obj metav1.Object, log
 	}
 
 	log = log.WithValues("type", "servicebus", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("deleting")
+		found, err := client.Delete(context.Background(), local)
+		return !found, err
+	})
+}
+
+func EnsureVM(client *vms.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.VM)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "vm", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("reconciling")
+		return client.Ensure(context.Background(), local)
+	})
+}
+
+func DeleteVM(client *vms.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.VM)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "vm", "name", local.Spec.Name)
 
 	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
 		return errors.Wrap(err, "failed to get client for subscription")

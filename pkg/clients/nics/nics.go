@@ -16,6 +16,8 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 const expand string = ""
@@ -50,7 +52,23 @@ func (c *Client) ForSubscription(subID string) error {
 }
 
 // Ensure creates or updates a virtual network in an idempotent manner and sets its provisioning state.
-func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.NetworkInterface) error {
+func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.NetworkInterface) (bool, error) {
+	remote, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name, expand)
+	found := !remote.IsHTTPStatus(http.StatusNotFound)
+	c.SetStatus(local, remote)
+	if err != nil && found {
+		return false, err
+	}
+
+	if found {
+		if c.Done(ctx, local) {
+			return true, nil
+		} else {
+			spew.Dump("not done")
+			return false, nil
+		}
+	}
+
 	spec := network.Interface{
 		Location: &local.Spec.Location,
 	}
@@ -70,7 +88,7 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.NetworkInterfa
 	}
 	if local.Spec.IPConfigurations != nil {
 		if len(*local.Spec.IPConfigurations) < 1 {
-			return errors.New("must have at least one IP configuration")
+			return false, errors.New("must have at least one IP configuration")
 		}
 		// Clear
 		ipConfigs = []network.InterfaceIPConfiguration{}
@@ -85,19 +103,10 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.NetworkInterfa
 		}
 	}
 
-	if _, err := c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec); err != nil {
-		return err
+	if _, err = c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec); err != nil {
+		return false, err
 	}
-
-	if _, err := c.SetStatus(ctx, local); err != nil {
-		return err
-	}
-
-	if !c.Done(ctx, local) {
-		return errors.New("not finished reconciling, requeueing")
-	}
-
-	return nil
+	return false, nil
 }
 
 // Get returns a virtual network.
@@ -114,24 +123,22 @@ func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.NetworkInterfa
 			return false, err
 		}
 	}
-	return c.SetStatus(ctx, local)
+	remote, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name, expand)
+	found := !remote.IsHTTPStatus(http.StatusNotFound)
+	c.SetStatus(local, remote)
+	if err != nil && remote.IsHTTPStatus(http.StatusNotFound) {
+		return false, nil
+	}
+	return found, err
 }
 
 // SetStatus sets the status subresource fields of the CRD reflecting the state of the object in Azure.
-func (c *Client) SetStatus(ctx context.Context, local *azurev1alpha1.NetworkInterface) (bool, error) {
-	remote, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name, expand)
-	// Care about 400 and 5xx, not 404.
-	found := !remote.IsHTTPStatus(http.StatusNotFound)
-	if err != nil && found {
-		if remote.IsHTTPStatus(http.StatusConflict) {
-			return found, nil
-		}
-		return found, err
-	}
-
+func (c *Client) SetStatus(local *azurev1alpha1.NetworkInterface, remote network.Interface) {
 	local.Status.ID = remote.ID
-	local.Status.ProvisioningState = remote.ProvisioningState
-	return found, nil
+	local.Status.ProvisioningState = nil
+	if remote.InterfacePropertiesFormat != nil {
+		local.Status.ProvisioningState = remote.ProvisioningState
+	}
 }
 
 // Done checks the current state of the CRD against the desired end state.

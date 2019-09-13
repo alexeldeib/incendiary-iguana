@@ -246,3 +246,23 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - vms
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - vms/status
+  verbs:
+  - get
+  - patch
+  - update

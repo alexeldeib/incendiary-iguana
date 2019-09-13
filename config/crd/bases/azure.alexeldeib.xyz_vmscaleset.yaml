@@ -4,22 +4,22 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   creationTimestamp: null
-  name: virtualnetworks.azure.alexeldeib.xyz
+  name: vmscaleset.azure.alexeldeib.xyz
 spec:
   group: azure.alexeldeib.xyz
   names:
     categories:
     - all
-    kind: VirtualNetwork
-    plural: virtualnetworks
+    kind: VMScaleSet
+    plural: vmscaleset
     shortNames:
-    - vnet
+    - vmss
   scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: VirtualNetwork is the Schema for the virtualnetworks API
+      description: VMScaleSet is the schema for the VMSS API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -34,51 +34,34 @@ spec:
         metadata:
           type: object
         spec:
-          description: VirtualNetworkSpec defines the desired state of VirtualNetwork
+          description: VMScaleSetSpec defines the desired state of VMScaleSet
           properties:
-            addresses:
-              description: Addresses is an array of CIDR blocks describing the available
-                addresses on this virtual network.
-              items:
-                type: string
-              type: array
             location:
-              description: Location of the Virtual Network (e.g., eastus2)
+              description: Location of the resource group (e.g., eastus2 or "West
+                US")
               type: string
             name:
-              description: Name is the name of the Azure Virtual Network.
-              type: string
-            resourceGroup:
-              description: ResourceGroup contains the Virtual Network.
+              description: Name is the name of the Azure resource group.
               type: string
             subscriptionId:
-              description: SubscriptionID contains the Resource group. Is a GUID.
+              description: SubscriptionID is the GUID of the subscription for this
+                resource group.
               type: string
           required:
-          - addresses
           - location
           - name
-          - resourceGroup
           - subscriptionId
           type: object
         status:
-          description: VirtualNetworkStatus defines the observed state of VirtualNetwork
+          description: VMScaleSetStatus defines the observed state of VMScaleSet
           properties:
             id:
               description: ID is the fully qualified Azure resource ID.
               type: string
-            observedGeneration:
-              description: ObservedGeneration is the iteration of user-provided spec
-                which has already been reconciled. This is used to decide when to
-                re-reconcile changes.
-              format: int64
-              type: integer
             provisioningState:
               description: ProvisioningState sync the provisioning status of the resource
                 from Azure.
               type: string
-          required:
-          - observedGeneration
           type: object
       type: object
   version: v1alpha1

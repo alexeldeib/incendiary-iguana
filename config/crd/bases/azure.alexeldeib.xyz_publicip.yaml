@@ -11,13 +11,11 @@ spec:
     categories:
     - all
     kind: PublicIP
-    listKind: PublicIPList
     plural: publicip
     shortNames:
     - ip
     - pip
     - ips
-    singular: publicip
   scope: Namespaced
   subresources:
     status: {}

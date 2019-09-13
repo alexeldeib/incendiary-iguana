@@ -28,6 +28,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/vms"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	// +kubebuilder:scaffold:imports
 )
@@ -234,6 +235,21 @@ func main() {
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ServiceBusNamespace")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.VMReconciler{
+		Client:   client,
+		Log:      ctrl.Log.WithName("controllers").WithName("VM"),
+		VMClient: vms.New(configuration, &client),
+		Reconciler: &controllers.AzureReconciler{
+			Client:   client,
+			Az:       vms.New(configuration, &client),
+			Log:      log,
+			Recorder: recorder,
+		},
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "VM")
 		os.Exit(1)
 	}
 

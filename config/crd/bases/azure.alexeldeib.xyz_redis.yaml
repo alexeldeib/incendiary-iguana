@@ -11,9 +11,7 @@ spec:
     categories:
     - all
     kind: Redis
-    listKind: RedisList
     plural: redis
-    singular: redis
   scope: Namespaced
   subresources:
     status: {}

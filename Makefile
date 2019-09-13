@@ -85,13 +85,6 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
-mockgen:
-ifeq (, $(shell which mockgen))
-	go get github.com/golang/mock/gomock
-	go install github.com/golang/mock/mockgen
-endif
-	go generate ./pkg/... ./controllers/... ./api/...
-
 deps:
 	bazel run gazelle -- update-repos -from_file go.mod
 
