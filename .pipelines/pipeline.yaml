@@ -35,9 +35,8 @@ variables:
 
 stages:
 - stage: 
-  displayName: 'Test stage'
   jobs:
-  - job: setup    
+  - job: build + test    
     pool:
       vmImage: 'ubuntu-latest'
     steps:
@@ -55,11 +54,14 @@ stages:
         which go1.13
         go1.13 download
         go1.13 version
-        go1.13 get golang.org/x/tools/cmd/goimports
+        alias go=go1.13
+        go get golang.org/x/tools/cmd/goimports
+        go get github.com/onsi/ginkgo/ginkgo
       displayName: 'Run a multi-line script'
       env:
         GO111MODULE: on
     - script: |
+        alias go=go1.13
         os=$(go env GOOS)
         arch=$(go env GOARCH)
         curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} | tar -xz -C /tmp/
@@ -72,6 +74,8 @@ stages:
       env:
         GO111MODULE: on
     - script: |
+        alias go=go1.13
+        go version
         make manager
         make test
       displayName: 'build + test manager'
