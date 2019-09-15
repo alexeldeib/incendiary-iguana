@@ -18,6 +18,7 @@ package controllers
 import (
 	"path/filepath"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -40,12 +41,12 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 var (
-	cfg *rest.Config
-	k8sClient client.Client
-	mgr ctrl.Manager
-	testEnv *envtest.Environment
+	cfg          *rest.Config
+	k8sClient    client.Client
+	mgr          ctrl.Manager
+	testEnv      *envtest.Environment
 	groupsClient *resourcegroups.Client
-	doneMgr = make(chan struct{})
+	doneMgr      = make(chan struct{})
 )
 
 func TestAPIs(t *testing.T) {
@@ -62,7 +63,7 @@ var _ = BeforeSuite(func(done Done) {
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
 		ControlPlaneStartTimeout: 60 * time.Second,
-		CRDDirectoryPaths: []string{filepath.Join("..", "config", "crd", "bases")},
+		CRDDirectoryPaths:        []string{filepath.Join("..", "config", "crd", "bases")},
 	}
 
 	var err error
