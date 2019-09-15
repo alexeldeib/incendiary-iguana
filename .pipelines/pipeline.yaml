@@ -1,9 +1,11 @@
 name: $(BuildDefinitionName)_$(SourceBranchName)_$(Date:yyyyMMdd)$(Rev:.r)
 
 trigger:
+  batch: false
   branches:
     include:
       - master
+      - ace/*
   tags:
     include:
       - v*
