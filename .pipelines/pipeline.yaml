@@ -51,10 +51,10 @@ stages:
         echo $GO111MODULE
         echo $(go env)
         echo $(go version)
-        go get golang.org/dl/go1.13.1
-        go1.13.1 download
-        go1.13.1 version
-        go1.13.1 env
+        go get golang.org/dl/go1.13
+        go1.13 download
+        go1.13 version
+        go1.13 env
       displayName: 'Run a multi-line script'
       env:
         GO111MODULE: on
