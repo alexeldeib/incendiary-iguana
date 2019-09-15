@@ -29,7 +29,7 @@ pr:
 variables:
   GOPATH: '$(system.defaultWorkingDirectory)/gopath'
   GOBIN:  '$(system.defaultWorkingDirectory)/$(build.repository.name)/bin'
-  GOROOT: '/usr/local/go1.13.1'
+  GOROOT: '/usr/local/go1.13'
 
 stages:
 - stage: 
@@ -39,10 +39,11 @@ stages:
     pool:
       vmImage: 'ubuntu-latest'
     variables:
-      GOPATH: '$(system.defaultWorkingDirectory)/gopath'
-      GOBIN:  '$(system.defaultWorkingDirectory)/$(build.repository.name)/bin'
-      GOROOT: '/usr/local/go1.13.1'
+      GOROOT: '/usr/local/go1.13'
     steps:
+    - script: |
+        echo '##vso[task.prependpath]$(GOROOT)/bin'
+      displayName: 'Set up the Go workspace'
     - script: echo Hello, world!
       env:
         GO111MODULE: on
@@ -52,6 +53,7 @@ stages:
         echo See https://aka.ms/yaml
         echo $GO111MODULE
         echo $(go env)
+        echo $(go version)
       displayName: 'Run a multi-line script'
       env:
         GO111MODULE: on
