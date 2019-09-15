@@ -38,15 +38,15 @@ stages:
     pool:
       vmImage: 'ubuntu-latest'
     steps:
-    - script: |
+    - displayName: 'Set up the Go workspace'
+      script: |
         echo '##vso[task.prependpath]$(GOBIN)'
         echo '##vso[task.prependpath]$(GOROOT)/bin'
-      displayName: 'Set up the Go workspace'
-    - script: echo Hello, world!
-      env:
+        echo '##vso[task.prependpath]/usr/local/kubebuilder/bin'
+    - displayName: 'Run a multi-line script'
+      env: &env
         GO111MODULE: on
-      displayName: 'Run a one-line script'
-    - script: |
+      script: |
         echo Add other tasks to build, test, and deploy your project.
         echo See https://aka.ms/yaml
         echo $GO111MODULE
@@ -58,6 +58,12 @@ stages:
         go1.13 download
         go1.13 version
         go1.13 env
-      displayName: 'Run a multi-line script'
-      env:
-        GO111MODULE: on
+    - displayName: 'Install Kubebuilder and Kustomize'
+      env: *env
+      script: |
+        os=$(go env GOOS)
+        arch=$(go env GOARCH)
+        curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} | tar -xz -C /tmp/
+        sudo mv /tmp/kubebuilder_2.0.0_${os}_${arch} /usr/local/kubebuilder
+        kubebuilder
+        kustomize
