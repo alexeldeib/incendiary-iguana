@@ -66,9 +66,8 @@ stages:
         # install kubebuilder, controller-gen, etcd, kubectl, and kube-apiserver
         os=$(go env GOOS)
         arch=$(go env GOARCH)
-        curl -sL https://go.kubebuilder.io/dl/latest/${os}/${arch} | tar -xz -C $(system.defaultWorkingDirectory)/$(build.repository.name)/kubebuilder
-        ls -al .
-        ls -al $(system.defaultWorkingDirectory)/$(build.repository.name)/kubebuilder
+        curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} | tar -xz -C /tmp/ || exit 1
+        sudo mv /tmp/kubebuilder_2.0.0_${os}_${arch} /usr/local/kubebuilder || exit 1
         go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0 || exit 1
         
         # validate
