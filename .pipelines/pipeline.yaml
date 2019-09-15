@@ -66,8 +66,8 @@ stages:
         arch=$(go env GOARCH)
         curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} | tar -xz -C /tmp/
         sudo mv /tmp/kubebuilder_2.0.0_${os}_${arch} /usr/local/kubebuilder
-        go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
-        go get sigs.k8s.io/kustomize/v3/cmd/kustomize@v3.1.1
+        go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0 || exit 1
+        go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master || exit 1
         kubebuilder || true
         kustomize || true
         controller-gen || true
