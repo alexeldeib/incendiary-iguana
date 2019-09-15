@@ -20,13 +20,13 @@ all: manifests manager
 # Run tests
 # alternatively ginkgo -v ./...
 test: # fmt vet
-ifeq (,$(DEBUG))
 	# n.b., should set $env:AZURE_AUTH_LOCATION first.
 	# $$env:AZURE_AUTH_LOCATION="$(pwd)/sp.json" => can't get this to work on windows
 	ginkgo -randomizeSuites -stream --slowSpecThreshold=180 -v -r ./cmd ./controllers
-else
-	go test -v $(GO_TEST_OPTIONS) -ginkgo.v
-endif
+
+ci-manager: manifests fmt vet # lint 
+	go1.13 build -gcflags '-N -l' -o manager.exe main.go
+
 # Build manager binary
 manager: manifests fmt vet # lint 
 	go build -gcflags '-N -l' -o manager.exe main.go
