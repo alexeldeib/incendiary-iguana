@@ -66,8 +66,8 @@ stages:
         # install kubebuilder, controller-gen, etcd, kubectl, and kube-apiserver
         os=$(go env GOOS)
         arch=$(go env GOARCH)
-        curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} | tar -xz -C /tmp/ || exit 1
-        sudo mv /tmp/kubebuilder_2.0.0_${os}_${arch} /usr/local/kubebuilder || exit 1
+        curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} | tar -xz -C /tmp/
+        sudo mv /tmp/kubebuilder_2.0.0_${os}_${arch} /usr/local/kubebuilder
         go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0 || exit 1
         
         # validate
@@ -95,7 +95,6 @@ stages:
         AZURE_CLIENT_ID: $(clientId)
         AZURE_CLIENT_SECRET: $(clientSecret)
         AZURE_TENANT_ID: $(tenantId)
-        KUBEBUILDER_ASSETS: $(system.defaultWorkingDirectory)/$(build.repository.name)/kubebuilder/bin
     - script: |
         go1.13 version
         make cli-test
