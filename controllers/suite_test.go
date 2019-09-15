@@ -115,4 +115,4 @@ var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
-)
+})
