@@ -88,8 +88,17 @@ stages:
         AZURE_TENANT_ID: $(tenantId)
     - script: |
         go1.13 version
-        make test
-      displayName: 'test cli + controllers'
+        make manager-test
+      displayName: 'test controllers'
+      env:
+        GO111MODULE: on
+        AZURE_CLIENT_ID: $(clientId)
+        AZURE_CLIENT_SECRET: $(clientSecret)
+        AZURE_TENANT_ID: $(tenantId)
+    - script: |
+        go1.13 version
+        make cli-test
+      displayName: 'test cli'
       env:
         GO111MODULE: on
         AZURE_CLIENT_ID: $(clientId)
