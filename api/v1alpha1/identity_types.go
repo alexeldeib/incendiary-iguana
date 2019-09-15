@@ -33,9 +33,9 @@ type IdentityStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=resourcegroups,shortName=rg,categories=all
+// +kubebuilder:resource:singular=identity,path=identities,shortName=msi,categories=all
 
-// Identity is the Schema for the resourcegroups API
+// Identity is the Schema for the managed identities API
 type Identity struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

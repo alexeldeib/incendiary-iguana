@@ -12,6 +12,7 @@ require (
 	github.com/go-logr/logr v0.1.0
 	github.com/gogo/protobuf v1.2.1 // indirect
 	github.com/google/go-cmp v0.3.0
+	github.com/google/uuid v1.1.1
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.6 // indirect
