@@ -48,6 +48,7 @@ stages:
       displayName: 'configure path'
     - script: |
         # download go1.13
+        set -e
         echo Add other tasks to build, test, and deploy your project.
         echo See https://aka.ms/yaml
         echo $(go version)
@@ -59,21 +60,21 @@ stages:
         alias go=go1.13
 
         # install goimports, ginkgo, kustomize
-        go get golang.org/x/tools/cmd/goimports || exit 1
-        go get github.com/onsi/ginkgo/ginkgo || exit 1
-        go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master || exit 1
+        go get golang.org/x/tools/cmd/goimports
+        go get github.com/onsi/ginkgo/ginkgo
+        go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master
 
         # install kubebuilder, controller-gen, etcd, kubectl, and kube-apiserver
         os=$(go env GOOS)
         arch=$(go env GOARCH)
         curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} | tar -xz -C /tmp/
         sudo mv /tmp/kubebuilder_2.0.0_${os}_${arch} /usr/local/kubebuilder
-        go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0 || exit 1
+        go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
         
         # validate
-        kubebuilder || true
-        kustomize || true
-        controller-gen || true
+        kubebuilder
+        kustomize
+        controller-gen
       displayName: 'setup + install dependencies'
       env:
         GO111MODULE: on
