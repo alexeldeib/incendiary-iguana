@@ -72,9 +72,9 @@ stages:
         go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
         
         # validate
-        kubebuilder || true
-        kustomize || true
-        controller-gen || true
+        which kubebuilder
+        which kustomize
+        which controller-gen
       displayName: 'setup + install dependencies'
       env:
         GO111MODULE: on
