@@ -78,12 +78,6 @@ stages:
       displayName: 'setup + install dependencies'
       env:
         GO111MODULE: on
-  - job: build 
-    dependsOn: setup
-    condition: succeeded()   
-    pool:
-      vmImage: $(image)
-    steps:
     - script: |
         alias go=go1.13
         go version
@@ -94,12 +88,6 @@ stages:
         AZURE_CLIENT_ID: $(clientId)
         AZURE_CLIENT_SECRET: $(clientSecret)
         AZURE_TENANT_ID: $(tenantId)
-  - job: test
-    dependsOn: setup
-    condition: succeeded()
-    pool:
-      vmImage: $(image)
-    steps:
     - script: |
         go version
         make test
