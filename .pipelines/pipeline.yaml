@@ -49,15 +49,13 @@ stages:
     - script: |
         echo Add other tasks to build, test, and deploy your project.
         echo See https://aka.ms/yaml
-        echo $GO111MODULE
-        echo $(go env)
         echo $(go version)
         go get golang.org/dl/go1.13
         ls $(system.defaultWorkingDirectory)/$(build.repository.name)/bin
         which go1.13
         go1.13 download
         go1.13 version
-        go1.13 env
+        go1.13 get golang.org/x/tools/cmd/goimports
       displayName: 'Run a multi-line script'
       env:
         GO111MODULE: on
