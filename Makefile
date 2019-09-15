@@ -22,10 +22,10 @@ all: manifests manager
 test: # fmt vet
 	# n.b., should set $env:AZURE_AUTH_LOCATION first.
 	# $$env:AZURE_AUTH_LOCATION="$(pwd)/sp.json" => can't get this to work on windows
-	ginkgo -randomizeSuites -stream --slowSpecThreshold=180 -v -r ./cmd ./controllers
+	ginkgo -randomizeSuites -stream --slowSpecThreshold=180 -v -r ./cmd ./controllers || exit 1
 
 ci-manager: manifests ci-fmt ci-vet # lint 
-	go1.13 build -gcflags '-N -l' -o manager.exe main.go
+	go1.13 build -gcflags '-N -l' -o manager.exe main.go || exit 1
 
 # Build manager binary
 manager: manifests fmt vet # lint 
@@ -59,12 +59,12 @@ vet:
 
 # Run go fmt against code
 ci-fmt:
-	go1.13 fmt ./...
-	goimports -w .
+	go1.13 fmt ./... || exit 1
+	goimports -w . || exit 1
 
 # Run go vet against code
 ci-vet:
-	go1.13 vet ./...
+	go1.13 vet ./... || exit 1
 
 # -j flag should be set to NUM_CPU_CORES - 1 or less, and be an integer. It defaults to 8 if removed.
 lint:

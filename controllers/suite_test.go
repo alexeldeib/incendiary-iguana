@@ -40,6 +40,7 @@ import (
 
 var cfg *rest.Config
 var k8sClient client.Client
+var k8sManager ctrl.Manager
 var testEnv *envtest.Environment
 var groupsClient *resourcegroups.Client
 
