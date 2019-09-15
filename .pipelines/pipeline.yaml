@@ -79,8 +79,7 @@ stages:
     - script: |
         go1.13 version
         make ci-manager
-        ls -al || true
-        tree -L 2 || true
+  
         make test
       displayName: 'build + test manager'
       env:

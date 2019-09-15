@@ -24,7 +24,7 @@ test: # fmt vet
 	# $$env:AZURE_AUTH_LOCATION="$(pwd)/sp.json" => can't get this to work on windows
 	ginkgo -randomizeSuites -stream --slowSpecThreshold=180 -v -r ./cmd ./controllers
 
-ci-manager: manifests fmt vet # lint 
+ci-manager: manifests ci-fmt ci-vet # lint 
 	go1.13 build -gcflags '-N -l' -o manager.exe main.go
 
 # Build manager binary
@@ -56,6 +56,15 @@ fmt:
 # Run go vet against code
 vet:
 	go vet ./...
+
+# Run go fmt against code
+ci-fmt:
+	go1.13 fmt ./...
+	goimports -w .
+
+# Run go vet against code
+ci-vet:
+	go1.13 vet ./...
 
 # -j flag should be set to NUM_CPU_CORES - 1 or less, and be an integer. It defaults to 8 if removed.
 lint:
