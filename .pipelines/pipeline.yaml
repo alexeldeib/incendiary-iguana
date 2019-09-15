@@ -44,7 +44,7 @@ stages:
         echo '##vso[task.prependpath]$(GOROOT)/bin'
         echo '##vso[task.prependpath]/usr/local/kubebuilder/bin'
     - displayName: 'Run a multi-line script'
-      env: &env
+      env:
         GO111MODULE: on
       script: |
         echo Add other tasks to build, test, and deploy your project.
@@ -59,7 +59,8 @@ stages:
         go1.13 version
         go1.13 env
     - displayName: 'Install Kubebuilder and Kustomize'
-      env: *env
+      env:
+        GO111MODULE: on
       script: |
         os=$(go env GOOS)
         arch=$(go env GOARCH)
