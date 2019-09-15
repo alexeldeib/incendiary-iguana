@@ -39,6 +39,7 @@ stages:
       vmImage: 'ubuntu-latest'
     steps:
     - script: |
+        echo '##vso[task.prependpath]$(GOBIN)'
         echo '##vso[task.prependpath]$(GOROOT)/bin'
       displayName: 'Set up the Go workspace'
     - script: echo Hello, world!
@@ -52,8 +53,6 @@ stages:
         echo $(go env)
         echo $(go version)
         go get golang.org/dl/go1.13
-        ls $(pwd)/src
-        ls $(pwd)/bin
         ls $(system.defaultWorkingDirectory)/$(build.repository.name)/bin
         which go1.13
         go1.13 download
