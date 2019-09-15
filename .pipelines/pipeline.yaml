@@ -15,16 +15,16 @@ trigger:
       - docs/*
       - OWNERS
 
-pr:
-  autoCancel: true
-  branches:
-    include:
-      - master
-  paths:
-    exclude:
-      - README.md
-      - docs/*
-      - OWNERS
+# pr:
+#   autoCancel: true
+#   branches:
+#     include:
+#       - master
+#   paths:
+#     exclude:
+#       - README.md
+#       - docs/*
+#       - OWNERS
 
 variables:
 - name: GOBIN
