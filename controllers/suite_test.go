@@ -74,18 +74,20 @@ var _ = BeforeSuite(func(done Done) {
 	k8sManager, err = ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
 	})
+	By("waiting for manager")
 	Expect(err).ToNot(HaveOccurred())
 
 	k8sClient = k8sManager.GetClient()
 	Expect(k8sClient).ToNot(BeNil())
 
 	// +kubebuilder:scaffold:scheme
-
+	By("initializing azure config")
 	configuration := config.New(ctrl.Log.WithName("configuration"))
 	groupsClient = resourcegroups.New(configuration)
 	log := ctrl.Log.WithName("testmanager")
 	recorder := k8sManager.GetEventRecorderFor("testmanager")
 
+	By("creating reconciler")
 	err = (&ResourceGroupReconciler{
 		Client:       k8sClient,
 		Log:          log.WithName("ResourceGroup"),
@@ -97,6 +99,8 @@ var _ = BeforeSuite(func(done Done) {
 			Recorder: recorder,
 		},
 	}).SetupWithManager(k8sManager)
+
+	By("checking reconciler err")
 	Expect(err).ToNot(HaveOccurred())
 
 	close(done)
