@@ -89,15 +89,6 @@ stages:
         AZURE_TENANT_ID: $(tenantId)
     - script: |
         go1.13 version
-        make cli-test
-      displayName: 'test cli'
-      env:
-        GO111MODULE: on
-        AZURE_CLIENT_ID: $(clientId)
-        AZURE_CLIENT_SECRET: $(clientSecret)
-        AZURE_TENANT_ID: $(tenantId)
-    - script: |
-        go1.13 version
         make manager-test
       displayName: 'test controllers'
       continueOnError: true
@@ -108,4 +99,13 @@ stages:
         AZURE_TENANT_ID: $(tenantId)
         KUBEBUILDER_CONTROLPLANE_START_TIMEOUT: 60s
         KUBEBUILDER_ATTACH_CONTROL_PLANE_OUTPUT: "true"
-      
+    - script: |
+        go1.13 version
+        make cli-test
+      displayName: 'test cli'
+      env:
+        GO111MODULE: on
+        AZURE_CLIENT_ID: $(clientId)
+        AZURE_CLIENT_SECRET: $(clientSecret)
+        AZURE_TENANT_ID: $(tenantId)
+    
