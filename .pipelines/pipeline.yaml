@@ -32,13 +32,15 @@ variables:
 - name: GOROOT
   value: '/usr/local/go1.12'
 - group: test-crd-sp
+- name: image
+  value: 'ubuntu-latest'
 
 stages:
 - stage: 
   jobs:
-  - job: incendiary_iguana    
+  - job: setup    
     pool:
-      vmImage: 'ubuntu-latest'
+      vmImage: $(image)
     steps:
     - script: |
         echo '##vso[task.prependpath]$(GOBIN)'
@@ -76,12 +78,28 @@ stages:
       displayName: 'setup + install dependencies'
       env:
         GO111MODULE: on
+  - job: build 
+    condition: succeeded('setup')   
+    pool:
+      vmImage: $(image)
+    steps:
     - script: |
         alias go=go1.13
         go version
         make manager
-        ls -al || true
-        tree -L 2 || true
+      displayName: 'build + test manager'
+      env:
+        GO111MODULE: on
+        AZURE_CLIENT_ID: $(clientId)
+        AZURE_CLIENT_SECRET: $(clientSecret)
+        AZURE_TENANT_ID: $(tenantId)
+  - job: test
+    condition: succeeded('setup')
+    pool:
+      vmImage: $(image)
+    steps:
+    - script: |
+        go version
         make test
       displayName: 'build + test manager'
       env:
@@ -89,4 +107,3 @@ stages:
         AZURE_CLIENT_ID: $(clientId)
         AZURE_CLIENT_SECRET: $(clientSecret)
         AZURE_TENANT_ID: $(tenantId)
-      
