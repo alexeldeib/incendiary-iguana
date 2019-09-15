@@ -27,8 +27,11 @@ pr:
       - OWNERS
 
 variables:
-  GOBIN:  '$(system.defaultWorkingDirectory)/$(build.repository.name)/bin'
-  GOROOT: '/usr/local/go1.12'
+- name: GOBIN
+  value: '$(system.defaultWorkingDirectory)/$(build.repository.name)/bin'
+- name: GOROOT
+  value: '/usr/local/go1.12'
+- group: test-crd-sp
 
 stages:
 - stage: 
@@ -70,4 +73,13 @@ stages:
       displayName: 'Install Kubebuilder and Kustomize'
       env:
         GO111MODULE: on
+    - script: |
+        make manager
+        make test
+      displayName: 'build + test manager'
+      env:
+        GO111MODULE: on
+        AZURE_CLIENT_ID: $(clientId)
+        AZURE_CLIENT_SECRET: $(clientSecret)
+        AZURE_TENANT_ID: $(tenantId)
       
