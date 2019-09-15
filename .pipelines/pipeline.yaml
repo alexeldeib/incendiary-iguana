@@ -80,7 +80,7 @@ stages:
         GO111MODULE: on
     - script: |
         alias go=go1.13
-        go version
+        go1.13 version
         make manager
       displayName: 'build manager'
       env:
@@ -89,7 +89,7 @@ stages:
         AZURE_CLIENT_SECRET: $(clientSecret)
         AZURE_TENANT_ID: $(tenantId)
     - script: |
-        go version
+        go1.13 version
         make test
       displayName: 'test cli + controllers'
       env:
