@@ -89,7 +89,7 @@ var _ = BeforeSuite(func(done Done) {
 	recorder := mgr.GetEventRecorderFor("testmanager")
 
 	By("creating reconciler")
-	err = (&ResourceGroupReconciler{
+	Expect((&ResourceGroupReconciler{
 		Client:       k8sClient,
 		Log:          log.WithName("ResourceGroup"),
 		GroupsClient: resourcegroups.New(configuration),
@@ -99,7 +99,7 @@ var _ = BeforeSuite(func(done Done) {
 			Log:      log,
 			Recorder: recorder,
 		},
-	}).SetupWithManager(mgr).NotTo(HaveOccurred())
+	}).SetupWithManager(mgr)).NotTo(HaveOccurred())
 
 	By("starting the manager")
 	go func() {
