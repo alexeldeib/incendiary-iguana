@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: LoadBalancer
+    listKind: LoadBalancerList
     plural: loadbalancers
     shortNames:
     - lb
+    singular: loadbalancer
   scope: Namespaced
   subresources:
     status: {}

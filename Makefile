@@ -34,6 +34,9 @@ ci-manager: manifests ci-fmt ci-vet # lint
 manager: manifests fmt vet # lint 
 	go build -gcflags '-N -l' -o manager.exe main.go
 
+cli: manifests fmt vet # lint 
+	go build -gcflags '-N -l' -o tinker.exe ./cmd
+
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet
 	go run ./main.go
@@ -91,7 +94,7 @@ docker-push:
 # download controller-gen if necessary
 controller-gen:
 ifeq (, $(shell which controller-gen))
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
+	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.1
 CONTROLLER_GEN=controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)

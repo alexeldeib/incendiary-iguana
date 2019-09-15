@@ -10,16 +10,18 @@ spec:
   names:
     categories:
     - all
-    kind: Identity
+    kind: ResourceGroup
+    listKind: ResourceGroupList
     plural: resourcegroups
     shortNames:
     - rg
+    singular: resourcegroup
   scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: Identity is the Schema for the resourcegroups API
+      description: ResourceGroup is the Schema for the resourcegroups API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -34,29 +36,26 @@ spec:
         metadata:
           type: object
         spec:
-          description: IdentitySpec defines the desired state of Identity
+          description: ResourceGroupSpec defines the desired state of ResourceGroup
           properties:
             location:
-              description: Location of resource group (e.g., eastus2)
+              description: Location of the resource group (e.g., eastus2 or "West
+                US")
               type: string
             name:
-              description: Name is the name of the resource.
-              type: string
-            resourceGroup:
-              description: ResourceGroup contain the resource..
+              description: Name is the name of the Azure resource group.
               type: string
             subscriptionId:
-              description: SubscriptionID is the GUID of the Azure subscription containing
-                the resoruce group.
+              description: SubscriptionID is the GUID of the subscription for this
+                resource group.
               type: string
           required:
           - location
           - name
-          - resourceGroup
           - subscriptionId
           type: object
         status:
-          description: IdentityStatus defines the observed state of Identity
+          description: ResourceGroupStatus defines the observed state of ResourceGroup
           properties:
             id:
               description: ID is the fully qualified Azure resource ID.

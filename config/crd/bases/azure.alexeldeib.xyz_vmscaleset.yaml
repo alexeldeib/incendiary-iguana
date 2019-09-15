@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: VMScaleSet
+    listKind: VMScaleSetList
     plural: vmscaleset
     shortNames:
     - vmss
+    singular: vmscaleset
   scope: Namespaced
   subresources:
     status: {}
