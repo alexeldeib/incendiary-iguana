@@ -31,22 +31,24 @@ variables:
   GOPATH: '$(system.defaultWorkingDirectory)/gopath'
   GOBIN:  '$(system.defaultWorkingDirectory)/$(build.repository.name)/bin'
   GOROOT: '/usr/local/go1.13'
-
-jobs:
-- job: setup
-  variables:
-    GOPATH: '$(system.defaultWorkingDirectory)/gopath'
-    GOBIN:  '$(system.defaultWorkingDirectory)/$(build.repository.name)/bin'
-    GOROOT: '/usr/local/go1.13'
-  steps:
-  - script: echo Hello, world!
-    env:
-      GO111MODULE: on
-    displayName: 'Run a one-line script'
-  - script: |
-      echo Add other tasks to build, test, and deploy your project.
-      echo See https://aka.ms/yaml
-      echo $GO111MODULE
-    displayName: 'Run a multi-line script'
-    env:
-      GO111MODULE: on
+stages:
+- stage: 
+  displayName: 'Test stage'
+  jobs:
+  - job: setup
+    variables:
+      GOPATH: '$(system.defaultWorkingDirectory)/gopath'
+      GOBIN:  '$(system.defaultWorkingDirectory)/$(build.repository.name)/bin'
+      GOROOT: '/usr/local/go1.13'
+    steps:
+    - script: echo Hello, world!
+      env:
+        GO111MODULE: on
+      displayName: 'Run a one-line script'
+    - script: |
+        echo Add other tasks to build, test, and deploy your project.
+        echo See https://aka.ms/yaml
+        echo $GO111MODULE
+      displayName: 'Run a multi-line script'
+      env:
+        GO111MODULE: on
