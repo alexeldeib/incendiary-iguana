@@ -7,7 +7,6 @@ BAZEL_OPTIONS ?= --local_cpu_resources HOST_CPUS-2  --local_ram_resources HOST_R
 BAZEL_TEST_OPTIONS ?= $(BAZEL_OPTIONS) --test_output all --test_summary detailed 
 DEBUG_TEST_OPTIONS = $(BAZEL_TEST_OPTIONS) --sandbox_debug
 GO_TEST_OPTIONS ?= ./api/... ./controllers/... -coverprofile cover.out
-KUBEBUILDER_CONTROLPLANE_START_TIMEOUT ?= $(KUBEBUILDER_CONTROLPLANE_START_TIMEOUT)
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -25,7 +24,7 @@ cli-test: # fmt vet
 	ginkgo -randomizeSuites -stream --slowSpecThreshold=180 -v -r ./cmd  || exit 1
 
 manager-test:
-	KUBEBUILDER_CONTROLPLANE_START_TIMEOUT=$(KUBEBUILDER_CONTROLPLANE_START_TIMEOUT) ginkgo -randomizeSuites -stream --slowSpecThreshold=180 -v -r ./controllers || exit 1
+	ginkgo -randomizeSuites -stream --slowSpecThreshold=180 -v -r ./controllers || exit 1
 
 ci-manager: manifests ci-fmt ci-vet # lint 
 	go1.13 build -gcflags '-N -l' -o manager.exe main.go || exit 1
