@@ -79,6 +79,12 @@ var _ = BeforeSuite(func(done Done) {
 	By("setting up a new manager")
 	mgr, err = ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
+		MetricsBindAddress: "0",
+		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
+			syncPeriod := 1 * time.Second
+			opts.Resync = &syncPeriod
+			return cache.New(config, opts)
+		},
 	})
 	By("waiting for manager")
 	Expect(err).ToNot(HaveOccurred())
