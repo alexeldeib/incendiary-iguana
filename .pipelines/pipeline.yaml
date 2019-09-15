@@ -29,7 +29,7 @@ pr:
 variables:
   GOPATH: '$(system.defaultWorkingDirectory)/gopath'
   GOBIN:  '$(system.defaultWorkingDirectory)/$(build.repository.name)/bin'
-  GOROOT: '/usr/local/go1.13'
+  GOROOT: '/usr/local/go1.12'
 
 stages:
 - stage: 
@@ -39,7 +39,7 @@ stages:
     pool:
       vmImage: 'ubuntu-latest'
     variables:
-      GOROOT: '/usr/local/go1.13'
+      GOROOT: '/usr/local/go1.12'
     steps:
     - script: |
         echo '##vso[task.prependpath]$(GOROOT)/bin'
