@@ -36,7 +36,7 @@ variables:
 stages:
 - stage: 
   jobs:
-  - job: build and test    
+  - job: incendiary_iguana    
     pool:
       vmImage: 'ubuntu-latest'
     steps:
