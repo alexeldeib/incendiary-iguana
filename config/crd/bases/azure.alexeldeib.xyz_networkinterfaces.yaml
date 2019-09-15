@@ -8,9 +8,14 @@ metadata:
 spec:
   group: azure.alexeldeib.xyz
   names:
+    categories:
+    - all
     kind: NetworkInterface
     plural: networkinterfaces
-  scope: ""
+    shortNames:
+    - nic
+    - nics
+  scope: Namespaced
   subresources:
     status: {}
   validation:
@@ -135,12 +140,9 @@ spec:
               description: ProvisioningState sync the provisioning status of the resource
                 from Azure.
               type: string
-          required:
-          - id
-          - observedGeneration
-          - provisioningState
           type: object
       type: object
+  version: v1alpha1
   versions:
   - name: v1alpha1
     served: true

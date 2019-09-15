@@ -8,18 +8,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ResourceGroupSpec defines the desired state of ResourceGroup
-type ResourceGroupSpec struct {
-	// Name is the name of the Azure resource group.
+// IdentitySpec defines the desired state of Identity
+type IdentitySpec struct {
+	// Name is the name of the resource.
 	Name string `json:"name"`
-	// Location of the resource group (e.g., eastus2 or "West US")
+	// Location of resource group (e.g., eastus2)
 	Location string `json:"location"`
-	// SubscriptionID is the GUID of the subscription for this resource group.
+	// ResourceGroup contain the resource..
+	ResourceGroup string `json:"resourceGroup"`
+	// SubscriptionID is the GUID of the Azure subscription containing the resoruce group.
 	SubscriptionID string `json:"subscriptionId"`
 }
 
-// ResourceGroupStatus defines the observed state of ResourceGroup
-type ResourceGroupStatus struct {
+// IdentityStatus defines the observed state of Identity
+type IdentityStatus struct {
 	// ProvisioningState sync the provisioning status of the resource from Azure.
 	ProvisioningState *string `json:"provisioningState,omitempty"`
 	// ID is the fully qualified Azure resource ID.
@@ -33,24 +35,24 @@ type ResourceGroupStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=resourcegroups,shortName=rg,categories=all
 
-// ResourceGroup is the Schema for the resourcegroups API
-type ResourceGroup struct {
+// Identity is the Schema for the resourcegroups API
+type Identity struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ResourceGroupSpec   `json:"spec,omitempty"`
-	Status ResourceGroupStatus `json:"status,omitempty"`
+	Spec   IdentitySpec   `json:"spec,omitempty"`
+	Status IdentityStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// ResourceGroupList contains a list of ResourceGroup
-type ResourceGroupList struct {
+// IdentityList contains a list of Identity
+type IdentityList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ResourceGroup `json:"items"`
+	Items           []Identity `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&ResourceGroup{}, &ResourceGroupList{})
+	SchemeBuilder.Register(&Identity{}, &IdentityList{})
 }

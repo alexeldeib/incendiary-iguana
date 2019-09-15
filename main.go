@@ -6,7 +6,9 @@ package main
 
 import (
 	"flag"
+	"math/rand"
 	"os"
+	"time"
 
 	"github.com/sanity-io/litter"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -45,6 +47,7 @@ func init() {
 }
 
 func main() {
+	rand.Seed(time.Now().Unix())
 	var metricsAddr string
 	var enableLeaderElection bool
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
@@ -102,7 +105,12 @@ func main() {
 		Log:          log.WithName("Keyvault"),
 		Config:       configuration,
 		VaultsClient: keyvaults.New(configuration),
-		Scheme:       scheme,
+		Reconciler: &controllers.AzureSyncReconciler{
+			Client:   client,
+			Az:       keyvaults.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Keyvault")
 		os.Exit(1)
@@ -192,6 +200,12 @@ func main() {
 		Client:     client,
 		Log:        ctrl.Log.WithName("controllers").WithName("NetworkInterface"),
 		NICsClient: nics.New(configuration),
+		Reconciler: &controllers.AzureReconciler{
+			Client:   client,
+			Az:       nics.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NetworkInterface")
 		os.Exit(1)
@@ -241,10 +255,10 @@ func main() {
 	if err = (&controllers.VMReconciler{
 		Client:   client,
 		Log:      ctrl.Log.WithName("controllers").WithName("VM"),
-		VMClient: vms.New(configuration, &client),
+		VMClient: vms.New(configuration),
 		Reconciler: &controllers.AzureReconciler{
 			Client:   client,
-			Az:       vms.New(configuration, &client),
+			Az:       vms.New(configuration),
 			Log:      log,
 			Recorder: recorder,
 		},

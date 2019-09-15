@@ -9,11 +9,13 @@ import (
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2019-04-01/network"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
+	"github.com/alexeldeib/incendiary-iguana/pkg/specs/vnetspec"
 )
 
 const expand string = ""
@@ -49,27 +51,36 @@ func (c *Client) ForSubscription(subID string) error {
 
 // Ensure creates or updates a virtual network in an idempotent manner and sets its provisioning state.
 func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.VirtualNetwork) (bool, error) {
-	spec := network.VirtualNetwork{
-		Location: &local.Spec.Location,
-		VirtualNetworkPropertiesFormat: &network.VirtualNetworkPropertiesFormat{
-			AddressSpace: &network.AddressSpace{
-				AddressPrefixes: &local.Spec.Addresses,
-			},
-		},
-	}
-
-	if future, err := c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec); err != nil {
-		if resp := future.Response(); resp != nil && resp.StatusCode != http.StatusConflict {
-			return false, err
-		}
-		return false, nil
-	}
-
-	if _, err := c.SetStatus(ctx, local); err != nil {
+	remote, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name, expand)
+	found := !remote.IsHTTPStatus(http.StatusNotFound)
+	c.SetStatus(local, remote)
+	if err != nil && found {
 		return false, err
 	}
 
-	return c.Done(ctx, local), nil
+	var spec *vnetspec.Spec
+	if found {
+		spec = vnetspec.NewFromExisting(&remote)
+		if c.Done(ctx, local) {
+			if !spec.NeedsUpdate(local) {
+				return true, nil
+			}
+		} else {
+			spew.Dump("not done")
+			return false, nil
+		}
+	} else {
+		spec = vnetspec.New()
+	}
+
+	spec.Name(&local.Spec.Name)
+	spec.Location(&local.Spec.Location)
+	spec.AddressSpaces(local.Spec.Addresses) // TODO(ace): declarative vs patch for merging over existing fields?
+
+	if _, err = c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec.Build()); err != nil {
+		return false, err
+	}
+	return false, nil
 }
 
 // Get returns a virtual network.
@@ -87,30 +98,21 @@ func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.VirtualNetwork
 			return false, err
 		}
 	}
-	return c.SetStatus(ctx, local)
+	remote, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name, expand)
+	found := !remote.IsHTTPStatus(http.StatusNotFound)
+	c.SetStatus(local, remote)
+	if err != nil && remote.IsHTTPStatus(http.StatusNotFound) {
+		return false, nil
+	}
+	return found, err
 }
 
 // SetStatus sets the status subresource fields of the CRD reflecting the state of the object in Azure.
-func (c *Client) SetStatus(ctx context.Context, local *azurev1alpha1.VirtualNetwork) (bool, error) {
-	remote, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name, expand)
-
-	// Care about 400 and 5xx, not 404/409.
-	found := !remote.IsHTTPStatus(http.StatusNotFound)
-
-	if err != nil && found {
-		if remote.IsHTTPStatus(http.StatusConflict) {
-			return found, nil
-		}
-		return found, err
-	}
-
+func (c *Client) SetStatus(local *azurev1alpha1.VirtualNetwork, remote network.VirtualNetwork) {
 	local.Status.ID = remote.ID
-
 	if remote.VirtualNetworkPropertiesFormat != nil {
 		local.Status.ProvisioningState = remote.VirtualNetworkPropertiesFormat.ProvisioningState
 	}
-
-	return found, nil
 }
 
 // Done checks the current state of the CRD against the desired end state.

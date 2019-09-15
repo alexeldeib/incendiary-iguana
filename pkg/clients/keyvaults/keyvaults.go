@@ -6,6 +6,7 @@ package keyvaults
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2018-02-14/keyvault"
@@ -13,6 +14,7 @@ import (
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	uuid "github.com/satori/go.uuid"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type Client struct {
@@ -78,8 +80,8 @@ func (c *Client) Get(ctx context.Context, vault *azurev1alpha1.Keyvault) (keyvau
 }
 
 // Delete handles deletion of a keyvault and returns its provisioning state.
-func (c *Client) Delete(ctx context.Context, vault *azurev1alpha1.Keyvault) error {
-	response, err := c.internal.Delete(ctx, vault.Spec.ResourceGroup, vault.Spec.Name)
+func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.Keyvault) error {
+	response, err := c.internal.Delete(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 	if err != nil && !response.IsHTTPStatus(http.StatusNotFound) {
 		return err
 	}
@@ -90,4 +92,28 @@ func (c *Client) SetStatus(ctx context.Context, vault *azurev1alpha1.Keyvault) e
 	remote, err := c.internal.Get(ctx, vault.Spec.ResourceGroup, vault.Spec.Name)
 	vault.Status.ID = remote.ID
 	return err
+}
+
+func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {
+	local, ok := obj.(*azurev1alpha1.Keyvault)
+	if !ok {
+		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+	}
+	return c.ForSubscription(local.Spec.SubscriptionID)
+}
+
+func (c *Client) TryEnsure(ctx context.Context, obj runtime.Object) error {
+	local, ok := obj.(*azurev1alpha1.Keyvault)
+	if !ok {
+		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+	}
+	return c.Ensure(ctx, local)
+}
+
+func (c *Client) TryDelete(ctx context.Context, obj runtime.Object) error {
+	local, ok := obj.(*azurev1alpha1.Keyvault)
+	if !ok {
+		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+	}
+	return c.Delete(ctx, local)
 }

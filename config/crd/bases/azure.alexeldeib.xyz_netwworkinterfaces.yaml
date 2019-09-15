@@ -140,8 +140,6 @@ spec:
               description: ProvisioningState sync the provisioning status of the resource
                 from Azure.
               type: string
-          required:
-          - observedGeneration
           type: object
       type: object
   version: v1alpha1

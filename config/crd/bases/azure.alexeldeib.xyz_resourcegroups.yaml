@@ -10,7 +10,7 @@ spec:
   names:
     categories:
     - all
-    kind: ResourceGroup
+    kind: Identity
     plural: resourcegroups
     shortNames:
     - rg
@@ -19,7 +19,7 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: ResourceGroup is the Schema for the resourcegroups API
+      description: Identity is the Schema for the resourcegroups API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -34,26 +34,29 @@ spec:
         metadata:
           type: object
         spec:
-          description: ResourceGroupSpec defines the desired state of ResourceGroup
+          description: IdentitySpec defines the desired state of Identity
           properties:
             location:
-              description: Location of the resource group (e.g., eastus2 or "West
-                US")
+              description: Location of resource group (e.g., eastus2)
               type: string
             name:
-              description: Name is the name of the Azure resource group.
+              description: Name is the name of the resource.
+              type: string
+            resourceGroup:
+              description: ResourceGroup contain the resource..
               type: string
             subscriptionId:
-              description: SubscriptionID is the GUID of the subscription for this
-                resource group.
+              description: SubscriptionID is the GUID of the Azure subscription containing
+                the resoruce group.
               type: string
           required:
           - location
           - name
+          - resourceGroup
           - subscriptionId
           type: object
         status:
-          description: ResourceGroupStatus defines the observed state of ResourceGroup
+          description: IdentityStatus defines the observed state of Identity
           properties:
             id:
               description: ID is the fully qualified Azure resource ID.

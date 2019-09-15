@@ -9,6 +9,26 @@ rules:
 - apiGroups:
   - azure.alexeldeib.xyz
   resources:
+  - identities
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - identities/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
   - keyvaults
   verbs:
   - create

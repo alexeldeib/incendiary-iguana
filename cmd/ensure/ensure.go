@@ -26,6 +26,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/identities"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/nics"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/redis"
@@ -44,7 +46,7 @@ type token struct{}
 
 const (
 	limit           = 1
-	backoffSteps    = 5
+	backoffSteps    = 30
 	backoffFactor   = 1.25
 	backoffInterval = 5 * time.Second
 	backoffJitter   = 1
@@ -233,6 +235,10 @@ func Ensure(obj metav1.Object, configuration *config.Config, errs chan error) {
 	switch obj.(type) {
 	case *appsv1.Deployment:
 		log.Info("Deployment!")
+	case *azurev1alpha1.Identity:
+		err = EnsureIdentity(identities.New(configuration), obj, log)
+	case *azurev1alpha1.Keyvault:
+		err = EnsureKeyvault(keyvaults.New(configuration), obj, log)
 	case *azurev1alpha1.NetworkInterface:
 		err = EnsureNIC(nics.New(configuration), obj, log)
 	case *azurev1alpha1.Redis:
@@ -268,6 +274,10 @@ func Delete(obj metav1.Object, configuration *config.Config, errs chan error) {
 	switch obj.(type) {
 	case *appsv1.Deployment:
 		log.Info("Deployment!")
+	case *azurev1alpha1.Identity:
+		err = DeleteIdentity(identities.New(configuration), obj, log)
+	case *azurev1alpha1.Keyvault:
+		err = DeleteKeyvault(keyvaults.New(configuration), obj, log)
 	case *azurev1alpha1.NetworkInterface:
 		err = DeleteNIC(nics.New(configuration), obj, log)
 	case *azurev1alpha1.Redis:
@@ -310,7 +320,11 @@ func EnsureResourceGroup(client *resourcegroups.Client, obj metav1.Object, log l
 
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")
-		return client.Ensure(context.Background(), local)
+		done, err = client.Ensure(context.Background(), local)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return done, nil
 	})
 }
 
@@ -347,7 +361,11 @@ func EnsureVirtualNetwork(client *virtualnetworks.Client, obj metav1.Object, log
 
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")
-		return client.Ensure(context.Background(), local)
+		done, err = client.Ensure(context.Background(), local)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return done, nil
 	})
 }
 
@@ -434,7 +452,11 @@ func EnsureSubnet(client *subnets.Client, obj metav1.Object, log logr.Logger) er
 
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")
-		return client.Ensure(context.Background(), local)
+		done, err = client.Ensure(context.Background(), local)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return done, nil
 	})
 }
 
@@ -471,7 +493,11 @@ func EnsurePublicIP(client *publicips.Client, obj metav1.Object, log logr.Logger
 
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")
-		return client.Ensure(context.Background(), local)
+		done, err = client.Ensure(context.Background(), local)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return done, nil
 	})
 }
 
@@ -508,7 +534,11 @@ func EnsureSecurityGroup(client *securitygroups.Client, obj metav1.Object, log l
 
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")
-		return client.Ensure(context.Background(), local)
+		done, err = client.Ensure(context.Background(), local)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return done, nil
 	})
 }
 
@@ -545,7 +575,11 @@ func EnsureRedis(client *redis.Client, obj metav1.Object, log logr.Logger) error
 
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")
-		return client.Ensure(context.Background(), local)
+		done, err = client.Ensure(context.Background(), local)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return done, nil
 	})
 }
 
@@ -582,7 +616,11 @@ func EnsureNIC(client *nics.Client, obj metav1.Object, log logr.Logger) error {
 
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")
-		return client.Ensure(context.Background(), local)
+		done, err = client.Ensure(context.Background(), local)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return done, nil
 	})
 }
 
@@ -619,7 +657,11 @@ func EnsureServiceBusNamespace(client *servicebus.Client, obj metav1.Object, log
 
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")
-		return client.Ensure(context.Background(), local)
+		done, err = client.Ensure(context.Background(), local)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return done, nil
 	})
 }
 
@@ -656,7 +698,11 @@ func EnsureVM(client *vms.Client, obj metav1.Object, log logr.Logger) error {
 
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")
-		return client.Ensure(context.Background(), local)
+		done, err = client.Ensure(context.Background(), local)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return done, nil
 	})
 }
 
@@ -676,6 +722,88 @@ func DeleteVM(client *vms.Client, obj metav1.Object, log logr.Logger) error {
 		log.Info("deleting")
 		found, err := client.Delete(context.Background(), local)
 		return !found, err
+	})
+}
+
+func EnsureKeyvault(client *keyvaults.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.Keyvault)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "keyvault", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("reconciling")
+		err = client.Ensure(context.Background(), local)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return err == nil, nil
+	})
+}
+
+func DeleteKeyvault(client *keyvaults.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.Keyvault)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "keyvault", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("deleting")
+		err = client.Delete(context.Background(), local)
+		return err == nil, err
+	})
+}
+
+func EnsureIdentity(client *identities.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.Identity)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "identity", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("reconciling")
+		err = client.Ensure(context.Background(), local)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return err == nil, err
+	})
+}
+
+func DeleteIdentity(client *identities.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.Identity)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "identity", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("deleting")
+		err = client.Delete(context.Background(), local)
+		return err == nil, err
 	})
 }
 

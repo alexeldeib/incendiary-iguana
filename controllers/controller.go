@@ -32,10 +32,24 @@ type AzureClient interface {
 	TryDelete(context.Context, runtime.Object) (bool, error)
 }
 
+type AzureSyncClient interface {
+	TryAuthorize(context.Context, runtime.Object) error
+	TryEnsure(context.Context, runtime.Object) error
+	TryDelete(context.Context, runtime.Object) error
+}
+
 // AzureReconciler is a generic reconciler for Azure objects
 type AzureReconciler struct {
 	client.Client
 	Az       AzureClient
+	Log      logr.Logger
+	Recorder record.EventRecorder
+}
+
+// AzureSyncReconciler is a generic reconciler for Azure resources which run fast, synchronous operations.
+type AzureSyncReconciler struct {
+	client.Client
+	Az       AzureSyncClient
 	Log      logr.Logger
 	Recorder record.EventRecorder
 }
@@ -92,4 +106,52 @@ func (r *AzureReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctr
 		r.Recorder.Event(local, "Normal", "Reconciled", "Successfully reconciled")
 	}
 	return ctrl.Result{Requeue: !done}, err
+}
+
+func (r *AzureSyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctrl.Result, error) {
+	ctx := context.Background()
+	kind := strings.ToLower(local.GetObjectKind().GroupVersionKind().Kind)
+	log := r.Log.WithValues("type", kind, "namespacedName", fmt.Sprintf("%s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name))
+
+	if err := r.Get(ctx, req.NamespacedName, local); err != nil {
+		log.Info("error during fetch from api server")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	if err := r.Az.TryAuthorize(ctx, local); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	res, convertErr := meta.Accessor(local)
+	if convertErr != nil {
+		return ctrl.Result{}, convertErr
+	}
+
+	if res.GetDeletionTimestamp().IsZero() {
+		if !HasFinalizer(res, finalizerName) {
+			AddFinalizer(res, finalizerName)
+			r.Recorder.Event(local, "Normal", "Added", "Object finalizer is added")
+			return ctrl.Result{}, r.Update(ctx, local)
+		}
+	} else {
+		if HasFinalizer(res, finalizerName) {
+			final := multierror.Append(r.Az.TryDelete(ctx, local), r.Status().Update(ctx, local))
+			if err := final.ErrorOrNil(); err != nil {
+				r.Recorder.Event(local, "Warning", "FailedDelete", fmt.Sprintf("Failed to delete resource: %s", err.Error()))
+				return ctrl.Result{}, err
+			}
+			r.Recorder.Event(local, "Normal", "Deleted", "Successfully deleted")
+			RemoveFinalizer(res, finalizerName)
+			return ctrl.Result{}, r.Update(ctx, local)
+		}
+		return ctrl.Result{}, nil
+	}
+
+	final := multierror.Append(r.Az.TryEnsure(ctx, local), r.Status().Update(ctx, local))
+	err := final.ErrorOrNil()
+	if err != nil {
+		r.Recorder.Event(local, "Warning", "FailedReconcile", fmt.Sprintf("Failed to reconcile resource: %s", err.Error()))
+	}
+	r.Recorder.Event(local, "Normal", "Reconciled", "Successfully reconciled")
+	return ctrl.Result{}, err
 }

@@ -13,6 +13,8 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/cmd/ensure"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/identities"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/redis"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
@@ -29,6 +31,7 @@ const testdata = "./testdata/group.yaml"
 var (
 	log               = ctrl.Log.WithName("test")
 	configuration     = config.New(log)
+	identitiesClient  *identities.Client
 	publicIPClient    *publicips.Client
 	redisClient       *redis.Client
 	rgClient          *resourcegroups.Client
@@ -36,6 +39,7 @@ var (
 	sgClient          *securitygroups.Client
 	subnetClient      *subnets.Client
 	tmClient          *trafficmanagers.Client
+	vaultClient       *keyvaults.Client
 	vnetClient        *virtualnetworks.Client
 )
 
@@ -48,6 +52,7 @@ var _ = BeforeSuite(func() {
 	if err := configuration.DetectAuthorizer(); err != nil {
 		Fail(err.Error())
 	}
+	identitiesClient = identities.New(configuration)
 	publicIPClient = publicips.New(configuration)
 	rgClient = resourcegroups.New(configuration)
 	redisClient = redis.New(configuration, nil, nil)
@@ -55,6 +60,7 @@ var _ = BeforeSuite(func() {
 	sgClient = securitygroups.New(configuration)
 	subnetClient = subnets.New(configuration)
 	tmClient = trafficmanagers.New(configuration)
+	vaultClient = keyvaults.New(configuration)
 	vnetClient = virtualnetworks.New(configuration)
 })
 
@@ -251,6 +257,31 @@ var _ = Describe("reconcile", func() {
 		},
 	}
 
+	vault := &azurev1alpha1.Keyvault{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-crd",
+		},
+		Spec: azurev1alpha1.KeyvaultSpec{
+			Name:           "ace-kv-test",
+			SubscriptionID: "bd6a4e14-55fa-4160-a6a7-b718d7a2c95c",
+			ResourceGroup:  "test-crd",
+			Location:       "westus2",
+			TenantID:       "33e01921-4d64-4f8c-a055-5bdaffd5e33d",
+		},
+	}
+
+	identity := &azurev1alpha1.Identity{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-crd",
+		},
+		Spec: azurev1alpha1.IdentitySpec{
+			Name:           "ace-msi",
+			SubscriptionID: "bd6a4e14-55fa-4160-a6a7-b718d7a2c95c",
+			ResourceGroup:  "test-crd",
+			Location:       "westus2",
+		},
+	}
+
 	_ = vnet
 	_ = subnet
 	_ = sg
@@ -258,6 +289,8 @@ var _ = Describe("reconcile", func() {
 	_ = tm
 	_ = cache
 	_ = sbnamespace
+	_ = vault
+	_ = identity
 
 	Context("ensure", func() {
 		It("should create rg successfully", func() {
@@ -265,10 +298,10 @@ var _ = Describe("reconcile", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		// It("should create vnet successfully", func() {
-		// 	err := ensure.EnsureVirtualNetwork(vnetClient, vnet, log)
-		// 	Expect(err).ToNot(HaveOccurred())
-		// })
+		It("should create vnet successfully", func() {
+			err := ensure.EnsureVirtualNetwork(vnetClient, vnet, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
 		// It("should create subnet successfully", func() {
 		// 	err := ensure.EnsureSubnet(subnetClient, subnet, log)
@@ -290,25 +323,45 @@ var _ = Describe("reconcile", func() {
 		// 	Expect(err).ToNot(HaveOccurred())
 		// })
 
-		It("should create redis successfully", func() {
-			err := ensure.EnsureRedis(redisClient, cache, log)
+		It("should create vault successfully", func() {
+			err := ensure.EnsureKeyvault(vaultClient, vault, log)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should create servicebus namespace successfully", func() {
-			err := ensure.EnsureServiceBusNamespace(sbnamespaceClient, sbnamespace, log)
+		It("should create managed identity successfully", func() {
+			err := ensure.EnsureIdentity(identitiesClient, identity, log)
 			Expect(err).ToNot(HaveOccurred())
 		})
+
+		// It("should create redis successfully", func() {
+		// 	err := ensure.EnsureRedis(redisClient, cache, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
+
+		// It("should create servicebus namespace successfully", func() {
+		// 	err := ensure.EnsureServiceBusNamespace(sbnamespaceClient, sbnamespace, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 	})
 
 	Context("delete", func() {
-		It("should delete servicebus namespace successfully", func() {
-			err := ensure.DeleteServiceBusNamespace(sbnamespaceClient, sbnamespace, log)
+		// It("should delete servicebus namespace successfully", func() {
+		// 	err := ensure.DeleteServiceBusNamespace(sbnamespaceClient, sbnamespace, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
+
+		// It("should delete redis successfully", func() {
+		// 	err := ensure.DeleteRedis(redisClient, cache, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
+
+		It("should delete managed identity successfully", func() {
+			err := ensure.DeleteIdentity(identitiesClient, identity, log)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should delete redis successfully", func() {
-			err := ensure.DeleteRedis(redisClient, cache, log)
+		It("should delete vault successfully", func() {
+			err := ensure.DeleteKeyvault(vaultClient, vault, log)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -332,15 +385,14 @@ var _ = Describe("reconcile", func() {
 		// 	Expect(err).ToNot(HaveOccurred())
 		// })
 
-		// It("should delete vnet successfully", func() {
-		// 	err := ensure.DeleteVirtualNetwork(vnetClient, vnet, log)
-		// 	Expect(err).ToNot(HaveOccurred())
-		// })
+		It("should delete vnet successfully", func() {
+			err := ensure.DeleteVirtualNetwork(vnetClient, vnet, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-		// It("should delete rg successfully", func() {
-		// 	err := ensure.DeleteResourceGroup(rgClient, rg, log)
-		// 	Expect(err).ToNot(HaveOccurred())
-		// })
-
+		It("should delete rg successfully", func() {
+			err := ensure.DeleteResourceGroup(rgClient, rg, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 	})
 })

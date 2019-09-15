@@ -49,9 +49,8 @@ spec:
             name:
               description: Name is the name of the security group.
               type: string
-            primaryNics:
-              description: PrimaryNICs is the Azure ID of the primary NIC on this
-                machine.
+            primaryNic:
+              description: PrimaryNIC is the Azure ID of the primary NIC on this machine.
               type: string
             resourceGroup:
               description: ResourceGroup containsecurity group.
@@ -72,13 +71,18 @@ spec:
             subscriptionId:
               description: SubscriptionID contains the Resource group. Is a GUID.
               type: string
+            zone:
+              description: Zone indicates the Availability Zone for this machine.
+                Usually either "1", "2", or "3".
+              type: string
           required:
           - diskSize
           - location
           - name
-          - primaryNics
+          - primaryNic
           - resourceGroup
           - sku
+          - sshPublicKey
           - subscriptionId
           type: object
         status:
@@ -90,6 +94,10 @@ spec:
             provisioningState:
               description: ProvisioningState sync the provisioning status of the resource
                 from Azure.
+              type: string
+            zone:
+              description: Zone indicates the Availability Zone for this machine.
+                Usually either "1", "2", or "3".
               type: string
           type: object
       type: object

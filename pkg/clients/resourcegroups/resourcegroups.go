@@ -17,6 +17,7 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
+	"github.com/alexeldeib/incendiary-iguana/pkg/specs/rgspec"
 )
 
 type Client struct {
@@ -59,21 +60,24 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.ResourceGroup)
 		return false, err
 	}
 
+	var spec *rgspec.Spec
 	if found {
+		spec = rgspec.NewFromExisting(&remote)
 		if c.Done(ctx, local) {
-			if !c.NeedsUpdate(local, remote) {
+			if !spec.NeedsUpdate(local) {
 				return true, nil
 			}
 		} else {
 			return false, nil
 		}
+	} else {
+		spec = rgspec.New()
 	}
 
-	spec := resources.Group{
-		Location: &local.Spec.Location,
-	}
+	spec.Name(&local.Spec.Name)
+	spec.Location(&local.Spec.Location)
 
-	if _, err := c.internal.CreateOrUpdate(ctx, local.Spec.Name, spec); err != nil {
+	if _, err := c.internal.CreateOrUpdate(ctx, local.Spec.Name, spec.Build()); err != nil {
 		return false, err
 	}
 
@@ -81,7 +85,7 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.ResourceGroup)
 }
 
 // Get returns a resource group.
-func (c *Client) Get(ctx context.Context, local *azurev1alpha1.ResourceGroup, remote resources.Group) (resources.Group, error) {
+func (c *Client) Get(ctx context.Context, local *azurev1alpha1.ResourceGroup) (resources.Group, error) {
 	return c.internal.Get(ctx, local.Spec.Name)
 }
 

@@ -6,24 +6,28 @@ package vms
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
+	"math/rand"
 	"net/http"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2019-07-01/compute"
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/disks"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/zones"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
+	"github.com/alexeldeib/incendiary-iguana/pkg/specs/vmspec"
 )
 
 type Client struct {
 	factory  factoryFunc
 	internal compute.VirtualMachinesClient
 	config   *config.Config
+	disks    *disks.Client
+	zones    *zones.Client
 }
 
 type factoryFunc func(subscriptionID string) compute.VirtualMachinesClient
@@ -40,6 +44,8 @@ func NewWithFactory(configuration *config.Config, factory factoryFunc) *Client {
 	return &Client{
 		config:  configuration,
 		factory: factory,
+		disks:   disks.New(configuration),
+		zones:   zones.New(configuration),
 	}
 }
 
@@ -58,63 +64,40 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.VM) (bool, err
 		return false, err
 	}
 
+	var spec *vmspec.Spec
 	if found {
+		spec = vmspec.NewFromExisting(&remote)
 		if c.Done(ctx, local) {
-			return true, nil
+			if !spec.NeedsUpdate(local) {
+				return true, nil
+			}
+		} else {
+			spew.Dump("not done")
+			return false, nil
 		}
-		spew.Dump("not done")
+	} else {
+		spec = vmspec.New()
 	}
 
-	randomPassword, err := GenerateRandomString(32)
-	if err != nil {
-		return false, errors.Wrapf(err, "failed to generate random string")
+	if local.Spec.Zone != nil {
+		spec.Zone(*local.Spec.Zone)
+	} else if vmspec.Zone(spec) == nil {
+		choices, err := c.zones.Get(ctx, local)
+		if err != nil {
+			return false, err
+		}
+		if len(choices) > 0 {
+			spec.Zone(choices[rand.Intn(len(choices))])
+		}
 	}
 
-	spec := compute.VirtualMachine{
-		Location: &local.Spec.Location,
-		VirtualMachineProperties: &compute.VirtualMachineProperties{
-			HardwareProfile: &compute.HardwareProfile{
-				VMSize: compute.VirtualMachineSizeTypes(local.Spec.SKU),
-			},
-			StorageProfile: &compute.StorageProfile{
-				ImageReference: &compute.ImageReference{
-					Publisher: to.StringPtr("Canonical"),
-					Offer:     to.StringPtr("UbuntuServer"),
-					Sku:       to.StringPtr("18.04-LTS"),
-					Version:   to.StringPtr("latest"),
-				},
-			},
-			NetworkProfile: &compute.NetworkProfile{
-				NetworkInterfaces: &[]compute.NetworkInterfaceReference{
-					{
-						ID: &local.Spec.PrimaryNIC,
-						NetworkInterfaceReferenceProperties: &compute.NetworkInterfaceReferenceProperties{
-							Primary: to.BoolPtr(true),
-						},
-					},
-				},
-			},
-			OsProfile: &compute.OSProfile{
-				ComputerName:  to.StringPtr(local.Spec.Name),
-				AdminUsername: to.StringPtr("azureuser"),
-				AdminPassword: to.StringPtr(randomPassword),
-				LinuxConfiguration: &compute.LinuxConfiguration{
-					DisablePasswordAuthentication: to.BoolPtr(false),
-					SSH: &compute.SSHConfiguration{
-						PublicKeys: &[]compute.SSHPublicKey{
-							{
-								Path:    to.StringPtr("/home/azureuser/.ssh/authorized_keys"),
-								KeyData: to.StringPtr("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDHu5TlJfCSJ0KkimVWoUbnvFZvhaN7sQYXYTtAqmftY4B8J8PboDHvGWN8ImFCEd1Zld8MIGwE5b43cHfoymd4rmHcNiuGnFpFGyULOqom/eRBy7FEaGCPAq/T/SAJ3G4843wryUOQcr71zoJbbgICYgtxhAINzHp+e/b7t6FujJ9D0G9aYxsEmgcsOGIW6TVVwQ3fbB1BPpWxVATbGnipklve7UbSeu1E0Kci4pzR3ffh6Ihauvni26e3ImgFlzHXLDwD/vZjyFL2/VyXjaF9EKLYu0DMhYbAolgqKRKmYXPq7w/1TPsIiY8DqVuNmwkouO5sR8oecxXVXpNF7BT7 aleldeib@redmond@MININT-LU1PG6L"),
-							},
-						},
-					},
-				},
-			},
-		},
-		Zones: &[]string{"2"},
-	}
-	spew.Dump(spec)
-	if _, err = c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec); err != nil {
+	spec.Name(local.Spec.Name)
+	spec.Location(local.Spec.Location)
+	spec.Hostname(local.Spec.Name)
+	spec.SKU(local.Spec.SKU)
+	spec.NICs(local.Spec.PrimaryNIC, local.Spec.SecondaryNICs)
+
+	if _, err = c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec.Build()); err != nil {
 		spew.Dump(err)
 		return false, err
 	}
@@ -140,7 +123,7 @@ func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.VM) (bool, err
 	found := !remote.IsHTTPStatus(http.StatusNotFound)
 	c.SetStatus(local, remote)
 	if err != nil && remote.IsHTTPStatus(http.StatusNotFound) {
-		return false, nil
+		return c.disks.Delete(ctx, local)
 	}
 	return found, err
 }
@@ -152,6 +135,10 @@ func (c *Client) SetStatus(local *azurev1alpha1.VM, remote compute.VirtualMachin
 	local.Status.ProvisioningState = nil
 	if remote.VirtualMachineProperties != nil {
 		local.Status.ProvisioningState = remote.ProvisioningState
+	}
+	local.Status.Zone = nil
+	if remote.Zones != nil && len(*remote.Zones) > 0 {
+		local.Status.Zone = &((*remote.Zones)[0])
 	}
 }
 
@@ -165,34 +152,30 @@ func (c *Client) InProgress(ctx context.Context, local *azurev1alpha1.VM) bool {
 	return local.Status.ProvisioningState != nil
 }
 
-// func (c *Client) NeedsUpdate(local *azurev1alpha1.VM, remote compute.VirtualMachine) bool {
-// 	if remote.Sku != nil {
-// 		if !strings.EqualFold(string(local.Spec.SKU.Name), string(remote.Sku.Name)) {
-// 			spew.Dump("changed sku name")
-// 			return true
-// 		}
-// 		if !strings.EqualFold(string(local.Spec.SKU.Tier), string(remote.Sku.Tier)) {
-// 			spew.Dump("changed sku tier")
-// 			return true
-// 		}
-// 		if remote.Sku.Capacity != nil && local.Spec.SKU.Capacity != *remote.Sku.Capacity {
-// 			spew.Dump("changed capacity")
-// 			return true
-// 		}
-// 	}
-// 	if remote.Location != nil && strings.EqualFold(*remote.Location, local.Spec.Location) {
-// 		spew.Dump("changed Location")
-// 		return true
-// 	}
-// 	return false
-// }
+func (c *Client) NeedsUpdate(local *azurev1alpha1.VM, remote compute.VirtualMachine) bool {
+	if !strings.EqualFold(string(local.Spec.SKU), string(remote.VirtualMachineProperties.HardwareProfile.VMSize)) {
+		spew.Dump("changed sku name")
+		return true
+	}
+	if !strings.EqualFold(*remote.Location, local.Spec.Location) {
+		spew.Dump("changed Location")
+		return true
+	}
+	return false
+}
 
 func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {
 	local, ok := obj.(*azurev1alpha1.VM)
 	if !ok {
 		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
 	}
-	return c.ForSubscription(local.Spec.SubscriptionID)
+	if err := c.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return err
+	}
+	if err := c.disks.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return err
+	}
+	return c.zones.ForSubscription(local.Spec.SubscriptionID)
 }
 
 func (c *Client) TryEnsure(ctx context.Context, obj runtime.Object) (bool, error) {
@@ -209,15 +192,4 @@ func (c *Client) TryDelete(ctx context.Context, obj runtime.Object) (bool, error
 		return false, errors.New("attempted to parse wrong object type during reconciliation (dev error)")
 	}
 	return c.Delete(ctx, local)
-}
-
-// https://github.com/kubernetes-sigs/cluster-api-provider-azure/blob/60b7c6058550ae694935fb03103460a2efa4e332/pkg/cloud/azure/services/virtualmachines/virtualmachines.go#L215
-func GenerateRandomString(n int) (string, error) {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	// Note that err == nil only if we read len(b) bytes.
-	if err != nil {
-		return "", err
-	}
-	return base64.URLEncoding.EncodeToString(b), err
 }

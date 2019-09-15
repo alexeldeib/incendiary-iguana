@@ -5,11 +5,7 @@ Copyright 2019 Alexander Eldeib.
 package controllers
 
 import (
-	"context"
-	"errors"
-
 	"github.com/go-logr/logr"
-	multierror "github.com/hashicorp/go-multierror"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -20,6 +16,7 @@ import (
 
 // NetworkInterfaceReconciler reconciles a NetworkInterface object
 type NetworkInterfaceReconciler struct {
+	Reconciler *AzureReconciler
 	client.Client
 	Log        logr.Logger
 	NICsClient *nics.Client
@@ -28,55 +25,12 @@ type NetworkInterfaceReconciler struct {
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=networkinterfaces,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=networkinterfaces/status,verbs=get;update;patch
 
+// Reconcile reconciles a user request for a virtual machine against Azure.
 func (r *NetworkInterfaceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
-	log := r.Log.WithValues("networkinterface", req.NamespacedName)
-
-	var local azurev1alpha1.NetworkInterface
-
-	if err := r.Get(ctx, req.NamespacedName, &local); err != nil {
-		log.Info("error during fetch from api server")
-		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
-
-	// Authorize
-	if err := r.NICsClient.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	if local.DeletionTimestamp.IsZero() {
-		if !HasFinalizer(&local, finalizerName) {
-			AddFinalizer(&local, finalizerName)
-			if err := r.Update(ctx, &local); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-	} else {
-		if HasFinalizer(&local, finalizerName) {
-			found, err := r.NICsClient.Delete(ctx, &local)
-			result := multierror.Append(err, r.Status().Update(ctx, &local))
-			if err = result.ErrorOrNil(); err != nil {
-				return ctrl.Result{}, err
-			}
-			if !found {
-				RemoveFinalizer(&local, finalizerName)
-				if err := r.Update(ctx, &local); err != nil {
-					return ctrl.Result{}, err
-				}
-				return ctrl.Result{}, nil
-			}
-			return ctrl.Result{}, errors.New("requeuing, deletion unfinished")
-		}
-		return ctrl.Result{}, nil
-	}
-
-	var final *multierror.Error
-	final = multierror.Append(final, r.NICsClient.Ensure(ctx, &local))
-	final = multierror.Append(final, r.Status().Update(ctx, &local))
-
-	return ctrl.Result{}, final.ErrorOrNil()
+	return r.Reconciler.Reconcile(req, &azurev1alpha1.NetworkInterface{})
 }
 
+// SetupWithManager sets up this controller for use.
 func (r *NetworkInterfaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&azurev1alpha1.NetworkInterface{}).

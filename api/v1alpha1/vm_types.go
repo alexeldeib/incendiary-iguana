@@ -14,6 +14,8 @@ type VMSpec struct {
 	Name string `json:"name"`
 	// Location osecurity group (e.g., eastus2)
 	Location string `json:"location"`
+	// Zone indicates the Availability Zone for this machine. Usually either "1", "2", or "3".
+	Zone *string `json:"zone,omitempty"`
 	// ResourceGroup containsecurity group.
 	ResourceGroup string `json:"resourceGroup"`
 	// SubscriptionID contains the Resource group. Is a GUID.
@@ -21,9 +23,9 @@ type VMSpec struct {
 	// SKU is the sku of the machine in Azure, e.g. Standard_E4_v3
 	SKU string `json:"sku"`
 	// CustomData is the cloud-init/script user data for the machine.
-	Customdata *string `json:"customData,omitempty"`
+	CustomData *string `json:"customData,omitempty"`
 	// SSHPublicKey is the key of the of the provisioned user on the VM.
-	SSHPublicKey *string `json:"sshPublicKey,omitempty"`
+	SSHPublicKey string `json:"sshPublicKey"`
 	// PrimaryNIC is the Azure ID of the primary NIC on this machine.
 	PrimaryNIC string `json:"primaryNic"`
 	// SecondaryNICs is the list of IDs of non-primary NICs on this machine. +optional
@@ -38,6 +40,8 @@ type VMStatus struct {
 	ProvisioningState *string `json:"provisioningState,omitempty"`
 	// ID is the fully qualified Azure resource ID.
 	ID *string `json:"id,omitempty"`
+	// Zone indicates the Availability Zone for this machine. Usually either "1", "2", or "3".
+	Zone *string `json:"zone,omitempty"`
 }
 
 // +kubebuilder:object:root=true
