@@ -27,7 +27,6 @@ pr:
       - OWNERS
 
 variables:
-  GOPATH: '$(system.defaultWorkingDirectory)/gopath'
   GOBIN:  '$(system.defaultWorkingDirectory)/$(build.repository.name)/bin'
   GOROOT: '/usr/local/go1.12'
 
@@ -53,6 +52,10 @@ stages:
         echo $(go env)
         echo $(go version)
         go get golang.org/dl/go1.13
+        ls $(pwd)/src
+        ls $(pwd)/bin
+        ls $(system.defaultWorkingDirectory)/$(build.repository.name)/bin
+        which go1.13
         go1.13 download
         go1.13 version
         go1.13 env
