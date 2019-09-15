@@ -78,6 +78,8 @@ stages:
         alias go=go1.13
         go version
         make manager
+        ls -al || true
+        tree -L 2 || true
         make test
       displayName: 'build + test manager'
       env:
