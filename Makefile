@@ -23,7 +23,7 @@ test: # fmt vet
 ifeq (,$(DEBUG))
 	# n.b., should set $env:AZURE_AUTH_LOCATION first.
 	# $$env:AZURE_AUTH_LOCATION="$(pwd)/sp.json" => can't get this to work on windows
-	ginkgo -randomizeSuites -stream --slowSpecThreshold=180 -v -r .\cmd
+	ginkgo -randomizeSuites -stream --slowSpecThreshold=180 -v -r ./cmd
 else
 	go test -v $(GO_TEST_OPTIONS) -ginkgo.v
 endif
