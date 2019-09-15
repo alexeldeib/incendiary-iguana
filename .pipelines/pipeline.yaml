@@ -58,13 +58,14 @@ stages:
       displayName: 'Run a multi-line script'
       env:
         GO111MODULE: on
-    - displayName: 'Install Kubebuilder and Kustomize'
-      env:
-        GO111MODULE: on
-      script: |
+    - script: |
         os=$(go env GOOS)
         arch=$(go env GOARCH)
         curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} | tar -xz -C /tmp/
         sudo mv /tmp/kubebuilder_2.0.0_${os}_${arch} /usr/local/kubebuilder
         kubebuilder
         kustomize
+      displayName: 'Install Kubebuilder and Kustomize'
+      env:
+        GO111MODULE: on
+      
