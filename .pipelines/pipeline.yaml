@@ -38,8 +38,6 @@ stages:
   - job: setup    
     pool:
       vmImage: 'ubuntu-latest'
-    variables:
-      GOROOT: '/usr/local/go1.12'
     steps:
     - script: |
         echo '##vso[task.prependpath]$(GOROOT)/bin'
@@ -54,6 +52,10 @@ stages:
         echo $GO111MODULE
         echo $(go env)
         echo $(go version)
+        go get golang.org/dl/go1.13.1
+        go1.13.1 download
+        go1.13.1 version
+        go1.13.1 env
       displayName: 'Run a multi-line script'
       env:
         GO111MODULE: on
