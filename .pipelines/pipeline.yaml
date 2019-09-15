@@ -79,7 +79,8 @@ stages:
       env:
         GO111MODULE: on
   - job: build 
-    condition: succeeded('setup')   
+    dependsOn: setup
+    condition: succeeded()   
     pool:
       vmImage: $(image)
     steps:
@@ -87,21 +88,22 @@ stages:
         alias go=go1.13
         go version
         make manager
-      displayName: 'build + test manager'
+      displayName: 'build manager'
       env:
         GO111MODULE: on
         AZURE_CLIENT_ID: $(clientId)
         AZURE_CLIENT_SECRET: $(clientSecret)
         AZURE_TENANT_ID: $(tenantId)
   - job: test
-    condition: succeeded('setup')
+    dependsOn: setup
+    condition: succeeded()
     pool:
       vmImage: $(image)
     steps:
     - script: |
         go version
         make test
-      displayName: 'build + test manager'
+      displayName: 'test cli + controllers'
       env:
         GO111MODULE: on
         AZURE_CLIENT_ID: $(clientId)
