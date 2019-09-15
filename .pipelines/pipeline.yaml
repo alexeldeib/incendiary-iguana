@@ -65,8 +65,8 @@ stages:
         # install kubebuilder, controller-gen, etcd, kubectl, and kube-apiserver
         os=$(go env GOOS)
         arch=$(go env GOARCH)
-        curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} | tar -xz -C /tmp/
-        sudo mv /tmp/kubebuilder_2.0.0_${os}_${arch} /usr/local/kubebuilder
+        curl -sL https://go.kubebuilder.io/dl/master/${os}/${arch} | tar -xz -C /tmp/
+        sudo mv /tmp/kubebuilder_master_${os}_${arch} /usr/local/kubebuilder
         go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0 || exit 1
         
         # validate
@@ -79,7 +79,6 @@ stages:
     - script: |
         go1.13 version
         make ci-manager
-        make test
       displayName: 'build manager'
       env:
         GO111MODULE: on
