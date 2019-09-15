@@ -98,7 +98,7 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 
 	close(done)
-}, 60)
+}, 120)
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
