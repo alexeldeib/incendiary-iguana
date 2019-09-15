@@ -64,9 +64,9 @@ stages:
         curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} | tar -xz -C /tmp/
         sudo mv /tmp/kubebuilder_2.0.0_${os}_${arch} /usr/local/kubebuilder
         go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
-        kubebuilder
-        kustomize
-        controller-gen
+        kubebuilder || true
+        kustomize || true
+        controller-gen || true
       displayName: 'Install Kubebuilder and Kustomize'
       env:
         GO111MODULE: on
