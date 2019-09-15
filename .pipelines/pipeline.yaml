@@ -41,6 +41,7 @@ stages:
       vmImage: 'ubuntu-latest'
     steps:
     - script: |
+        mkdir -p $(GOBIN)
         echo '##vso[task.prependpath]$(GOBIN)'
         echo '##vso[task.prependpath]$(GOROOT)/bin'
         echo '##vso[task.prependpath]/usr/local/kubebuilder/bin'
