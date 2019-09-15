@@ -39,11 +39,14 @@ import (
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
-var cfg *rest.Config
-var k8sClient client.Client
-var k8sManager ctrl.Manager
-var testEnv *envtest.Environment
-var groupsClient *resourcegroups.Client
+var (
+	cfg *rest.Config
+	k8sClient client.Client
+	mgr ctrl.Manager
+	testEnv *envtest.Environment
+	groupsClient *resourcegroups.Client
+	doneMgr = make(chan struct{})
+)
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -71,21 +74,19 @@ var _ = BeforeSuite(func(done Done) {
 	err = azurev1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	k8sManager, err = ctrl.NewManager(cfg, ctrl.Options{
+	By("setting up a new manager")
+	mgr, err = ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
 	})
 	By("waiting for manager")
 	Expect(err).ToNot(HaveOccurred())
-
-	k8sClient = k8sManager.GetClient()
-	Expect(k8sClient).ToNot(BeNil())
 
 	// +kubebuilder:scaffold:scheme
 	By("initializing azure config")
 	configuration := config.New(ctrl.Log.WithName("configuration"))
 	groupsClient = resourcegroups.New(configuration)
 	log := ctrl.Log.WithName("testmanager")
-	recorder := k8sManager.GetEventRecorderFor("testmanager")
+	recorder := mgr.GetEventRecorderFor("testmanager")
 
 	By("creating reconciler")
 	err = (&ResourceGroupReconciler{
@@ -98,16 +99,20 @@ var _ = BeforeSuite(func(done Done) {
 			Log:      log,
 			Recorder: recorder,
 		},
-	}).SetupWithManager(k8sManager)
+	}).SetupWithManager(mgr).NotTo(HaveOccurred())
 
-	By("checking reconciler err")
-	Expect(err).ToNot(HaveOccurred())
+	By("starting the manager")
+	go func() {
+		Expect(mgr.Start(doneMgr)).ToNot(HaveOccurred())
+	}()
 
 	close(done)
 }, 120)
 
 var _ = AfterSuite(func() {
+	By("closing the manager")
+	close(doneMgr)
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
-})
+)
