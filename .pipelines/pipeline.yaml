@@ -29,7 +29,7 @@ pr:
 variables:
   GOPATH: '$(system.defaultWorkingDirectory)/gopath'
   GOBIN:  '$(system.defaultWorkingDirectory)/$(build.repository.name)/bin'
-  GOROOT: '/usr/local/go1.13'
+  GOROOT: '/usr/local/go1.13.1'
 
 stages:
 - stage: 
@@ -41,7 +41,7 @@ stages:
     variables:
       GOPATH: '$(system.defaultWorkingDirectory)/gopath'
       GOBIN:  '$(system.defaultWorkingDirectory)/$(build.repository.name)/bin'
-      GOROOT: '/usr/local/go1.13'
+      GOROOT: '/usr/local/go1.13.1'
     steps:
     - script: echo Hello, world!
       env:
@@ -51,7 +51,7 @@ stages:
         echo Add other tasks to build, test, and deploy your project.
         echo See https://aka.ms/yaml
         echo $GO111MODULE
-        echo $(go version)
+        echo $(go env)
       displayName: 'Run a multi-line script'
       env:
         GO111MODULE: on
