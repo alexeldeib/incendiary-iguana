@@ -32,6 +32,7 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -73,27 +74,27 @@ var _ = BeforeSuite(func(done Done) {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	k8sClient, err = k8sManager.GetClient()
-	Expect(err).ToNot(HaveOccurred())
+	k8sClient = k8sManager.GetClient()
 	Expect(k8sClient).ToNot(BeNil())
 
 	// +kubebuilder:scaffold:scheme
 
 	configuration := config.New(ctrl.Log.WithName("configuration"))
-	settings, err := configuration.Settings()
 	groupsClient = resourcegroups.New(configuration)
+	log := ctrl.Log.WithName("testmanager")
+	recorder := k8sManager.GetEventRecorderFor("testmanager")
 
-	err = (&controllers.ResourceGroupReconciler{
-		Client:       client,
+	err = (&ResourceGroupReconciler{
+		Client:       k8sClient,
 		Log:          log.WithName("ResourceGroup"),
 		GroupsClient: resourcegroups.New(configuration),
-		Reconciler: &controllers.AzureReconciler{
-			Client:   client,
+		Reconciler: &AzureReconciler{
+			Client:   k8sClient,
 			Az:       resourcegroups.New(configuration),
 			Log:      log,
 			Recorder: recorder,
 		},
-	}).SetupWithManager(mgr)
+	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	close(done)

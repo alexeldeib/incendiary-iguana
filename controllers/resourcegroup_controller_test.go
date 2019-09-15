@@ -5,29 +5,31 @@ Copyright 2019 Alexander Eldeib.
 package controllers
 
 import (
-	"testing"
+	"context"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 var _ = Describe("resource group controller", func() {
-	
+
 	const timeout = time.Second * 60
 	const interval = time.Second * 3
 
 	It("should create successfully", func() {
 		key := types.NamespacedName{
-			Name: "test-crd",
-			Namespace:  "default",
+			Name:      "test-crd",
+			Namespace: "default",
 		}
 
 		rg := &azurev1alpha1.ResourceGroup{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "test-crd",
+				Name:       "test-crd",
 				Namespace:  "default",
 				Finalizers: []string{"resourcegroup.azure.alexeldeib.xyz"},
 			},
@@ -39,7 +41,7 @@ var _ = Describe("resource group controller", func() {
 		}
 
 		// Create
-		Expect(k8sClient.Create(context.Background(), created)).Should(Succeed())
+		Expect(k8sClient.Create(context.Background(), rg)).Should(Succeed())
 
 		By("expecting successful creation")
 		Eventually(func() bool {
