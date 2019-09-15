@@ -33,4 +33,4 @@ require (
 	sigs.k8s.io/controller-runtime v0.2.1
 )
 
-replace sigs.k8s.io/controller-runtime github.com/alexeldeib/controller-runtime v0.0.1
+replace sigs.k8s.io/controller-runtime => github.com/alexeldeib/controller-runtime v0.0.1
