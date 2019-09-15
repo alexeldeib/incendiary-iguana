@@ -1,8 +1,5 @@
 name: $(BuildDefinitionName)_$(SourceBranchName)_$(Date:yyyyMMdd)$(Rev:.r)
 
-pool:
-  vmImage: 'ubuntu-latest'
-
 trigger:
   branches:
     include:
@@ -31,11 +28,14 @@ variables:
   GOPATH: '$(system.defaultWorkingDirectory)/gopath'
   GOBIN:  '$(system.defaultWorkingDirectory)/$(build.repository.name)/bin'
   GOROOT: '/usr/local/go1.13'
+
 stages:
 - stage: 
   displayName: 'Test stage'
   jobs:
-  - job: setup
+  - job: setup    
+    pool:
+      vmImage: 'ubuntu-latest'
     variables:
       GOPATH: '$(system.defaultWorkingDirectory)/gopath'
       GOBIN:  '$(system.defaultWorkingDirectory)/$(build.repository.name)/bin'
