@@ -95,6 +95,7 @@ stages:
         AZURE_CLIENT_ID: $(clientId)
         AZURE_CLIENT_SECRET: $(clientSecret)
         AZURE_TENANT_ID: $(tenantId)
+        KUBEBUILDER_CONTROLPLANE_START_TIMEOUT: 60
     - script: |
         go1.13 version
         make cli-test
