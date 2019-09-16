@@ -163,14 +163,6 @@ func (s *Spec) NeedsUpdate(local *azurev1alpha1.VirtualNetwork) bool {
 	})
 }
 
-func (s *Spec) initialize(detectors []func() bool, remediators []func()) {
-	for idx, f := range detectors {
-		if f() {
-			remediators[idx]()
-		}
-	}
-}
-
 func Name(s *Spec) *string {
 	return s.internal.Name
 }
@@ -206,13 +198,4 @@ func State(s *Spec) *string {
 		return nil
 	}
 	return s.internal.VirtualNetworkPropertiesFormat.ProvisioningState
-}
-
-func any(funcs []func() bool) bool {
-	for _, f := range funcs {
-		if f() {
-			return true
-		}
-	}
-	return false
 }

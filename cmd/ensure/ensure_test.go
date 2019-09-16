@@ -303,25 +303,25 @@ var _ = Describe("reconcile", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		// It("should create subnet successfully", func() {
-		// 	err := ensure.EnsureSubnet(subnetClient, subnet, log)
-		// 	Expect(err).ToNot(HaveOccurred())
-		// })
+		It("should create subnet successfully", func() {
+			err := ensure.EnsureSubnet(subnetClient, subnet, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-		// It("should create sg successfully", func() {
-		// 	err := ensure.EnsureSecurityGroup(sgClient, sg, log)
-		// 	Expect(err).ToNot(HaveOccurred())
-		// })
+		It("should create sg successfully", func() {
+			err := ensure.EnsureSecurityGroup(sgClient, sg, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-		// It("should create ip successfully", func() {
-		// 	err := ensure.EnsurePublicIP(publicIPClient, ip, log)
-		// 	Expect(err).ToNot(HaveOccurred())
-		// })
+		It("should create ip successfully", func() {
+			err := ensure.EnsurePublicIP(publicIPClient, ip, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-		// It("should create tm successfully", func() {
-		// 	err := ensure.EnsureTrafficManager(tmClient, tm, log)
-		// 	Expect(err).ToNot(HaveOccurred())
-		// })
+		It("should create tm successfully", func() {
+			err := ensure.EnsureTrafficManager(tmClient, tm, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
 		It("should create vault successfully", func() {
 			err := ensure.EnsureKeyvault(vaultClient, vault, log)
@@ -365,25 +365,25 @@ var _ = Describe("reconcile", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		// It("should delete tm successfully", func() {
-		// 	err := ensure.DeleteTrafficManager(tmClient, tm, log)
-		// 	Expect(err).ToNot(HaveOccurred())
-		// })
+		It("should delete tm successfully", func() {
+			err := ensure.DeleteTrafficManager(tmClient, tm, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-		// It("should delete ip successfully", func() {
-		// 	err := ensure.DeletePublicIP(publicIPClient, ip, log)
-		// 	Expect(err).ToNot(HaveOccurred())
-		// })
+		It("should delete ip successfully", func() {
+			err := ensure.DeletePublicIP(publicIPClient, ip, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-		// It("should delete sg successfully", func() {
-		// 	err := ensure.DeleteSecurityGroup(sgClient, sg, log)
-		// 	Expect(err).ToNot(HaveOccurred())
-		// })
+		It("should delete sg successfully", func() {
+			err := ensure.DeleteSecurityGroup(sgClient, sg, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-		// It("should delete subnet successfully", func() {
-		// 	err := ensure.DeleteSubnet(subnetClient, subnet, log)
-		// 	Expect(err).ToNot(HaveOccurred())
-		// })
+		It("should delete subnet successfully", func() {
+			err := ensure.DeleteSubnet(subnetClient, subnet, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
 		It("should delete vnet successfully", func() {
 			err := ensure.DeleteVirtualNetwork(vnetClient, vnet, log)

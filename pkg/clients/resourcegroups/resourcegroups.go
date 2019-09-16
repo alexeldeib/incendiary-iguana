@@ -73,8 +73,10 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.ResourceGroup)
 		spec = NewSpec()
 	}
 
-	spec.Name(&local.Spec.Name)
-	spec.Location(&local.Spec.Location)
+	spec.Set(
+		Name(&local.Spec.Name),
+		Location(&local.Spec.Location),
+	)
 
 	if _, err := c.internal.CreateOrUpdate(ctx, local.Spec.Name, spec.Build()); err != nil {
 		return false, err
