@@ -50,8 +50,8 @@ func Location(location *string) func(*Spec) {
 
 func (s *Spec) NeedsUpdate(local *azurev1alpha1.ResourceGroup) bool {
 	return clientutil.Any([]func() bool{
-		func() bool { return Name(s) == nil || local.Spec.Name != *Name(s) },
-		func() bool { return Location(s) == nil || local.Spec.Location != *Location(s) },
+		func() bool { return s.Name() == nil || local.Spec.Name != *s.Name() },
+		func() bool { return s.Location() == nil || local.Spec.Location != *s.Location() },
 	})
 }
 
