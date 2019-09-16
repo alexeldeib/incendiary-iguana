@@ -18,8 +18,8 @@ import (
 
 var _ = Describe("resource group controller", func() {
 
-	const timeout = time.Second * 60
-	const interval = time.Second * 3
+	const timeout = time.Second * 900
+	const interval = time.Second * 5
 
 	It("should create successfully", func() {
 		key := types.NamespacedName{
