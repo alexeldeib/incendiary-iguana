@@ -31,9 +31,8 @@ var _ = Describe("resource group controller", func() {
 
 		rg := &azurev1alpha1.ResourceGroup{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:       "test-crd",
-				Namespace:  "default",
-				Finalizers: []string{"resourcegroup.azure.alexeldeib.xyz"},
+				Name:      "test-crd",
+				Namespace: "default",
 			},
 			Spec: azurev1alpha1.ResourceGroupSpec{
 				Name:           "test-crd",
