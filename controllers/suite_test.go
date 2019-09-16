@@ -87,9 +87,9 @@ var _ = BeforeSuite(func(done Done) {
 
 	// +kubebuilder:scaffold:scheme
 	By("initializing azure config")
-	configuration := config.New(ctrl.Log.WithName("configuration"))
+	configuration := config.New(logf.Log.WithName("configuration"))
 	groupsClient = resourcegroups.New(configuration)
-	log := ctrl.Log.WithName("testmanager")
+	log := logf.Log.WithName("testmanager")
 	recorder := mgr.GetEventRecorderFor("testmanager")
 
 	By("creating reconciler")
