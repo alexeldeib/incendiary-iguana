@@ -8,11 +8,17 @@ metadata:
 spec:
   group: azure.alexeldeib.xyz
   names:
+    categories:
+    - all
     kind: PublicIP
     listKind: PublicIPList
     plural: publicips
+    shortNames:
+    - ip
+    - pip
+    - ips
     singular: publicip
-  scope: ""
+  scope: Namespaced
   subresources:
     status: {}
   validation:

@@ -35,7 +35,7 @@ type PublicIPStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=publicip,shortName={ip,pip,ips},categories=all
+// +kubebuilder:resource:path=publicips,shortName={ip,pip,ips},categories=all
 
 // PublicIP is the Schema for the publicips API
 type PublicIP struct {
