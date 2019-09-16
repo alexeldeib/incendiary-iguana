@@ -6,6 +6,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -61,7 +62,9 @@ var _ = Describe("resource group controller", func() {
 		By("expecting successful completion")
 		Eventually(func() error {
 			local := &azurev1alpha1.ResourceGroup{}
-			return k8sClient.Get(context.Background(), key, local)
+			err := k8sClient.Get(context.Background(), key, local)
+			fmt.Printf("error: %+#v\n", err)
+			return err
 		}, timeout, interval).ShouldNot(Succeed())
 	})
 })

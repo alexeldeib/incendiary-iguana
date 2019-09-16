@@ -37,6 +37,8 @@ github.com/alexeldeib/controller-runtime v0.0.3 h1:SmjLcZiDvJZwdfV4b78HJ6HEjqGqG
 github.com/alexeldeib/controller-runtime v0.0.3/go.mod h1:ZyE1PPYn+NK+aVSMIxXvGf+PFUX9N8Vs6NiG6dCz4uA=
 github.com/alexeldeib/controller-runtime v0.0.4 h1:Y7byHyVqGHKC5Oiiob4078g0A7DhRSVQlyY3I6mjLkI=
 github.com/alexeldeib/controller-runtime v0.0.4/go.mod h1:ZyE1PPYn+NK+aVSMIxXvGf+PFUX9N8Vs6NiG6dCz4uA=
+github.com/alexeldeib/controller-runtime v0.0.5 h1:zEsqzSTAeXBlrGaWTjExSI17KfiTnAUtDwX/zMjGp5U=
+github.com/alexeldeib/controller-runtime v0.0.5/go.mod h1:9dyohw3ZtoXQuV1e766PHUn+cmrRCIcBh6XIMFNMZ+I=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973 h1:xJ4a3vCFaGF/jqvzLMYoU8P317H5OQ+Via4RmuPwCS0=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
