@@ -11,6 +11,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sanity-io/litter"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,6 +65,8 @@ var _ = Describe("resource group controller", func() {
 			local := &azurev1alpha1.ResourceGroup{}
 			err := k8sClient.Get(context.Background(), key, local)
 			fmt.Printf("error: %+#v\n", err)
+			litter.Dump(local)
+			litter.Dump(local.Status)
 			return err
 		}, timeout, interval).ShouldNot(Succeed())
 	})
