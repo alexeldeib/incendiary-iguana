@@ -50,8 +50,8 @@ func Location(location *string) func(*Spec) {
 
 func (s *Spec) NeedsUpdate(local *azurev1alpha1.ResourceGroup) bool {
 	return clientutil.Any([]func() bool{
-		NameChanged(s, local.Spec.Name),
-		LocationChanged(s, local.Spec.Location),
+		StringPtrChanged(s.Name(), local.Spec.Name),
+		StringPtrChanged(s.Location(), local.Spec.Location),
 	})
 }
 
@@ -74,14 +74,8 @@ func (s *Spec) State() *string {
 	return s.internal.Properties.ProvisioningState
 }
 
-func NameChanged(s *Spec, name string) func() bool {
+func StringPtrChanged(old *string, new string) func() bool {
 	return func() bool {
-		return s.Name() == nil || name != *s.Name()
-	}
-}
-
-func LocationChanged(s *Spec, location string) func() bool {
-	return func() bool {
-		return s.Location() == nil || location != *s.Location()
+		return old == nil || *old != new
 	}
 }
