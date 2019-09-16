@@ -784,7 +784,7 @@ func EnsureIdentity(client *identities.Client, obj metav1.Object, log logr.Logge
 		if err != nil {
 			log.Error(err, "failed reconcile attempt")
 		}
-		return err == nil, err
+		return err == nil, nil
 	})
 }
 
