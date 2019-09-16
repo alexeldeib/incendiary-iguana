@@ -28,34 +28,75 @@ func NewSpecWithRemote(remote *network.VirtualNetwork) *Spec {
 	}
 }
 
+func (s *Spec) Set(opts ...func(*Spec)) {
+	for _, opt := range opts {
+		opt(s)
+	}
+}
+
 func (s *Spec) Build() network.VirtualNetwork {
 	return *s.internal
 }
 
-func (s *Spec) Name(name *string) {
-	s.internal.Name = name
+func Name(name *string) func(s *Spec) {
+	return func(s *Spec) {
+		s.internal.Name = name
+	}
 }
 
-func (s *Spec) Location(location *string) {
-	s.internal.Location = location
+func Location(location *string) func(s *Spec) {
+	return func(s *Spec) {
+		s.internal.Location = location
+	}
 }
 
-func (s *Spec) AddressSpaces(cidrs []string) {
-	clientutil.Initialize(
-		[]func() bool{
-			func() bool { return s.internal.VirtualNetworkPropertiesFormat == nil },
-			func() bool { return s.internal.VirtualNetworkPropertiesFormat.AddressSpace == nil },
-			func() bool { return s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes == nil },
-		},
-		[]func(){
-			func() { s.internal.VirtualNetworkPropertiesFormat = &network.VirtualNetworkPropertiesFormat{} },
-			func() { s.internal.VirtualNetworkPropertiesFormat.AddressSpace = &network.AddressSpace{} },
-			func() {
-				s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes = &[]string{}
+func AddressSpaces(cidrs []string) func(s *Spec) {
+	return func(s *Spec) {
+		clientutil.Initialize(
+			[]func() bool{
+				func() bool { return s.internal.VirtualNetworkPropertiesFormat == nil },
+				func() bool { return s.internal.VirtualNetworkPropertiesFormat.AddressSpace == nil },
+				func() bool { return s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes == nil },
 			},
-		},
-	)
-	for _, cidr := range cidrs {
+			[]func(){
+				func() { s.internal.VirtualNetworkPropertiesFormat = &network.VirtualNetworkPropertiesFormat{} },
+				func() { s.internal.VirtualNetworkPropertiesFormat.AddressSpace = &network.AddressSpace{} },
+				func() {
+					s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes = &[]string{}
+				},
+			},
+		)
+		for _, cidr := range cidrs {
+			found := false
+			for _, prefix := range *s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes {
+				if prefix == cidr {
+					found = true
+				}
+			}
+			if !found {
+				*s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes = append(
+					*s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes,
+					cidr,
+				)
+			}
+		}
+	}
+}
+
+func AddressSpace(cidr string) func(s *Spec) {
+	return func(s *Spec) {
+		clientutil.Initialize(
+			[]func() bool{
+				func() bool { return s.internal.VirtualNetworkPropertiesFormat == nil },
+				func() bool { return s.internal.VirtualNetworkPropertiesFormat.AddressSpace == nil },
+				func() bool { return s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes == nil },
+			},
+			[]func(){
+				func() { s.internal.VirtualNetworkPropertiesFormat = &network.VirtualNetworkPropertiesFormat{} },
+				func() { s.internal.VirtualNetworkPropertiesFormat.AddressSpace = &network.AddressSpace{} },
+				func() { s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes = &[]string{} },
+			},
+		)
 		found := false
 		for _, prefix := range *s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes {
 			if prefix == cidr {
@@ -71,118 +112,95 @@ func (s *Spec) AddressSpaces(cidrs []string) {
 	}
 }
 
-func (s *Spec) AddressSpace(cidr string) {
-	clientutil.Initialize(
-		[]func() bool{
-			func() bool { return s.internal.VirtualNetworkPropertiesFormat == nil },
-			func() bool { return s.internal.VirtualNetworkPropertiesFormat.AddressSpace == nil },
-			func() bool { return s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes == nil },
-		},
-		[]func(){
-			func() { s.internal.VirtualNetworkPropertiesFormat = &network.VirtualNetworkPropertiesFormat{} },
-			func() { s.internal.VirtualNetworkPropertiesFormat.AddressSpace = &network.AddressSpace{} },
-			func() { s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes = &[]string{} },
-		},
-	)
-	found := false
-	for _, prefix := range *s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes {
-		if prefix == cidr {
-			found = true
-		}
-	}
-	if !found {
-		*s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes = append(
-			*s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes,
-			cidr,
+func RemoveAddressSpace(cidr string) func(s *Spec) {
+	return func(s *Spec) {
+		clientutil.Initialize(
+			[]func() bool{
+				func() bool { return s.internal.VirtualNetworkPropertiesFormat == nil },
+				func() bool { return s.internal.VirtualNetworkPropertiesFormat.AddressSpace == nil },
+				func() bool { return s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes == nil },
+			},
+			[]func(){
+				func() { s.internal.VirtualNetworkPropertiesFormat = &network.VirtualNetworkPropertiesFormat{} },
+				func() { s.internal.VirtualNetworkPropertiesFormat.AddressSpace = &network.AddressSpace{} },
+				func() { s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes = &[]string{} },
+			},
 		)
+		for i, prefix := range *s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes {
+			if prefix == cidr {
+				*s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes = append(
+					(*s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes)[:i],
+					(*s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes)[:i+1]...,
+				)
+			}
+		}
 	}
 }
 
-func (s *Spec) RemoveAddressSpace(cidr string) {
-	clientutil.Initialize(
-		[]func() bool{
-			func() bool { return s.internal.VirtualNetworkPropertiesFormat == nil },
-			func() bool { return s.internal.VirtualNetworkPropertiesFormat.AddressSpace == nil },
-			func() bool { return s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes == nil },
-		},
-		[]func(){
-			func() { s.internal.VirtualNetworkPropertiesFormat = &network.VirtualNetworkPropertiesFormat{} },
-			func() { s.internal.VirtualNetworkPropertiesFormat.AddressSpace = &network.AddressSpace{} },
-			func() { s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes = &[]string{} },
-		},
-	)
-	for i, prefix := range *s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes {
-		if prefix == cidr {
-			*s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes = append(
-				(*s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes)[:i],
-				(*s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes)[:i+1]...,
+func Subnet(name, cidr string) func(s *Spec) {
+	return func(s *Spec) {
+		clientutil.Initialize(
+			[]func() bool{
+				func() bool { return s.internal.VirtualNetworkPropertiesFormat == nil },
+				func() bool { return s.internal.VirtualNetworkPropertiesFormat.Subnets == nil },
+			},
+			[]func(){
+				func() { s.internal.VirtualNetworkPropertiesFormat = &network.VirtualNetworkPropertiesFormat{} },
+				func() { s.internal.VirtualNetworkPropertiesFormat.Subnets = &[]network.Subnet{} },
+			},
+		)
+
+		found := false
+		for _, subnet := range *s.internal.VirtualNetworkPropertiesFormat.Subnets {
+			if *subnet.Name == name {
+				subnet.AddressPrefix = &cidr
+				found = true
+			}
+		}
+
+		if !found {
+			*s.internal.VirtualNetworkPropertiesFormat.Subnets = append(
+				*s.internal.VirtualNetworkPropertiesFormat.Subnets,
+				network.Subnet{
+					Name: &name,
+					SubnetPropertiesFormat: &network.SubnetPropertiesFormat{
+						AddressPrefix: &cidr,
+					},
+				},
 			)
 		}
 	}
 }
 
-func (s *Spec) Subnet(name, cidr string) {
-	clientutil.Initialize(
-		[]func() bool{
-			func() bool { return s.internal.VirtualNetworkPropertiesFormat == nil },
-			func() bool { return s.internal.VirtualNetworkPropertiesFormat.Subnets == nil },
-		},
-		[]func(){
-			func() { s.internal.VirtualNetworkPropertiesFormat = &network.VirtualNetworkPropertiesFormat{} },
-			func() { s.internal.VirtualNetworkPropertiesFormat.Subnets = &[]network.Subnet{} },
-		},
-	)
-
-	found := false
-	for _, subnet := range *s.internal.VirtualNetworkPropertiesFormat.Subnets {
-		if *subnet.Name == name {
-			subnet.AddressPrefix = &cidr
-			found = true
-		}
-	}
-
-	if !found {
-		*s.internal.VirtualNetworkPropertiesFormat.Subnets = append(
-			*s.internal.VirtualNetworkPropertiesFormat.Subnets,
-			network.Subnet{
-				Name: &name,
-				SubnetPropertiesFormat: &network.SubnetPropertiesFormat{
-					AddressPrefix: &cidr,
-				},
-			},
-		)
-	}
-}
-
 func (s *Spec) NeedsUpdate(local *azurev1alpha1.VirtualNetwork) bool {
 	return clientutil.Any([]func() bool{
-		func() bool { return Name(s) == nil || local.Spec.Name != *Name(s) },
-		func() bool { return Location(s) == nil || local.Spec.Location != *Location(s) },
-		func() bool { return Addresses(s) == nil || !cmp.Equal(local.Spec.Addresses, *Addresses(s)) },
+		func() bool { return s.Name() == nil || local.Spec.Name != *s.Name() },
+		func() bool { return s.Location() == nil || local.Spec.Location != *s.Location() },
+		func() bool { return s.Addresses() == nil || !cmp.Equal(local.Spec.Addresses, *s.Addresses()) },
 		// func() bool { return Subnets(s) == nil || !cmp.Equal(local.Spec.Subnets, *Subnets(s)) },
 	})
 }
 
-func Name(s *Spec) *string {
+func (s *Spec) Name() *string {
 	return s.internal.Name
 }
 
-func Location(s *Spec) *string {
+func (s *Spec) Location() *string {
 	return s.internal.Location
 }
 
-func ID(s *Spec) *string {
+func (s *Spec) ID() *string {
 	return s.internal.ID
 }
 
-func Addresses(s *Spec) *[]string {
+func (s *Spec) Addresses() *[]string {
 	if s.internal.VirtualNetworkPropertiesFormat == nil || s.internal.VirtualNetworkPropertiesFormat.AddressSpace == nil {
 		return nil
 	}
 	return s.internal.VirtualNetworkPropertiesFormat.AddressSpace.AddressPrefixes
 }
 
-func Subnets(s *Spec) *[]string {
+func (s *Spec) Subnets() *[]string {
 	if s.internal.VirtualNetworkPropertiesFormat == nil || s.internal.VirtualNetworkPropertiesFormat.Subnets == nil {
 		return nil
 	}
@@ -193,7 +211,7 @@ func Subnets(s *Spec) *[]string {
 	return subnets
 }
 
-func State(s *Spec) *string {
+func (s *Spec) State() *string {
 	if s.internal.VirtualNetworkPropertiesFormat == nil {
 		return nil
 	}

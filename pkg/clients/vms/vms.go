@@ -78,30 +78,30 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.VM) (bool, err
 		spec = NewSpec()
 	}
 
+	zoneFn := func(*Spec) {} // noop unless we set it. default behavior is max fd/ud spread.
 	if local.Spec.Zone != nil {
-		spec.Zone(*local.Spec.Zone)
-	} else if Zone(spec) == nil {
+		zoneFn = Zone(*local.Spec.Zone)
+	} else if spec.Zone() == nil {
 		choices, err := c.zones.Get(ctx, local)
 		if err != nil {
 			return false, err
 		}
 		if len(choices) > 0 {
-			spec.Zone(choices[rand.Intn(len(choices))])
+			zoneFn = Zone(choices[rand.Intn(len(choices))])
 		}
 	}
 
-	spec.Name(local.Spec.Name)
-	spec.Location(local.Spec.Location)
-	spec.Hostname(local.Spec.Name)
-	spec.SKU(local.Spec.SKU)
-	spec.NICs(local.Spec.PrimaryNIC, local.Spec.SecondaryNICs)
+	spec.Set(
+		Name(local.Spec.Name),
+		Location(local.Spec.Location),
+		Hostname(local.Spec.Name),
+		SKU(local.Spec.SKU),
+		NICs(local.Spec.PrimaryNIC, local.Spec.SecondaryNICs),
+		zoneFn,
+	)
 
-	if _, err = c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec.Build()); err != nil {
-		spew.Dump(err)
-		return false, err
-	}
-	spew.Dump("passed err")
-	return false, nil
+	_, err = c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec.Build())
+	return false, err
 }
 
 // Get returns a virtual network.

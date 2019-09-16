@@ -72,14 +72,14 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.VirtualNetwork
 		spec = NewSpec()
 	}
 
-	spec.Name(&local.Spec.Name)
-	spec.Location(&local.Spec.Location)
-	spec.AddressSpaces(local.Spec.Addresses) // TODO(ace): declarative vs patch for merging over existing fields?
+	spec.Set(
+		Name(&local.Spec.Name),
+		Location(&local.Spec.Location),
+		AddressSpaces(local.Spec.Addresses), // TODO(ace): declarative vs patch for merging over existing fields?
+	)
 
-	if _, err = c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec.Build()); err != nil {
-		return false, err
-	}
-	return false, nil
+	_, err = c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec.Build())
+	return false, err
 }
 
 // Get returns a virtual network.

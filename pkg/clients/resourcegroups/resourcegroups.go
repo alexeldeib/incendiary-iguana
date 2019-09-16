@@ -78,11 +78,8 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.ResourceGroup)
 		Location(&local.Spec.Location),
 	)
 
-	if _, err := c.internal.CreateOrUpdate(ctx, local.Spec.Name, spec.Build()); err != nil {
-		return false, err
-	}
-
-	return false, nil
+	_, err = c.internal.CreateOrUpdate(ctx, local.Spec.Name, spec.Build())
+	return false, err
 }
 
 // Get returns a resource group.
