@@ -15,7 +15,6 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
-	"github.com/alexeldeib/incendiary-iguana/pkg/specs/vnetspec"
 )
 
 const expand string = ""
@@ -58,9 +57,9 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.VirtualNetwork
 		return false, err
 	}
 
-	var spec *vnetspec.Spec
+	var spec *Spec
 	if found {
-		spec = vnetspec.NewFromExisting(&remote)
+		spec = NewSpecWithRemote(&remote)
 		if c.Done(ctx, local) {
 			if !spec.NeedsUpdate(local) {
 				return true, nil
@@ -70,7 +69,7 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.VirtualNetwork
 			return false, nil
 		}
 	} else {
-		spec = vnetspec.New()
+		spec = NewSpec()
 	}
 
 	spec.Name(&local.Spec.Name)

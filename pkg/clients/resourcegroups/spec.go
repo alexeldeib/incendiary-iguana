@@ -2,7 +2,7 @@
 Copyright 2019 Alexander Eldeib.
 */
 
-package rgspec
+package resourcegroups
 
 import (
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
@@ -13,13 +13,13 @@ type Spec struct {
 	internal *resources.Group
 }
 
-func New() *Spec {
+func NewSpec() *Spec {
 	return &Spec{
 		internal: &resources.Group{},
 	}
 }
 
-func NewFromExisting(remote *resources.Group) *Spec {
+func NewSpecWithRemote(remote *resources.Group) *Spec {
 	return &Spec{
 		internal: remote,
 	}

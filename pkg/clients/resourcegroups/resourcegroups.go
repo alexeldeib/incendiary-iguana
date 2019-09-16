@@ -17,7 +17,6 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
-	"github.com/alexeldeib/incendiary-iguana/pkg/specs/rgspec"
 )
 
 type Client struct {
@@ -60,9 +59,9 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.ResourceGroup)
 		return false, err
 	}
 
-	var spec *rgspec.Spec
+	var spec *Spec
 	if found {
-		spec = rgspec.NewFromExisting(&remote)
+		spec = NewSpecWithRemote(&remote)
 		if c.Done(ctx, local) {
 			if !spec.NeedsUpdate(local) {
 				return true, nil
@@ -71,7 +70,7 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.ResourceGroup)
 			return false, nil
 		}
 	} else {
-		spec = rgspec.New()
+		spec = NewSpec()
 	}
 
 	spec.Name(&local.Spec.Name)

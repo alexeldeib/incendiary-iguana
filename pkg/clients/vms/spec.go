@@ -2,7 +2,7 @@
 Copyright 2019 Alexander Eldeib.
 */
 
-package vmspec
+package vms
 
 import (
 	"crypto/rand"
@@ -18,7 +18,7 @@ type Spec struct {
 	internal *compute.VirtualMachine
 }
 
-func New() *Spec {
+func NewSpec() *Spec {
 	return &Spec{
 		internal: &compute.VirtualMachine{
 			VirtualMachineProperties: &compute.VirtualMachineProperties{
@@ -57,7 +57,7 @@ func New() *Spec {
 	}
 }
 
-func NewFromExisting(remote *compute.VirtualMachine) *Spec {
+func NewSpecWithRemote(remote *compute.VirtualMachine) *Spec {
 	return &Spec{
 		internal: remote,
 	}

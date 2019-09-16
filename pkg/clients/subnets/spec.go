@@ -2,7 +2,7 @@
 Copyright 2019 Alexander Eldeib.
 */
 
-package subnetspec
+package subnets
 
 import (
 	"github.com/google/go-cmp/cmp"
@@ -15,13 +15,13 @@ type Spec struct {
 	internal *network.Subnet
 }
 
-func New() *Spec {
+func NewSpec() *Spec {
 	return &Spec{
 		internal: &network.Subnet{},
 	}
 }
 
-func NewFromExisting(remote *network.Subnet) *Spec {
+func NewSpecWithRemote(remote *network.Subnet) *Spec {
 	return &Spec{
 		internal: remote,
 	}

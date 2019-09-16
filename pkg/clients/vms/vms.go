@@ -19,7 +19,6 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/disks"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/zones"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
-	"github.com/alexeldeib/incendiary-iguana/pkg/specs/vmspec"
 )
 
 type Client struct {
@@ -64,9 +63,9 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.VM) (bool, err
 		return false, err
 	}
 
-	var spec *vmspec.Spec
+	var spec *Spec
 	if found {
-		spec = vmspec.NewFromExisting(&remote)
+		spec = NewSpecWithRemote(&remote)
 		if c.Done(ctx, local) {
 			if !spec.NeedsUpdate(local) {
 				return true, nil
@@ -76,12 +75,12 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.VM) (bool, err
 			return false, nil
 		}
 	} else {
-		spec = vmspec.New()
+		spec = NewSpec()
 	}
 
 	if local.Spec.Zone != nil {
 		spec.Zone(*local.Spec.Zone)
-	} else if vmspec.Zone(spec) == nil {
+	} else if Zone(spec) == nil {
 		choices, err := c.zones.Get(ctx, local)
 		if err != nil {
 			return false, err

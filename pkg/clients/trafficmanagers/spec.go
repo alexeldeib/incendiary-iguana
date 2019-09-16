@@ -2,7 +2,7 @@
 Copyright 2019 Alexander Eldeib.
 */
 
-package rgspec
+package trafficmanagers
 
 import (
 	"github.com/Azure/azure-sdk-for-go/services/trafficmanager/mgmt/2018-04-01/trafficmanager"
@@ -14,7 +14,7 @@ type Spec struct {
 	internal *trafficmanager.Profile
 }
 
-func New() *Spec {
+func NewSpec() *Spec {
 	return &Spec{
 		internal: &trafficmanager.Profile{
 			ProfileProperties: &trafficmanager.ProfileProperties{
@@ -38,7 +38,7 @@ func New() *Spec {
 	}
 }
 
-func NewFromExisting(remote *trafficmanager.Profile) *Spec {
+func NewSpecWithRemote(remote *trafficmanager.Profile) *Spec {
 	return &Spec{
 		internal: remote,
 	}

@@ -2,7 +2,7 @@
 Copyright 2019 Alexander Eldeib.
 */
 
-package identityspec
+package identities
 
 import (
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
@@ -15,13 +15,13 @@ type Spec struct {
 	internal *msi.Identity
 }
 
-func New() *Spec {
+func NewSpec() *Spec {
 	return &Spec{
 		internal: &msi.Identity{},
 	}
 }
 
-func NewFromExisting(remote *msi.Identity) *Spec {
+func NewSpecWithRemote(remote *msi.Identity) *Spec {
 	return &Spec{
 		internal: remote,
 	}

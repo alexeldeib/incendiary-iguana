@@ -14,7 +14,6 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
-	"github.com/alexeldeib/incendiary-iguana/pkg/specs/identityspec"
 )
 
 type Client struct {
@@ -58,7 +57,7 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.Identity) erro
 		return nil
 	}
 
-	spec := identityspec.New()
+	spec := NewSpec()
 	spec.Name(&local.Spec.Name)
 	spec.Location(&local.Spec.Location)
 

@@ -2,26 +2,27 @@
 Copyright 2019 Alexander Eldeib.
 */
 
-package vnetspec
+package virtualnetworks
 
 import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2019-04-01/network"
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/clientutil"
 )
 
 type Spec struct {
 	internal *network.VirtualNetwork
 }
 
-func New() *Spec {
+func NewSpec() *Spec {
 	return &Spec{
 		internal: &network.VirtualNetwork{},
 	}
 }
 
-func NewFromExisting(remote *network.VirtualNetwork) *Spec {
+func NewSpecWithRemote(remote *network.VirtualNetwork) *Spec {
 	return &Spec{
 		internal: remote,
 	}
@@ -40,7 +41,7 @@ func (s *Spec) Location(location *string) {
 }
 
 func (s *Spec) AddressSpaces(cidrs []string) {
-	s.initialize(
+	clientutil.Initialize(
 		[]func() bool{
 			func() bool { return s.internal.VirtualNetworkPropertiesFormat == nil },
 			func() bool { return s.internal.VirtualNetworkPropertiesFormat.AddressSpace == nil },
@@ -71,7 +72,7 @@ func (s *Spec) AddressSpaces(cidrs []string) {
 }
 
 func (s *Spec) AddressSpace(cidr string) {
-	s.initialize(
+	clientutil.Initialize(
 		[]func() bool{
 			func() bool { return s.internal.VirtualNetworkPropertiesFormat == nil },
 			func() bool { return s.internal.VirtualNetworkPropertiesFormat.AddressSpace == nil },
@@ -98,7 +99,7 @@ func (s *Spec) AddressSpace(cidr string) {
 }
 
 func (s *Spec) RemoveAddressSpace(cidr string) {
-	s.initialize(
+	clientutil.Initialize(
 		[]func() bool{
 			func() bool { return s.internal.VirtualNetworkPropertiesFormat == nil },
 			func() bool { return s.internal.VirtualNetworkPropertiesFormat.AddressSpace == nil },
@@ -121,7 +122,7 @@ func (s *Spec) RemoveAddressSpace(cidr string) {
 }
 
 func (s *Spec) Subnet(name, cidr string) {
-	s.initialize(
+	clientutil.Initialize(
 		[]func() bool{
 			func() bool { return s.internal.VirtualNetworkPropertiesFormat == nil },
 			func() bool { return s.internal.VirtualNetworkPropertiesFormat.Subnets == nil },
@@ -154,7 +155,7 @@ func (s *Spec) Subnet(name, cidr string) {
 }
 
 func (s *Spec) NeedsUpdate(local *azurev1alpha1.VirtualNetwork) bool {
-	return any([]func() bool{
+	return clientutil.Any([]func() bool{
 		func() bool { return Name(s) == nil || local.Spec.Name != *Name(s) },
 		func() bool { return Location(s) == nil || local.Spec.Location != *Location(s) },
 		func() bool { return Addresses(s) == nil || !cmp.Equal(local.Spec.Addresses, *Addresses(s)) },

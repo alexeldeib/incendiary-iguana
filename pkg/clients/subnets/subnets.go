@@ -15,7 +15,6 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
-	"github.com/alexeldeib/incendiary-iguana/pkg/specs/subnetspec"
 )
 
 const expand string = ""
@@ -58,9 +57,9 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.Subnet) (bool,
 		return found, err
 	}
 
-	var spec *subnetspec.Spec
+	var spec *Spec
 	if found {
-		spec = subnetspec.NewFromExisting(&remote)
+		spec = NewSpecWithRemote(&remote)
 		if c.Done(ctx, local) {
 			if !spec.NeedsUpdate(local) {
 				return true, nil
@@ -70,7 +69,7 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.Subnet) (bool,
 			return false, nil
 		}
 	} else {
-		spec = subnetspec.New()
+		spec = NewSpec()
 	}
 
 	spec.Name(local.Spec.Name)
