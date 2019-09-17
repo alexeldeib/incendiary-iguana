@@ -26,7 +26,27 @@ type LoadBalancerSpec struct {
 	// +kubebuilder:validation:MinItems=1
 	// BackendPools is a list names of backend pools to create for this Load Balancers.
 	BackendPools []string `json:"backendPools"`
-	// OutboundRules            []OutboundRuleSpec            `json:"frontendIPConfigurations"`
+	// Rules is the list of load balancing rules.
+	Rules *[]RuleSpec `json:"rules,omitempty"`
+	// Probes is the list of load balancing health probes.
+	Probes *[]int `json:"probes,omitempty"`
+}
+
+type RuleSpec struct {
+	// Name is the name of the load balancing rule.
+	Name string `json:"name"`
+	// Frontend fully qualified reference to a frontend IP addresses.
+	Frontend string `json:"frontendIPConfiguration"`
+	// BackendPool - A reference to a pool of DIPs. Inbound traffic is randomly load balanced across IPs in the backend IPs.
+	BackendPool string `json:"backendPool"`
+	// Probe - The reference of the load balancer probe used by the load balancing rule.
+	Probe string `json:"probe"`
+	// Protocol is the transport protocol used by the load balancing rule. Possible values include: 'TransportProtocolUDP', 'TransportProtocolTCP', 'TransportProtocolAll'
+	Protocol string `json:"protocol"`
+	// FrontendPort is the port for the external endpoint. Port numbers for each rule must be unique within the Load Balancer. Acceptable values are between 0 and 65534. Note that value 0 enables "Any Port".
+	FrontendPort int32 `json:"frontendPort"`
+	// BackendPort - The port used for internal connections on the endpoint. Acceptable values are between 0 and 65535. Note that value 0 enables "Any Port".
+	BackendPort int32 `json:"backendPort"`
 }
 
 // FrontendIPConfigurationSpec defines the front end ip configuration of LoadBalancer

@@ -61,10 +61,13 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.LoadBalancer) 
 	if found {
 		spec = NewSpecWithRemote(&remote)
 		if c.Done(ctx, local) {
-			return true, nil
+			if !spec.NeedsUpdate(local) {
+				return true, nil
+			}
+		} else {
+			spew.Dump("not done")
+			return false, nil
 		}
-		spew.Dump("not done")
-		return false, nil
 	} else {
 		spec = NewSpec()
 	}
@@ -74,6 +77,8 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.LoadBalancer) 
 		Location(local.Spec.Location),
 		Frontends(local.Spec.Frontends),
 		Backends(local.Spec.BackendPools),
+		Probes(local.Spec.Probes),
+		Rules(local.Spec.Rules),
 	)
 
 	_, err = c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec.Build())
@@ -113,10 +118,7 @@ func (c *Client) SetStatus(local *azurev1alpha1.LoadBalancer, remote network.Loa
 
 // Done checks the current state of the CRD against the desired end state.
 func (c *Client) Done(ctx context.Context, local *azurev1alpha1.LoadBalancer) bool {
-	if local.Status.ProvisioningState == nil || *local.Status.ProvisioningState != "Succeeded" {
-		return false
-	}
-	return true
+	return local.Status.ProvisioningState != nil || *local.Status.ProvisioningState == "Succeeded"
 }
 
 func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {

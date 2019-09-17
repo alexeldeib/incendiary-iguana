@@ -190,6 +190,18 @@ var _ = Describe("reconcile", func() {
 				"/subscriptions/bd6a4e14-55fa-4160-a6a7-b718d7a2c95c/resourceGroups/test-crd/providers/Microsoft.Network/publicIpAddresses/ace-ip",
 			},
 			BackendPools: []string{"backendPool"},
+			Probes:       &[]int{6443},
+			Rules:        &[]azurev1alpha1.RuleSpec{
+				// {
+				// 	Name:         "lb_rule",
+				// 	Frontend:     "/subscriptions/bd6a4e14-55fa-4160-a6a7-b718d7a2c95c/resourceGroups/test-crd/providers/Microsoft.Network/loadBalancers/ace-lb/frontendIPConfigurations/ace-ip",
+				// 	BackendPool:  "/subscriptions/bd6a4e14-55fa-4160-a6a7-b718d7a2c95c/resourceGroups/test-crd/providers/Microsoft.Network/loadBalancers/ace-lb/backendAddressPools/backendPool",
+				// 	Probe:        "/subscriptions/bd6a4e14-55fa-4160-a6a7-b718d7a2c95c/resourceGroups/test-crd/providers/Microsoft.Network/loadBalancers/ace-lb/probes/probe_6443",
+				// 	FrontendPort: 443,
+				// 	BackendPort:  443,
+				// 	Protocol:     "Tcp",
+				// },
+			},
 		},
 	}
 
@@ -318,45 +330,45 @@ var _ = Describe("reconcile", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should create vnet successfully", func() {
-			err := ensure.EnsureVirtualNetwork(vnetClient, vnet, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should create vnet successfully", func() {
+		// 	err := ensure.EnsureVirtualNetwork(vnetClient, vnet, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should create subnet successfully", func() {
-			err := ensure.EnsureSubnet(subnetClient, subnet, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should create subnet successfully", func() {
+		// 	err := ensure.EnsureSubnet(subnetClient, subnet, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should create sg successfully", func() {
-			err := ensure.EnsureSecurityGroup(sgClient, sg, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should create sg successfully", func() {
+		// 	err := ensure.EnsureSecurityGroup(sgClient, sg, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should create ip successfully", func() {
-			err := ensure.EnsurePublicIP(publicIPClient, ip, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should create ip successfully", func() {
+		// 	err := ensure.EnsurePublicIP(publicIPClient, ip, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
 		It("should create lb successfully", func() {
 			err := ensure.EnsureLoadBalancer(loadbalancersClient, lb, log)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should create tm successfully", func() {
-			err := ensure.EnsureTrafficManager(tmClient, tm, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should create tm successfully", func() {
+		// 	err := ensure.EnsureTrafficManager(tmClient, tm, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should create vault successfully", func() {
-			err := ensure.EnsureKeyvault(vaultClient, vault, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should create vault successfully", func() {
+		// 	err := ensure.EnsureKeyvault(vaultClient, vault, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should create managed identity successfully", func() {
-			err := ensure.EnsureIdentity(identitiesClient, identity, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should create managed identity successfully", func() {
+		// 	err := ensure.EnsureIdentity(identitiesClient, identity, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
 		// It("should create redis successfully", func() {
 		// 	err := ensure.EnsureRedis(redisClient, cache, log)
@@ -380,49 +392,49 @@ var _ = Describe("reconcile", func() {
 		// 	Expect(err).ToNot(HaveOccurred())
 		// })
 
-		It("should delete managed identity successfully", func() {
-			err := ensure.DeleteIdentity(identitiesClient, identity, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should delete managed identity successfully", func() {
+		// 	err := ensure.DeleteIdentity(identitiesClient, identity, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should delete vault successfully", func() {
-			err := ensure.DeleteKeyvault(vaultClient, vault, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should delete vault successfully", func() {
+		// 	err := ensure.DeleteKeyvault(vaultClient, vault, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should delete tm successfully", func() {
-			err := ensure.DeleteTrafficManager(tmClient, tm, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should delete tm successfully", func() {
+		// 	err := ensure.DeleteTrafficManager(tmClient, tm, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should delete lb successfully", func() {
-			err := ensure.DeleteLoadBalancer(loadbalancersClient, lb, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should delete lb successfully", func() {
+		// 	err := ensure.DeleteLoadBalancer(loadbalancersClient, lb, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should delete ip successfully", func() {
-			err := ensure.DeletePublicIP(publicIPClient, ip, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should delete ip successfully", func() {
+		// 	err := ensure.DeletePublicIP(publicIPClient, ip, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should delete sg successfully", func() {
-			err := ensure.DeleteSecurityGroup(sgClient, sg, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should delete sg successfully", func() {
+		// 	err := ensure.DeleteSecurityGroup(sgClient, sg, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should delete subnet successfully", func() {
-			err := ensure.DeleteSubnet(subnetClient, subnet, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should delete subnet successfully", func() {
+		// 	err := ensure.DeleteSubnet(subnetClient, subnet, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should delete vnet successfully", func() {
-			err := ensure.DeleteVirtualNetwork(vnetClient, vnet, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should delete vnet successfully", func() {
+		// 	err := ensure.DeleteVirtualNetwork(vnetClient, vnet, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should delete rg successfully", func() {
-			err := ensure.DeleteResourceGroup(rgClient, rg, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should delete rg successfully", func() {
+		// 	err := ensure.DeleteResourceGroup(rgClient, rg, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 	})
 })
