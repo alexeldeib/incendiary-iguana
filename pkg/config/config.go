@@ -33,6 +33,10 @@ type Config struct {
 	kvinternal *autorest.Authorizer
 }
 
+// TODO(ace): refactor this to support multiple cloud environments
+// TODO(ace): support retrieving arbitrary settings
+// TODO(ace): azure manager w all client/cache?
+
 // New returns a concrete implementation of the Config interface
 func New(log logr.Logger) *Config {
 	return &Config{
@@ -92,7 +96,6 @@ func (c *Config) GetAuthorizer() (autorest.Authorizer, error) {
 
 // GetKeyvaultAuthorizer creates a new Keyvault authorizer, preferring cli => file => env vars => msi.
 func (c *Config) GetKeyvaultAuthorizer() (autorest.Authorizer, error) {
-	// TODO(ace): use detected mode and don't do the whole loop every time.
 	if c.kvinternal != nil {
 		return *c.kvinternal, nil
 	}

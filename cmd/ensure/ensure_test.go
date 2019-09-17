@@ -187,7 +187,7 @@ var _ = Describe("reconcile", func() {
 			ResourceGroup:  "test-crd",
 			Location:       "westus2",
 			Frontends: []string{
-				"/subscriptions/bd6a4e14-55fa-4160-a6a7-b718d7a2c95c/resourceGroups/ace-crd/providers/Microsoft.Network/publicIpAddresses/ace-ip",
+				"/subscriptions/bd6a4e14-55fa-4160-a6a7-b718d7a2c95c/resourceGroups/test-crd/providers/Microsoft.Network/publicIpAddresses/ace-ip",
 			},
 			BackendPools: []string{"backendPool"},
 		},

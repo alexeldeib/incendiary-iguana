@@ -311,6 +311,8 @@ func Delete(obj metav1.Object, configuration *config.Config, errs chan error) {
 	log.Info("sucessfully deleted")
 }
 
+// TODO(ace): extract this pattern for async/sync resources (aka, things that return "done" vs things that only return err value)
+// generalize it across resources, natively if possible or by defining some interface
 func EnsureResourceGroup(client *resourcegroups.Client, obj metav1.Object, log logr.Logger) error {
 	local, ok := obj.(*azurev1alpha1.ResourceGroup)
 	if !ok {
