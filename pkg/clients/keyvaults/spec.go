@@ -36,22 +36,22 @@ func (s *Spec) Build() keyvault.Vault {
 	return *s.internal
 }
 
-func Name(name *string) func(*Spec) {
+func Name(name string) func(*Spec) {
 	return func(s *Spec) {
-		s.internal.Name = name
+		s.internal.Name = &name
 	}
 }
 
-func Location(location *string) func(*Spec) {
+func Location(location string) func(*Spec) {
 	return func(s *Spec) {
-		s.internal.Location = location
+		s.internal.Location = &location
 	}
 }
 
 func (s *Spec) NeedsUpdate(local *azurev1alpha1.ResourceGroup) bool {
 	return clientutil.Any([]func() bool{
-		clientutil.StringPtrChanged(s.Name(), local.Spec.Name),
-		clientutil.StringPtrChanged(s.Location(), local.Spec.Location),
+		clientutil.StringPtrChanged(s.Name(), &local.Spec.Name),
+		clientutil.StringPtrChanged(s.Location(), &local.Spec.Location),
 	})
 }
 
