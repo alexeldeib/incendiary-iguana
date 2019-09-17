@@ -25,17 +25,17 @@ var _ = Describe("resource group controller", func() {
 
 	It("should create successfully", func() {
 		key := types.NamespacedName{
-			Name:      "test-crd",
+			Name:      "test-crd-cli",
 			Namespace: "default",
 		}
 
 		rg := &azurev1alpha1.ResourceGroup{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-crd",
+				Name:      "test-crd-cli",
 				Namespace: "default",
 			},
 			Spec: azurev1alpha1.ResourceGroupSpec{
-				Name:           "test-crd",
+				Name:           "test-crd-cli",
 				Location:       "westus2",
 				SubscriptionID: "bd6a4e14-55fa-4160-a6a7-b718d7a2c95c",
 			},
