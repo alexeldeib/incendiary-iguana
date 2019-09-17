@@ -121,6 +121,12 @@ func main() {
 		Log:           ctrl.Log.WithName("controllers").WithName("Secret"),
 		SecretsClient: secretsclient,
 		Scheme:        scheme,
+		Reconciler: &controllers.AzureSyncReconciler{
+			Client:   client,
+			Az:       secretsclient,
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Secret")
 		os.Exit(1)
@@ -131,6 +137,12 @@ func main() {
 		Log:           ctrl.Log.WithName("controllers").WithName("SecretBundle"),
 		SecretsClient: secretsclient,
 		Scheme:        scheme,
+		Reconciler: &controllers.AzureSyncReconciler{
+			Client:   client,
+			Az:       secretsclient,
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SecretBundle")
 		os.Exit(1)
