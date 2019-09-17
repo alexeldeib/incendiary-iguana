@@ -72,6 +72,8 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.LoadBalancer) 
 	spec.Set(
 		Name(local.Spec.Name),
 		Location(local.Spec.Location),
+		Frontends(local.Spec.Frontends),
+		Backends(local.Spec.BackendPools),
 	)
 
 	_, err = c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec.Build())
@@ -104,7 +106,9 @@ func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.LoadBalancer) 
 // SetStatus sets the status subresource fields of the CRD reflecting the state of the object in Azure.
 func (c *Client) SetStatus(local *azurev1alpha1.LoadBalancer, remote network.LoadBalancer) {
 	local.Status.ID = remote.ID
-	local.Status.ProvisioningState = remote.ProvisioningState
+	if remote.LoadBalancerPropertiesFormat != nil {
+		local.Status.ProvisioningState = remote.LoadBalancerPropertiesFormat.ProvisioningState
+	}
 }
 
 // Done checks the current state of the CRD against the desired end state.

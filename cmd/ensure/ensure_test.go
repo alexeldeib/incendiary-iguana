@@ -182,7 +182,7 @@ var _ = Describe("reconcile", func() {
 			Name: "test-crd",
 		},
 		Spec: azurev1alpha1.LoadBalancerSpec{
-			Name:           "ace-ip",
+			Name:           "ace-lb",
 			SubscriptionID: "bd6a4e14-55fa-4160-a6a7-b718d7a2c95c",
 			ResourceGroup:  "test-crd",
 			Location:       "westus2",
