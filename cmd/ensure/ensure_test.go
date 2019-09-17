@@ -9,7 +9,10 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/cmd/ensure"
@@ -19,6 +22,8 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/redis"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secretbundles"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebus"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
@@ -38,6 +43,8 @@ var (
 	redisClient         *redis.Client
 	rgClient            *resourcegroups.Client
 	sbnamespaceClient   *servicebus.Client
+	secretsClient       *secrets.Client
+	secretbundlesClient *secretbundles.Client
 	sgClient            *securitygroups.Client
 	subnetClient        *subnets.Client
 	tmClient            *trafficmanagers.Client
@@ -65,6 +72,18 @@ var _ = BeforeSuite(func() {
 	tmClient = trafficmanagers.New(configuration)
 	vaultClient = keyvaults.New(configuration)
 	vnetClient = virtualnetworks.New(configuration)
+
+	kubeclient, err := client.New(ctrl.GetConfigOrDie(), client.Options{})
+	Expect(err).ToNot(HaveOccurred())
+
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = azurev1alpha1.AddToScheme(scheme)
+
+	secretbundlesClient, err = secretbundles.New(configuration, kubeclient, scheme)
+	Expect(err).ToNot(HaveOccurred())
+	secretsClient, err = secrets.New(configuration, kubeclient, scheme)
+	Expect(err).ToNot(HaveOccurred())
 })
 
 var _ = Describe("read yaml + parse resources", func() {
@@ -313,6 +332,30 @@ var _ = Describe("reconcile", func() {
 		},
 	}
 
+	secret := &azurev1alpha1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-crd",
+			Namespace: "default",
+		},
+		Spec: azurev1alpha1.SecretSpec{
+			SecretIdentifier: azurev1alpha1.SecretIdentifier{
+				Name:  "ace-secret",
+				Vault: "ace-kv-test",
+			},
+		},
+	}
+
+	secretbundle := &azurev1alpha1.SecretBundle{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-crd",
+			Namespace: "default",
+		},
+		Spec: azurev1alpha1.SecretBundleSpec{
+			Name:    "ace-secretbundle",
+			Secrets: []azurev1alpha1.SecretIdentifier{},
+		},
+	}
+
 	_ = vnet
 	_ = subnet
 	_ = sg
@@ -323,6 +366,8 @@ var _ = Describe("reconcile", func() {
 	_ = sbnamespace
 	_ = vault
 	_ = identity
+	_ = secretbundle
+	_ = secret
 
 	Context("ensure", func() {
 		It("should create rg successfully", func() {
@@ -365,6 +410,11 @@ var _ = Describe("reconcile", func() {
 		// 	Expect(err).ToNot(HaveOccurred())
 		// })
 
+		It("should create secretbundle successfully", func() {
+			err := ensure.EnsureSecretBundle(secretbundlesClient, secretbundle, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
 		// It("should create managed identity successfully", func() {
 		// 	err := ensure.EnsureIdentity(identitiesClient, identity, log)
 		// 	Expect(err).ToNot(HaveOccurred())
@@ -396,6 +446,11 @@ var _ = Describe("reconcile", func() {
 		// 	err := ensure.DeleteIdentity(identitiesClient, identity, log)
 		// 	Expect(err).ToNot(HaveOccurred())
 		// })
+
+		It("should delete secretbundle successfully", func() {
+			err := ensure.DeleteSecretBundle(secretbundlesClient, secretbundle, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
 		// It("should delete vault successfully", func() {
 		// 	err := ensure.DeleteKeyvault(vaultClient, vault, log)

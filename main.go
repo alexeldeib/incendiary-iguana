@@ -79,7 +79,7 @@ func main() {
 	client := mgr.GetClient()
 
 	// Global client initialization
-	secretsclient, err := secrets.New(configuration)
+	secretsclient, err := secrets.New(configuration, client, scheme)
 	if err != nil {
 		setupLog.Error(err, "failed to initialize keyvault secret client")
 		os.Exit(1)

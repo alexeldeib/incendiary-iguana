@@ -12,25 +12,17 @@ import (
 type SecretBundleSpec struct {
 	// Name is the name the corresponding Keyvault Secret.
 	Name string `json:"name"`
+	// +kubebuilder:validation:MinItems=1
 	// Secrets is a list of references to Keyvault secrets to sync to a single Kubernetes secret.
 	// The keys in the map will be the keys in the Kubernetes secret.
-	Secrets []SecretSpec `json:"secrets"`
+	Secrets []SecretIdentifier `json:"secrets"`
 }
 
 // SecretBundleStatus defines the observed state of SecretBundle
 type SecretBundleStatus struct {
 	// Secrets is map of named statuses for individual secrets.
-	Secrets map[string]SingleSecretStatus `json:"secrets"`
-	// Generation is the last reconciled generation.
-	Generation int64 `json:"generation"`
-	// Desired is len(spec.Secrets): it is the number of configured secrets in this object.
-	Desired int `json:"desired"`
-	// Available is the number of desired secrets from Keyvault which were found.
-	Available int `json:"available"`
-	// Ready is the number of keys available for use in the target Kubernetes secret.
-	// status.Desired == status.Ready implies an application depending on all of these secrets
-	// could immediately begin using them.
-	Ready int `json:"ready"`
+	Secrets map[string]string `json:"secrets,omitempty"`
+	State   *string           `json:"state,omitempty"`
 }
 
 // +kubebuilder:object:root=true

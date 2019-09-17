@@ -2,7 +2,7 @@
 Copyright 2019 Alexander Eldeib.
 */
 
-package secrets
+package secretbundles
 
 import (
 	"context"
@@ -46,12 +46,22 @@ func (c *Client) Get(ctx context.Context, secret *azurev1alpha1.Secret) (keyvaul
 }
 
 // Ensure takes a spec corresponding to one Azure KV secret. It syncs that secret into Kubernetes, remapping the name if necessary.
-func (c *Client) Ensure(ctx context.Context, secret *azurev1alpha1.Secret) error {
+func (c *Client) Ensure(ctx context.Context, secret *azurev1alpha1.SecretBundle) error {
 	// TODO(ace): cloud-sensitive
-	vault := fmt.Sprintf("https://%s.%s", secret.Spec.Vault, azure.PublicCloud.KeyVaultDNSSuffix)
-	bundle, err := c.internal.GetSecret(ctx, vault, secret.Spec.Name, "")
-	if err != nil {
-		return err
+	secrets := map[string]*string{}
+	for _, item := range secret.Spec.Secrets {
+		vault := fmt.Sprintf("https://%s.%s", item.Vault, azure.PublicCloud.KeyVaultDNSSuffix)
+		bundle, err := c.internal.GetSecret(ctx, vault, item.Name, "")
+		// TODO(ace): more graceful error handling?
+		// parallelize and collect?
+		if err != nil {
+			return err
+		}
+		if item.NewName != nil {
+			secrets[*item.NewName] = bundle.Value
+			continue
+		}
+		secrets[item.Name] = bundle.Value
 	}
 
 	local := &corev1.Secret{
@@ -61,25 +71,25 @@ func (c *Client) Ensure(ctx context.Context, secret *azurev1alpha1.Secret) error
 		},
 	}
 
-	_, err = controllerutil.CreateOrUpdate(ctx, c.kubeclient, local, func() error {
-		innerErr := controllerutil.SetControllerReference(secret, local, c.scheme)
+	_, err := controllerutil.CreateOrUpdate(ctx, c.kubeclient, local, func() error {
+		innerErr := controllerutil.SetControllerReference(secret, secret, c.scheme)
 		if innerErr != nil {
 			return innerErr
 		}
-		if secret.Spec.NewName != nil {
-			local.Data = map[string][]byte{
-				*secret.Spec.NewName: []byte(*bundle.Value),
-			}
-			return nil
+		if local.Data == nil {
+			local.Data = map[string][]byte{}
 		}
-		local.Data = map[string][]byte{
-			secret.Spec.Name: []byte(*bundle.Value),
+		for key, val := range secrets {
+			local.Data[key] = []byte(*val)
 		}
 		return nil
 	})
 
-	secret.Status.State = nil
-	if err == nil {
+	if local.Data != nil {
+		secret.Status.Secrets = map[string]string{}
+		for key := range local.Data {
+			secret.Status.Secrets[key] = "Succeeded"
+		}
 		secret.Status.State = to.StringPtr("Succeeded")
 	}
 
@@ -87,7 +97,7 @@ func (c *Client) Ensure(ctx context.Context, secret *azurev1alpha1.Secret) error
 }
 
 // Delete deletes a secret from Keyvault.
-func (c *Client) Delete(ctx context.Context, secret *azurev1alpha1.Secret) error {
+func (c *Client) Delete(ctx context.Context, secret *azurev1alpha1.SecretBundle) error {
 	local := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secret.Spec.Name,
@@ -98,7 +108,7 @@ func (c *Client) Delete(ctx context.Context, secret *azurev1alpha1.Secret) error
 }
 
 func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {
-	_, ok := obj.(*azurev1alpha1.Secret)
+	_, ok := obj.(*azurev1alpha1.SecretBundle)
 	if !ok {
 		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
 	}
@@ -106,7 +116,7 @@ func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {
 }
 
 func (c *Client) TryEnsure(ctx context.Context, obj runtime.Object) error {
-	local, ok := obj.(*azurev1alpha1.Secret)
+	local, ok := obj.(*azurev1alpha1.SecretBundle)
 	if !ok {
 		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
 	}
@@ -114,7 +124,7 @@ func (c *Client) TryEnsure(ctx context.Context, obj runtime.Object) error {
 }
 
 func (c *Client) TryDelete(ctx context.Context, obj runtime.Object) error {
-	local, ok := obj.(*azurev1alpha1.Secret)
+	local, ok := obj.(*azurev1alpha1.SecretBundle)
 	if !ok {
 		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
 	}

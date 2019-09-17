@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
@@ -33,6 +34,8 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/redis"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secretbundles"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebus"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
@@ -201,7 +204,20 @@ func (opts *EnsureOptions) Read() ([]metav1.Object, error) {
 	return objects, nil
 }
 
-func do(objects []metav1.Object, configuration *config.Config, applyFunc func(obj metav1.Object, configuration *config.Config, errs chan error)) error {
+func do(objects []metav1.Object, configuration *config.Config, applyFunc func(obj metav1.Object, configuration *config.Config, kubeclient *client.Client, errs chan error)) error {
+	var kubeclient *client.Client
+	kubeconfig, err := ctrl.GetConfig()
+	if err != nil {
+		log.Error(err, "failed to get kubeconfig")
+		kubeconfig = nil
+	} else {
+		c, err := client.New(kubeconfig, client.Options{})
+		if err != nil {
+			log.Error(err, "expected to create kubeclient after finding kubeconfig")
+		} else {
+			kubeclient = &c
+		}
+	}
 	// apply objects
 	pool := make(chan token, limit)
 	errs := make(chan error, limit)
@@ -209,7 +225,7 @@ func do(objects []metav1.Object, configuration *config.Config, applyFunc func(ob
 		// n.b. acquire
 		pool <- token{}
 		go func(o metav1.Object) {
-			applyFunc(o, configuration, errs)
+			applyFunc(o, configuration, kubeclient, errs)
 			// n.b. release
 			<-pool
 		}(obj)
@@ -229,7 +245,7 @@ func do(objects []metav1.Object, configuration *config.Config, applyFunc func(ob
 	return nil
 }
 
-func Ensure(obj metav1.Object, configuration *config.Config, errs chan error) {
+func Ensure(obj metav1.Object, configuration *config.Config, kubeclient *client.Client, errs chan error) {
 	var err error
 	log := log.WithValues("action", "ensure")
 	log.Info("starting reconciliation")
@@ -248,6 +264,16 @@ func Ensure(obj metav1.Object, configuration *config.Config, errs chan error) {
 		err = EnsureRedis(redis.New(configuration, nil, nil), obj, log)
 	case *azurev1alpha1.ResourceGroup:
 		err = EnsureResourceGroup(resourcegroups.New(configuration), obj, log)
+	case *azurev1alpha1.Secret:
+		client, err := secrets.New(configuration, nil, nil)
+		if err == nil {
+			err = EnsureSecret(client, obj, log)
+		}
+	case *azurev1alpha1.SecretBundle:
+		client, err := secretbundles.New(configuration, nil, nil)
+		if err == nil {
+			err = EnsureSecretBundle(client, obj, log)
+		}
 	case *azurev1alpha1.ServiceBusNamespace:
 		err = EnsureServiceBusNamespace(servicebus.New(configuration, nil, nil), obj, log)
 	case *azurev1alpha1.Subnet:
@@ -270,7 +296,7 @@ func Ensure(obj metav1.Object, configuration *config.Config, errs chan error) {
 	log.Info("sucessfully reconciled")
 }
 
-func Delete(obj metav1.Object, configuration *config.Config, errs chan error) {
+func Delete(obj metav1.Object, configuration *config.Config, kubeclient *client.Client, errs chan error) {
 	var err error
 	log := log.WithValues("action", "delete")
 	log.Info("starting deletion")
@@ -289,6 +315,16 @@ func Delete(obj metav1.Object, configuration *config.Config, errs chan error) {
 		err = DeleteRedis(redis.New(configuration, nil, nil), obj, log)
 	case *azurev1alpha1.ResourceGroup:
 		err = DeleteResourceGroup(resourcegroups.New(configuration), obj, log)
+	case *azurev1alpha1.Secret:
+		client, err := secrets.New(configuration, nil, nil)
+		if err == nil {
+			err = DeleteSecret(client, obj, log)
+		}
+	case *azurev1alpha1.SecretBundle:
+		client, err := secretbundles.New(configuration, nil, nil)
+		if err == nil {
+			err = DeleteSecretBundle(client, obj, log)
+		}
 	case *azurev1alpha1.ServiceBusNamespace:
 		err = DeleteServiceBusNamespace(servicebus.New(configuration, nil, nil), obj, log)
 	case *azurev1alpha1.Subnet:
@@ -852,6 +888,72 @@ func DeleteLoadBalancer(client *loadbalancers.Client, obj metav1.Object, log log
 		log.Info("deleting")
 		found, err := client.Delete(context.Background(), local)
 		return !found, err
+	})
+}
+
+func EnsureSecret(client *secrets.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.Secret)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "secret", "name", local.Spec.Name)
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("reconciling")
+		err = client.Ensure(context.Background(), local)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return err == nil, nil
+	})
+}
+
+func DeleteSecret(client *secrets.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.Secret)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "secret", "name", local.Spec.Name)
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("deleting")
+		err = client.Delete(context.Background(), local)
+		return err == nil, err
+	})
+}
+
+func EnsureSecretBundle(client *secretbundles.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.SecretBundle)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "secretbundle", "name", local.Spec.Name)
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("reconciling")
+		err = client.Ensure(context.Background(), local)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return err == nil, nil
+	})
+}
+
+func DeleteSecretBundle(client *secretbundles.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.SecretBundle)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "secretbundle", "name", local.Spec.Name)
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("deleting")
+		err = client.Delete(context.Background(), local)
+		return err == nil, err
 	})
 }
 
