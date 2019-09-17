@@ -63,7 +63,8 @@ stages:
         go get golang.org/x/tools/cmd/goimports
         go get github.com/onsi/ginkgo/ginkgo
         go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master
-
+        go get sigs.k8s.io/kind@v0.5.1
+        
         # install kubebuilder, controller-gen, etcd, kubectl, and kube-apiserver
         os=$(go env GOOS)
         arch=$(go env GOARCH)
@@ -75,12 +76,22 @@ stages:
         which kubebuilder
         which kustomize
         which controller-gen
+        which kind
       displayName: 'setup + install dependencies'
       env:
         GO111MODULE: on
     - script: |
         go1.13 version
+        kind create cluster
+      displayName: 'test controllers'
+      continueOnError: true
+      env:
+        GO111MODULE: on
+    - script: |
+        go1.13 version
         make ci-manager
+        export KUBECONFIG="$(kind get kubeconfig-path --name="kind")"
+        kubectl get node 
       displayName: 'build manager'
       env:
         GO111MODULE: on
