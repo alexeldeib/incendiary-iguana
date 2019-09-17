@@ -15,6 +15,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/cmd/ensure"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/identities"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/loadbalancers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/redis"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
@@ -29,18 +30,19 @@ import (
 const testdata = "./testdata/group.yaml"
 
 var (
-	log               = ctrl.Log.WithName("test")
-	configuration     = config.New(log)
-	identitiesClient  *identities.Client
-	publicIPClient    *publicips.Client
-	redisClient       *redis.Client
-	rgClient          *resourcegroups.Client
-	sbnamespaceClient *servicebus.Client
-	sgClient          *securitygroups.Client
-	subnetClient      *subnets.Client
-	tmClient          *trafficmanagers.Client
-	vaultClient       *keyvaults.Client
-	vnetClient        *virtualnetworks.Client
+	log                 = ctrl.Log.WithName("test")
+	configuration       = config.New(log)
+	identitiesClient    *identities.Client
+	loadbalancersClient *loadbalancers.Client
+	publicIPClient      *publicips.Client
+	redisClient         *redis.Client
+	rgClient            *resourcegroups.Client
+	sbnamespaceClient   *servicebus.Client
+	sgClient            *securitygroups.Client
+	subnetClient        *subnets.Client
+	tmClient            *trafficmanagers.Client
+	vaultClient         *keyvaults.Client
+	vnetClient          *virtualnetworks.Client
 )
 
 func TestEnsure(t *testing.T) {
@@ -53,6 +55,7 @@ var _ = BeforeSuite(func() {
 		Fail(err.Error())
 	}
 	identitiesClient = identities.New(configuration)
+	loadbalancersClient = loadbalancers.New(configuration)
 	publicIPClient = publicips.New(configuration)
 	rgClient = resourcegroups.New(configuration)
 	redisClient = redis.New(configuration, nil, nil)
@@ -174,6 +177,22 @@ var _ = Describe("reconcile", func() {
 		},
 	}
 
+	lb := &azurev1alpha1.LoadBalancer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-crd",
+		},
+		Spec: azurev1alpha1.LoadBalancerSpec{
+			Name:           "ace-ip",
+			SubscriptionID: "bd6a4e14-55fa-4160-a6a7-b718d7a2c95c",
+			ResourceGroup:  "test-crd",
+			Location:       "westus2",
+			Frontends: []string{
+				"/subscriptions/bd6a4e14-55fa-4160-a6a7-b718d7a2c95c/resourceGroups/ace-crd/providers/Microsoft.Network/publicIpAddresses/ace-ip",
+			},
+			BackendPools: []string{"backendPool"},
+		},
+	}
+
 	tm := &azurev1alpha1.TrafficManager{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-crd",
@@ -286,6 +305,7 @@ var _ = Describe("reconcile", func() {
 	_ = subnet
 	_ = sg
 	_ = ip
+	_ = lb
 	_ = tm
 	_ = cache
 	_ = sbnamespace
@@ -315,6 +335,11 @@ var _ = Describe("reconcile", func() {
 
 		It("should create ip successfully", func() {
 			err := ensure.EnsurePublicIP(publicIPClient, ip, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should create lb successfully", func() {
+			err := ensure.EnsureLoadBalancer(loadbalancersClient, lb, log)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -367,6 +392,11 @@ var _ = Describe("reconcile", func() {
 
 		It("should delete tm successfully", func() {
 			err := ensure.DeleteTrafficManager(tmClient, tm, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should delete lb successfully", func() {
+			err := ensure.DeleteLoadBalancer(loadbalancersClient, lb, log)
 			Expect(err).ToNot(HaveOccurred())
 		})
 

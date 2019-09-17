@@ -31,12 +31,16 @@ func (s *Spec) Build() msi.Identity {
 	return *s.internal
 }
 
-func (s *Spec) Name(name *string) {
-	s.internal.Name = name
+func (s *Spec) Set(opts ...func(*Spec)) {
+	for _, opt := range opts {
+		opt(s)
+	}
 }
 
-func (s *Spec) Location(location *string) {
-	s.internal.Location = location
+func Location(location *string) func(s *Spec) {
+	return func(s *Spec) {
+		s.internal.Location = location
+	}
 }
 
 func (s *Spec) NeedsUpdate(local *azurev1alpha1.VirtualNetwork) bool {
@@ -48,19 +52,19 @@ func (s *Spec) NeedsUpdate(local *azurev1alpha1.VirtualNetwork) bool {
 	return false
 }
 
-func Name(s *Spec) *string {
+func (s *Spec) Name() *string {
 	return s.internal.Name
 }
 
-func Location(s *Spec) *string {
+func (s *Spec) Location() *string {
 	return s.internal.Location
 }
 
-func ID(s *Spec) *string {
+func (s *Spec) ID() *string {
 	return s.internal.ID
 }
 
-func PrincipalID(s *Spec) *string {
+func (s *Spec) PrincipalID() *string {
 	if s == nil || s.internal == nil || s.internal.IdentityProperties == nil || s.internal.PrincipalID == nil {
 		return nil
 	}

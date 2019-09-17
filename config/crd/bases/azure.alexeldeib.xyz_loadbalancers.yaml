@@ -38,6 +38,20 @@ spec:
         spec:
           description: LoadBalancerSpec defines the desired state of Load Balancer
           properties:
+            backendPools:
+              description: BackendPools is a list names of backend pools to create
+                for this Load Balancers.
+              items:
+                type: string
+              minItems: 1
+              type: array
+            frontends:
+              description: Frontends is a list of fully qualified resource IDs to
+                Azure public IPs.
+              items:
+                type: string
+              minItems: 1
+              type: array
             location:
               description: Location of the resource group (e.g., eastus2 or "West
                 US")
@@ -55,6 +69,8 @@ spec:
               description: SubscriptionID contains the Resource group. Is a GUID.
               type: string
           required:
+          - backendPools
+          - frontends
           - location
           - name
           - resourceGroup

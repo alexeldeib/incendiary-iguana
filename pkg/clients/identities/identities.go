@@ -58,8 +58,9 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.Identity) erro
 	}
 
 	spec := NewSpec()
-	spec.Name(&local.Spec.Name)
-	spec.Location(&local.Spec.Location)
+	spec.Set(
+		Location(&local.Spec.Location),
+	)
 
 	if _, err := c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec.Build()); err != nil {
 		return err

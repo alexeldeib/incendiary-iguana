@@ -40,3 +40,11 @@ func GenerateRandomString(n int) string {
 	}
 	return base64.URLEncoding.EncodeToString(b) //, err
 }
+
+// StringPtrChanged returns true if the new user-defined value for a string matches the existing value.
+// If the resource does not exist, old will be nil, which should be treated as requiring update.
+func StringPtrChanged(old *string, new *string) func() bool {
+	return func() bool {
+		return new != nil && (old == nil || *old != *new)
+	}
+}

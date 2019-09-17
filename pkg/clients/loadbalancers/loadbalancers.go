@@ -10,6 +10,8 @@ import (
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2019-04-01/network"
+	"github.com/davecgh/go-spew/spew"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
@@ -47,28 +49,33 @@ func (c *Client) ForSubscription(subID string) error {
 }
 
 // Ensure creates or updates a virtual network in an idempotent manner and sets its provisioning state.
-func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.LoadBalancer) error {
-	spec := network.LoadBalancer{
-		Sku:                          &network.LoadBalancerSku{Name: network.LoadBalancerSkuNameStandard},
-		LoadBalancerPropertiesFormat: &network.LoadBalancerPropertiesFormat{},
-	}
-	if local.Spec.SKU != nil {
-		spec.Sku.Name = network.LoadBalancerSkuName(*local.Spec.SKU)
-	}
-
-	if _, err := c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec); err != nil {
-		return err
+func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.LoadBalancer) (bool, error) {
+	remote, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name, expand)
+	found := !remote.HasHTTPStatus(http.StatusNotFound, http.StatusConflict)
+	c.SetStatus(local, remote)
+	if err != nil && found {
+		return false, err
 	}
 
-	if _, err := c.SetStatus(ctx, local); err != nil {
-		return err
+	var spec *Spec
+	if found {
+		spec = NewSpecWithRemote(&remote)
+		if c.Done(ctx, local) {
+			return true, nil
+		}
+		spew.Dump("not done")
+		return false, nil
+	} else {
+		spec = NewSpec()
 	}
 
-	if !c.Done(ctx, local) {
-		return errors.New("not finished reconciling, requeueing")
-	}
+	spec.Set(
+		Name(local.Spec.Name),
+		Location(local.Spec.Location),
+	)
 
-	return nil
+	_, err = c.internal.CreateOrUpdate(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec.Build())
+	return false, err
 }
 
 // Get returns a virtual network.
@@ -85,24 +92,19 @@ func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.LoadBalancer) 
 			return false, err
 		}
 	}
-	return c.SetStatus(ctx, local)
+	remote, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name, expand)
+	found := !remote.IsHTTPStatus(http.StatusNotFound)
+	c.SetStatus(local, remote)
+	if err != nil && remote.IsHTTPStatus(http.StatusNotFound) {
+		return false, nil
+	}
+	return found, err
 }
 
 // SetStatus sets the status subresource fields of the CRD reflecting the state of the object in Azure.
-func (c *Client) SetStatus(ctx context.Context, local *azurev1alpha1.LoadBalancer) (bool, error) {
-	remote, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name, expand)
-	// Care about 400 and 5xx, not 404.
-	found := !remote.IsHTTPStatus(http.StatusNotFound)
-	if err != nil && found {
-		if remote.IsHTTPStatus(http.StatusConflict) {
-			return found, nil
-		}
-		return found, err
-	}
-
+func (c *Client) SetStatus(local *azurev1alpha1.LoadBalancer, remote network.LoadBalancer) {
 	local.Status.ID = remote.ID
 	local.Status.ProvisioningState = remote.ProvisioningState
-	return found, nil
 }
 
 // Done checks the current state of the CRD against the desired end state.
@@ -111,4 +113,28 @@ func (c *Client) Done(ctx context.Context, local *azurev1alpha1.LoadBalancer) bo
 		return false
 	}
 	return true
+}
+
+func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {
+	local, ok := obj.(*azurev1alpha1.LoadBalancer)
+	if !ok {
+		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+	}
+	return c.ForSubscription(local.Spec.SubscriptionID)
+}
+
+func (c *Client) TryEnsure(ctx context.Context, obj runtime.Object) (bool, error) {
+	local, ok := obj.(*azurev1alpha1.LoadBalancer)
+	if !ok {
+		return false, errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+	}
+	return c.Ensure(ctx, local)
+}
+
+func (c *Client) TryDelete(ctx context.Context, obj runtime.Object) (bool, error) {
+	local, ok := obj.(*azurev1alpha1.LoadBalancer)
+	if !ok {
+		return false, errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+	}
+	return c.Delete(ctx, local)
 }

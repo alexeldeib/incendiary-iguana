@@ -36,22 +36,22 @@ func (s *Spec) Build() resources.Group {
 	return *s.internal
 }
 
-func Name(name *string) func(*Spec) {
+func Name(name string) func(*Spec) {
 	return func(s *Spec) {
-		s.internal.Name = name
+		s.internal.Name = &name
 	}
 }
 
-func Location(location *string) func(*Spec) {
+func Location(location string) func(*Spec) {
 	return func(s *Spec) {
-		s.internal.Location = location
+		s.internal.Location = &location
 	}
 }
 
 func (s *Spec) NeedsUpdate(local *azurev1alpha1.ResourceGroup) bool {
 	return clientutil.Any([]func() bool{
-		StringPtrChanged(s.Name(), local.Spec.Name),
-		StringPtrChanged(s.Location(), local.Spec.Location),
+		clientutil.StringPtrChanged(s.Name(), &local.Spec.Name),
+		clientutil.StringPtrChanged(s.Location(), &local.Spec.Location),
 	})
 }
 
@@ -72,10 +72,4 @@ func (s *Spec) State() *string {
 		return nil
 	}
 	return s.internal.Properties.ProvisioningState
-}
-
-func StringPtrChanged(old *string, new string) func() bool {
-	return func() bool {
-		return old == nil || *old != new
-	}
 }

@@ -20,8 +20,12 @@ type LoadBalancerSpec struct {
 	SubscriptionID string `json:"subscriptionId"`
 	// SKU is either basic or standard.
 	SKU *string `json:"sku,omitempty"`
-	// FrontendIPConfigurations []FrontendIPConfigurationSpec `json:"frontendIPConfigurations"`
-	// BackendAddressPools      []BackendAddressPoolSpec      `json:"backendAddressPools"`
+	// +kubebuilder:validation:MinItems=1
+	// Frontends is a list of fully qualified resource IDs to Azure public IPs.
+	Frontends []string `json:"frontends"`
+	// +kubebuilder:validation:MinItems=1
+	// BackendPools is a list names of backend pools to create for this Load Balancers.
+	BackendPools []string `json:"backendPools"`
 	// OutboundRules            []OutboundRuleSpec            `json:"frontendIPConfigurations"`
 }
 

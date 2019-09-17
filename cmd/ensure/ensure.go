@@ -28,6 +28,7 @@ import (
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/identities"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/loadbalancers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/nics"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/redis"
@@ -239,6 +240,8 @@ func Ensure(obj metav1.Object, configuration *config.Config, errs chan error) {
 		err = EnsureIdentity(identities.New(configuration), obj, log)
 	case *azurev1alpha1.Keyvault:
 		err = EnsureKeyvault(keyvaults.New(configuration), obj, log)
+	case *azurev1alpha1.LoadBalancer:
+		err = EnsureLoadBalancer(loadbalancers.New(configuration), obj, log)
 	case *azurev1alpha1.NetworkInterface:
 		err = EnsureNIC(nics.New(configuration), obj, log)
 	case *azurev1alpha1.Redis:
@@ -278,6 +281,8 @@ func Delete(obj metav1.Object, configuration *config.Config, errs chan error) {
 		err = DeleteIdentity(identities.New(configuration), obj, log)
 	case *azurev1alpha1.Keyvault:
 		err = DeleteKeyvault(keyvaults.New(configuration), obj, log)
+	case *azurev1alpha1.LoadBalancer:
+		err = DeleteLoadBalancer(loadbalancers.New(configuration), obj, log)
 	case *azurev1alpha1.NetworkInterface:
 		err = DeleteNIC(nics.New(configuration), obj, log)
 	case *azurev1alpha1.Redis:
@@ -804,6 +809,47 @@ func DeleteIdentity(client *identities.Client, obj metav1.Object, log logr.Logge
 		log.Info("deleting")
 		err = client.Delete(context.Background(), local)
 		return err == nil, err
+	})
+}
+
+func EnsureLoadBalancer(client *loadbalancers.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.LoadBalancer)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "loadbalancer", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("reconciling")
+		done, err = client.Ensure(context.Background(), local)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return done, nil
+	})
+}
+
+func DeleteLoadBalancer(client *loadbalancers.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.LoadBalancer)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "loadbalancer", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("deleting")
+		found, err := client.Delete(context.Background(), local)
+		return !found, err
 	})
 }
 
