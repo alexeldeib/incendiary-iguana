@@ -84,11 +84,12 @@ stages:
         go1.13 version
         kind create cluster
         kind get kubeconfig-path --name="kind" | install -D /dev/stdin $(system.defaultWorkingDirectory)/kubeconfig
-        export KUBECONFIG="$(kind get kubeconfig-path --name="kind")"
+        cat $(system.defaultWorkingDirectory)/kubeconfig
       displayName: 'kind create cluster'
     - script: |
         set -eu
         go1.13 version
+        export KUBECONFIG=$(kind get kubeconfig-path --name="kind")
         kubectl get node
         make ci-manager
       displayName: 'build manager'
@@ -97,7 +98,6 @@ stages:
         AZURE_CLIENT_ID: $(clientId)
         AZURE_CLIENT_SECRET: $(clientSecret)
         AZURE_TENANT_ID: $(tenantId)
-        KUBECONFIG: $(system.defaultWorkingDirectory)/kubeconfig
     - script: |
         set -eu
         go1.13 version
