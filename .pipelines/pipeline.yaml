@@ -83,7 +83,7 @@ stages:
         set -eu
         go1.13 version
         kind create cluster
-        kind get kubeconfig-path --name="kind" > ./kubeconfig
+        kind get kubeconfig-path --name="kind" > $(system.defaultWorkingDirectory)/kubeconfig
         export KUBECONFIG="$(kind get kubeconfig-path --name="kind")"
       displayName: 'kind create cluster'
     - script: |
@@ -118,5 +118,5 @@ stages:
         AZURE_CLIENT_ID: $(clientId)
         AZURE_CLIENT_SECRET: $(clientSecret)
         AZURE_TENANT_ID: $(tenantId)
-        KUBECONFIG: ./kubeconfig
+        KUBECONFIG: $(system.defaultWorkingDirectory)/kubeconfig
         
