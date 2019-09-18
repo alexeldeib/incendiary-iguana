@@ -102,12 +102,13 @@ stages:
         go1.13 version
         make manager-test
       displayName: 'test controllers'
-      continueOnError: true
       env:
         GO111MODULE: on
         AZURE_CLIENT_ID: $(clientId)
         AZURE_CLIENT_SECRET: $(clientSecret)
         AZURE_TENANT_ID: $(tenantId)
+        USE_EXISTING_CLUSTER: "true"
+        KUBECONFIG: $(system.defaultWorkingDirectory)/kubeconfig
     - script: |
         set -eu
         go1.13 version
@@ -119,4 +120,14 @@ stages:
         AZURE_CLIENT_SECRET: $(clientSecret)
         AZURE_TENANT_ID: $(tenantId)
         KUBECONFIG: $(system.defaultWorkingDirectory)/kubeconfig
+    - script: |
+        set -eu
+        go1.13 version
+        make manager-test
+      displayName: 'test controllers'
+      env:
+        GO111MODULE: on
+        AZURE_CLIENT_ID: $(clientId)
+        AZURE_CLIENT_SECRET: $(clientSecret)
+        AZURE_TENANT_ID: $(tenantId)
         

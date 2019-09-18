@@ -3,4 +3,5 @@ description: 'builds and tests this repsitory'
 runs:
   using: 'docker'
   image: 'Dockerfile'
-  entrypoint: ["make", "manager"]
+  entrypoint: "make"
+  args: ["manager"]
