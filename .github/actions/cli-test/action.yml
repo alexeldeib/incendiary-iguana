@@ -1,0 +1,6 @@
+name: 'test cli'
+description: 'tests cli'
+runs:
+  using: 'docker'
+  image: docker://alexeldeib/kbtest
+  args: ["make", "cli-test"]
