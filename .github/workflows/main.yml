@@ -40,20 +40,7 @@ jobs:
         env:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
-  test_cli:
-    name: test cli
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - name: test
-        uses: docker://alexeldeib/kbtest:latest
-        with:
-          entrypoint: /scripts/cli_test.sh
-        env:
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   clean_test_manager:
     name: clean test manager
     runs-on: ubuntu-latest
@@ -85,7 +72,7 @@ jobs:
           which kind 
           kind create cluster
           export KUBECONFIG=$(kind get kubeconfig-path --name="kind")
-          make ci-manager
+          make manager
   clean_test_cli:
     name: clean test cli
     runs-on: ubuntu-latest
@@ -114,6 +101,6 @@ jobs:
           which kustomize
           which controller-gen
           which kind 
-          kind create cluster
-          export KUBECONFIG=$(kind get kubeconfig-path --name="kind")
-          make ci-cli
+          # kind create cluster
+          # export KUBECONFIG=$(kind get kubeconfig-path --name="kind")
+          make cli
