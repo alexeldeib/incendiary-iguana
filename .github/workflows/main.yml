@@ -66,9 +66,6 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
           set -eu
-          go get golang.org/dl/go1.13
-          go1.13 download
-          go1.13 version
           go get golang.org/x/tools/cmd/goimports
           go get github.com/onsi/ginkgo/ginkgo
           go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master
@@ -82,8 +79,8 @@ jobs:
           which kustomize
           which controller-gen
           which kind 
-          # kind create cluster
-          # export KUBECONFIG=$(kind get kubeconfig-path --name="kind")
+          kind create cluster
+          export KUBECONFIG=$(kind get kubeconfig-path --name="kind")
           make ci-manager
   clean_test_cli:
     name: clean test cli
@@ -97,9 +94,6 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
         run: |
           set -eu
-          go get golang.org/dl/go1.13
-          go1.13 download
-          go1.13 version
           go get golang.org/x/tools/cmd/goimports
           go get github.com/onsi/ginkgo/ginkgo
           go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master

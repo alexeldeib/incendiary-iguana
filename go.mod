@@ -1,6 +1,6 @@
 module github.com/alexeldeib/incendiary-iguana
 
-go 1.13
+go 1.12
 
 require (
 	github.com/Azure/azure-sdk-for-go v33.2.0+incompatible
