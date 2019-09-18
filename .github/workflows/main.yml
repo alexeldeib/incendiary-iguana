@@ -11,6 +11,10 @@ jobs:
         uses: docker://alexeldeib/kbtest:2019-09-17T212751.000Z
         with:
           entrypoint: /scripts/mgr_build.sh
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   build_cli:
     name: build cli
     runs-on: ubuntu-latest
@@ -20,6 +24,10 @@ jobs:
         uses: docker://alexeldeib/kbtest:2019-09-17T212751.000Z
         with:
           entrypoint: /scripts/cli_build.sh
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
   test_manager:
     name: test manager
     runs-on: ubuntu-latest
@@ -29,6 +37,10 @@ jobs:
         uses: docker://alexeldeib/kbtest:2019-09-17T212751.000Z
         with:
           entrypoint: /scripts/mgr_test.sh
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
   test_cli:
     name: test cli
     runs-on: ubuntu-latest
@@ -38,3 +50,7 @@ jobs:
         uses: docker://alexeldeib/kbtest:2019-09-17T212751.000Z
         with:
           entrypoint: /scripts/cli_test.sh
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
