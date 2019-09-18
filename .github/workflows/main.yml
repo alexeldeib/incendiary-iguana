@@ -87,8 +87,8 @@ jobs:
           which kustomize
           which controller-gen
           which kind 
-          kind create cluster
-          export KUBECONFIG=$(kind get kubeconfig-path --name="kind")
+          # kind create cluster
+          # export KUBECONFIG=$(kind get kubeconfig-path --name="kind")
           make manager-test
   test_cli:
     name: test cli
