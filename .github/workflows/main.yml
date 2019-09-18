@@ -74,7 +74,11 @@ jobs:
           go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
           os=$(go env GOOS)
           arch=$(go env GOARCH)
-          curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}
+          curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}.tar.gz
+          ls -al .
+          tar -xzf kubebuilder_2.0.0_${os}_${arch}.tar.gz
+          ls -al .
+          ls -al ./kubebuilder_2.0.0_${os}_${arch}
           sudo mv ./kubebuilder_2.0.0_${os}_${arch}/bin /usr/local/kubebuilder
           ls -al /usr/local/kubebuilder
           ls -al /usr/local/kubebuilder/bin
