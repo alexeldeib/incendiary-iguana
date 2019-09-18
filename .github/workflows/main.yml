@@ -1,0 +1,10 @@
+name: build + test
+on: [push]
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: build
+        uses: ./.github/actions/build
