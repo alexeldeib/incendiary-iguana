@@ -21,7 +21,7 @@ jobs:
         with:
           entrypoint: /scripts/cli_build.sh
   test_manager:
-    name: build cli
+    name: test manager
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
