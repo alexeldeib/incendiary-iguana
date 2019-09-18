@@ -37,10 +37,10 @@ RUN apt update -y && apt -y install docker-ce=18.06.2~ce~3-0~debian
 
 RUN mkdir /scripts
 
-ADD cli_build.sh /scripts
-ADD cli_test.sh /scripts
-ADD mgr_build.sh /scripts
-ADD mgr_test.sh /scripts
+ADD cli_build.sh /scripts/
+ADD cli_test.sh /scripts/
+ADD mgr_build.sh /scripts/
+ADD mgr_test.sh /scripts/
 
-RUN chmod +x /scripts/*
+RUN chmod +x /scripts/*.sh
 # RUN go get github.com/go-delve/delve/cmd/dlv@v1.3.0

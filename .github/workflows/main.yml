@@ -73,8 +73,8 @@ jobs:
           go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
           os=$(go env GOOS)
           arch=$(go env GOARCH)
-          curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} | tar -xz -C /tmp/
-          sudo mv /tmp/kubebuilder_2.0.0_${os}_${arch} /usr/local/kubebuilder
+          curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}
+          sudo mv ./kubebuilder_2.0.0_${os}_${arch} /usr/local/kubebuilder
           which kubebuilder
           which kustomize
           which controller-gen
@@ -101,8 +101,8 @@ jobs:
           go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
           os=$(go env GOOS)
           arch=$(go env GOARCH)
-          curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} | tar -xz -C /tmp/
-          sudo mv /tmp/kubebuilder_2.0.0_${os}_${arch} /usr/local/kubebuilder
+          curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}
+          sudo mv ./kubebuilder_2.0.0_${os}_${arch} /usr/local/kubebuilder
           which kubebuilder
           which kustomize
           which controller-gen
