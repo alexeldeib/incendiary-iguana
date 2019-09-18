@@ -83,7 +83,7 @@ stages:
         set -eu
         go1.13 version
         kind create cluster
-        kind get kubeconfig-path --name="kind" | install -D $(system.defaultWorkingDirectory)/kubeconfig
+        kind get kubeconfig-path --name="kind" | install -D /dev/stdin $(system.defaultWorkingDirectory)/kubeconfig
         export KUBECONFIG="$(kind get kubeconfig-path --name="kind")"
       displayName: 'kind create cluster'
     - script: |
