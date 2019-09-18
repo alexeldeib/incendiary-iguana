@@ -5,7 +5,6 @@ trigger:
   branches:
     include:
       - master
-      - ace/*
   tags:
     include:
       - v*
@@ -15,16 +14,16 @@ trigger:
       - docs/*
       - OWNERS
 
-# pr:
-#   autoCancel: true
-#   branches:
-#     include:
-#       - master
-#   paths:
-#     exclude:
-#       - README.md
-#       - docs/*
-#       - OWNERS
+pr:
+  autoCancel: true
+  branches:
+    include:
+      - master
+  paths:
+    exclude:
+      - README.md
+      - docs/*
+      - OWNERS
 
 variables:
 - name: GOBIN
@@ -48,7 +47,7 @@ stages:
       displayName: 'configure path'
     - script: |
         # download go1.13
-        set -e
+        set -eu
         echo Add other tasks to build, test, and deploy your project.
         echo See https://aka.ms/yaml
         echo $(go version)
@@ -81,6 +80,7 @@ stages:
       env:
         GO111MODULE: on
     - script: |
+        set -eu
         go1.13 version
         kind create cluster
         kind get kubeconfig-path --name="kind" > ./kubeconfig
@@ -90,6 +90,7 @@ stages:
       env:
         GO111MODULE: on
     - script: |
+        set -eu
         go1.13 version
         kubectl get node
         make ci-manager
@@ -100,6 +101,7 @@ stages:
         AZURE_CLIENT_SECRET: $(clientSecret)
         AZURE_TENANT_ID: $(tenantId)
     - script: |
+        set -eu
         go1.13 version
         make manager-test
       displayName: 'test controllers'
@@ -111,6 +113,7 @@ stages:
         AZURE_TENANT_ID: $(tenantId)
         KUBEBUILDER_ATTACH_CONTROL_PLANE_OUTPUT: "true"
     - script: |
+        set -eu
         go1.13 version
         make cli-test
       displayName: 'test cli'
