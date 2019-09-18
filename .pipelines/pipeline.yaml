@@ -83,15 +83,16 @@ stages:
     - script: |
         go1.13 version
         kind create cluster
+        kind get kubeconfig-path --name="kind" > .kube/config
+        export KUBECONFIG="$(kind get kubeconfig-path --name="kind")"
       displayName: 'test controllers'
       continueOnError: true
       env:
         GO111MODULE: on
     - script: |
         go1.13 version
+        kubectl get node
         make ci-manager
-        export KUBECONFIG="$(kind get kubeconfig-path --name="kind")"
-        kubectl get node 
       displayName: 'build manager'
       env:
         GO111MODULE: on
@@ -118,3 +119,4 @@ stages:
         AZURE_CLIENT_ID: $(clientId)
         AZURE_CLIENT_SECRET: $(clientSecret)
         AZURE_TENANT_ID: $(tenantId)
+        KUBECONFIG: .kube/config
