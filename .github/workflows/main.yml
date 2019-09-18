@@ -20,7 +20,7 @@ jobs:
         uses: docker://alexeldeib/kbtest:2019-09-17T212751.000Z
         with:
           entrypoint: /scripts/cli_build.sh
-  test_cli:
+  test_manager:
     name: build cli
     runs-on: ubuntu-latest
     steps:
