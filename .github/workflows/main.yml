@@ -75,7 +75,9 @@ jobs:
           os=$(go env GOOS)
           arch=$(go env GOARCH)
           curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}
-          sudo mv ./kubebuilder_2.0.0_${os}_${arch} /usr/local/kubebuilder
+          sudo mv ./kubebuilder_2.0.0_${os}_${arch}/bin /usr/local/kubebuilder
+          ls -al /usr/local/kubebuilder
+          ls -al /usr/local/kubebuilder/bin
           which kubebuilder
           which kustomize
           which controller-gen
@@ -104,8 +106,9 @@ jobs:
           os=$(go env GOOS)
           arch=$(go env GOARCH)
           curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}
-          sudo mv ./kubebuilder_2.0.0_${os}_${arch} /usr/local/kubebuilder
-          which kubebuilder
+          sudo mv ./kubebuilder_2.0.0_${os}_${arch}/bin /usr/local/kubebuilder
+          ls -al /usr/local/kubebuilder
+          ls -al /usr/local/kubebuilder/bin
           which kustomize
           which controller-gen
           which kind 
