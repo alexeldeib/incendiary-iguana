@@ -2,5 +2,6 @@ name: 'build'
 description: 'builds and tests this repsitory'
 runs:
   using: 'docker'
-  image: docker:///alexeldeib/kbtest:latest
-  entrypoint: "make manager"
+  image: docker://alexeldeib/kbtest
+  entrypoint: "make"
+  args: ["manager"]
