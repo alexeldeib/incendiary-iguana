@@ -21,8 +21,18 @@ RUN go get golang.org/x/tools/cmd/goimports
 RUN go get github.com/onsi/ginkgo/ginkgo
 RUN go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master
 RUN go get sigs.k8s.io/kind@v0.5.1
+RUN go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.1
 
 RUN git clone https://github.com/alexeldeib/incendiary-iguana.git
 RUN cd incendiary-iguana && go mod download && cd .. && rm -rf ./incendiary-iguana
+
+RUN mkdir /scripts
+
+ADD cli_build.sh /scripts
+ADD cli_test.sh /scripts
+ADD mgr_build.sh /scripts
+ADD mgr_test.sh /scripts
+
+RUN chmod +x /scripts/*
 
 # RUN go get github.com/go-delve/delve/cmd/dlv@v1.3.0

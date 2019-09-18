@@ -35,6 +35,9 @@ ci-manager: manifests ci-fmt ci-vet # lint
 manager: manifests fmt vet # lint 
 	go build -gcflags '-N -l' -o manager.exe main.go
 
+ci-cli: manifests ci-fmt ci-vet # lint 
+	go1.13 build -gcflags '-N -l' -o tinker.exe ./cmd
+
 cli: manifests fmt vet # lint 
 	go build -gcflags '-N -l' -o tinker.exe ./cmd
 

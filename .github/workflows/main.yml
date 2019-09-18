@@ -1,11 +1,40 @@
-name: build + test
+name: build + test cli/controller
 on: [push]
 
 jobs:
-  build:
-    name: build
+  build_manager:
+    name: build manager
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - name: build
-        uses: ./.github/actions/build
+      - name: build manager
+        uses: docker://alexeldeib/kbtest:2019-09-17T212751.000Z
+        with:
+          entrypoint: /scripts/mgr_build.sh
+  build_cli:
+    name: build cli
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: build cli
+        uses: docker://alexeldeib/kbtest:2019-09-17T212751.000Z
+        with:
+          entrypoint: /scripts/cli_build.sh
+  test_cli:
+    name: build cli
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: test
+        uses: docker://alexeldeib/kbtest:2019-09-17T212751.000Z
+        with:
+          entrypoint: /scripts/mgr_test.sh
+  test_cli:
+    name: test cli
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: test
+        uses: docker://alexeldeib/kbtest:2019-09-17T212751.000Z
+        with:
+          entrypoint: /scripts/cli_test.sh
