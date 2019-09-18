@@ -83,7 +83,7 @@ stages:
     - script: |
         go1.13 version
         kind create cluster
-        kind get kubeconfig-path --name="kind" > .kube/config
+        kind get kubeconfig-path --name="kind" > ./kubeconfig
         export KUBECONFIG="$(kind get kubeconfig-path --name="kind")"
       displayName: 'test controllers'
       continueOnError: true
@@ -119,4 +119,4 @@ stages:
         AZURE_CLIENT_ID: $(clientId)
         AZURE_CLIENT_SECRET: $(clientSecret)
         AZURE_TENANT_ID: $(tenantId)
-        KUBECONFIG: .kube/config
+        KUBECONFIG: ./kubeconfig
