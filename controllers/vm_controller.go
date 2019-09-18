@@ -21,7 +21,7 @@ type VMReconciler struct {
 
 // Reconcile reconciles a user request for a virtual machine against Azure.
 func (r *VMReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	return r.reconciler.Reconcile(req, &azurev1alpha1.VM{})
+	return r.Reconciler.Reconcile(req, &azurev1alpha1.VM{})
 }
 
 // SetupWithManager sets up this controller for use.

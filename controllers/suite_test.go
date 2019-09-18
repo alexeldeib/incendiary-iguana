@@ -96,9 +96,6 @@ var _ = BeforeSuite(func(done Done) {
 
 	By("creating reconciler")
 	Expect((&ResourceGroupReconciler{
-		Client:       k8sClient,
-		Log:          log.WithName("ResourceGroup"),
-		GroupsClient: resourcegroups.New(configuration),
 		Reconciler: &AsyncReconciler{
 			Client:   k8sClient,
 			Az:       resourcegroups.New(configuration),

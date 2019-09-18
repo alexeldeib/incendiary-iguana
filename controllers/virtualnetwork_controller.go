@@ -21,7 +21,7 @@ type VirtualNetworkReconciler struct {
 
 // Reconcile reconciles a specification for a virtual network against Azure.
 func (r *VirtualNetworkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	return r.reconciler.Reconcile(req, &azurev1alpha1.VirtualNetwork{})
+	return r.Reconciler.Reconcile(req, &azurev1alpha1.VirtualNetwork{})
 }
 
 func (r *VirtualNetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {

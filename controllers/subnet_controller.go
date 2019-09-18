@@ -20,7 +20,7 @@ type SubnetReconciler struct {
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=subnets/status,verbs=get;update;patch
 
 func (r *SubnetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	return r.reconciler.Reconcile(req, &azurev1alpha1.Subnet{})
+	return r.Reconciler.Reconcile(req, &azurev1alpha1.Subnet{})
 }
 
 func (r *SubnetReconciler) SetupWithManager(mgr ctrl.Manager) error {

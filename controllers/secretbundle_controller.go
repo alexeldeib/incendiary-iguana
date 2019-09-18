@@ -24,7 +24,7 @@ type SecretBundleReconciler struct {
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=secretbundles/status,verbs=get;update;patch
 
 func (r *SecretBundleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	return r.reconciler.Reconcile(req, &azurev1alpha1.SecretBundle{})
+	return r.Reconciler.Reconcile(req, &azurev1alpha1.SecretBundle{})
 }
 
 func (r *SecretBundleReconciler) SetupWithManager(mgr ctrl.Manager) error {
