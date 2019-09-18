@@ -73,8 +73,13 @@ var _ = BeforeSuite(func() {
 	vaultClient = keyvaults.New(configuration)
 	vnetClient = virtualnetworks.New(configuration)
 
-	kubeclient, err := client.New(ctrl.GetConfigOrDie(), client.Options{})
-	Expect(err).ToNot(HaveOccurred())
+	kubeconfig, err := ctrl.GetConfig()
+	var kubeclient *client.Client
+	if err != nil {
+		c, err := client.New(kubeconfig, client.Options{})
+		Expect(err).ToNot(HaveOccurred())
+		kubeclient = &c
+	}
 
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
