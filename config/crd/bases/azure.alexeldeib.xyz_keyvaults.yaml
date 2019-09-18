@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: Keyvault
+    listKind: KeyvaultList
     plural: keyvaults
     shortNames:
     - kv
+    singular: keyvault
   scope: Namespaced
   subresources:
     status: {}
@@ -62,17 +64,9 @@ spec:
         status:
           description: KeyvaultStatus defines the observed state of Keyvault
           properties:
-            exists:
-              description: Exists sync the provisioning status of the resource from
-                Azure.
-              type: boolean
-            generation:
-              description: Generation is the last reconciled generation.
-              format: int64
-              type: integer
-          required:
-          - exists
-          - generation
+            id:
+              description: ID is the fully qualified Azure resource ID.
+              type: string
           type: object
       type: object
   version: v1alpha1

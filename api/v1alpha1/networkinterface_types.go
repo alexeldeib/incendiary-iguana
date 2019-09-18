@@ -61,17 +61,17 @@ type BackendPoolReference struct {
 // NetworkInterfaceStatus defines the observed state of NetworkInterface
 type NetworkInterfaceStatus struct {
 	// ProvisioningState sync the provisioning status of the resource from Azure.
-	ProvisioningState string `json:"provisioningState"`
+	ProvisioningState *string `json:"provisioningState,omitempty"`
 	// ID is the fully qualified Azure resource ID.
-	ID string `json:"id"`
+	ID *string `json:"id,omitempty"`
 	// ObservedGeneration is the iteration of user-provided spec which has already been reconciled.
 	// This is used to decide when to re-reconcile changes.
-	ObservedGeneration int64 `json:"observedGeneration"`
+	ObservedGeneration *int64 `json:"observedGeneration,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=netwworkinterfaces,shortName={nic,nics},categories=all
+// +kubebuilder:resource:path=networkinterfaces,shortName={nic,nics},categories=all
 
 // NetworkInterface is the Schema for the networkinterfaces API
 type NetworkInterface struct {

@@ -8,9 +8,17 @@ metadata:
 spec:
   group: azure.alexeldeib.xyz
   names:
+    categories:
+    - all
     kind: PublicIP
+    listKind: PublicIPList
     plural: publicips
-  scope: ""
+    shortNames:
+    - ip
+    - pip
+    - ips
+    singular: publicip
+  scope: Namespaced
   subresources:
     status: {}
   validation:
@@ -71,9 +79,7 @@ spec:
                 from Azure.
               type: string
           required:
-          - id
           - observedGeneration
-          - provisioningState
           type: object
       type: object
   version: v1alpha1

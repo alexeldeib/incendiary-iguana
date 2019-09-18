@@ -1,0 +1,123 @@
+name: build + test cli/controller
+on: [push]
+
+jobs:
+  build_manager:
+    name: build manager
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: build manager
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: |
+          set -eux
+          export PATH=$PATH:/usr/local/kubebuilder/bin:$(go env GOPATH)/bin
+          go env
+          go version
+          sudo mkdir -p /usr/local/kubebuilder
+          go get golang.org/x/tools/cmd/goimports
+          go get github.com/onsi/ginkgo/ginkgo
+          go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master
+          go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
+          os=$(go env GOOS)
+          arch=$(go env GOARCH)
+          curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}.tar.gz
+          sudo tar -xzf kubebuilder_2.0.0_${os}_${arch}.tar.gz -C /usr/local/kubebuilder --strip-components=1
+          which kubebuilder
+          which kustomize
+          which controller-gen
+          make manager
+  build_cli:
+    name: build cli
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: build cli
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
+        run: |
+          set -eux
+          export PATH=$PATH:/usr/local/kubebuilder/bin:$(go env GOPATH)/bin
+          go env
+          go version
+          sudo mkdir -p /usr/local/kubebuilder
+          go get golang.org/x/tools/cmd/goimports
+          go get github.com/onsi/ginkgo/ginkgo
+          go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master
+          go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
+          os=$(go env GOOS)
+          arch=$(go env GOARCH)
+          curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}.tar.gz
+          sudo tar -xzf kubebuilder_2.0.0_${os}_${arch}.tar.gz -C /usr/local/kubebuilder --strip-components=1
+          which kubebuilder
+          which kustomize
+          which controller-gen
+          make cli
+  test_manager:
+    name: test manager
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: test
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: |
+          set -eux
+          export PATH=$PATH:/usr/local/kubebuilder/bin:$(go env GOPATH)/bin
+          go env
+          go version
+          sudo mkdir -p /usr/local/kubebuilder
+          go get golang.org/x/tools/cmd/goimports
+          go get github.com/onsi/ginkgo/ginkgo
+          go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master
+          go get sigs.k8s.io/kind@v0.5.1
+          go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
+          os=$(go env GOOS)
+          arch=$(go env GOARCH)
+          curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}.tar.gz
+          sudo tar -xzf kubebuilder_2.0.0_${os}_${arch}.tar.gz -C /usr/local/kubebuilder --strip-components=1
+          which kubebuilder
+          which kustomize
+          which controller-gen
+          which kind 
+          # kind create cluster
+          # export KUBECONFIG=$(kind get kubeconfig-path --name="kind")
+          make manager-test
+  test_cli:
+    name: test cli
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: test
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
+        run: |
+          set -eux
+          export PATH=$PATH:/usr/local/kubebuilder/bin:$(go env GOPATH)/bin
+          go env
+          go version
+          sudo mkdir -p /usr/local/kubebuilder
+          go get golang.org/x/tools/cmd/goimports
+          go get github.com/onsi/ginkgo/ginkgo
+          go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master
+          go get sigs.k8s.io/kind@v0.5.1
+          go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
+          os=$(go env GOOS)
+          arch=$(go env GOARCH)
+          curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}.tar.gz
+          sudo tar -xzf kubebuilder_2.0.0_${os}_${arch}.tar.gz -C /usr/local/kubebuilder --strip-components=1
+          which kustomize
+          which controller-gen
+          which kind 
+          kind create cluster
+          export KUBECONFIG=$(kind get kubeconfig-path --name="kind")
+          make cli-test

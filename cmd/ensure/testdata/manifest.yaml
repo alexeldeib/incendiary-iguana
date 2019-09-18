@@ -1,0 +1,97 @@
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: ResourceGroup
+metadata:
+  name: test-crd-2
+spec:
+  subscriptionId: bd6a4e14-55fa-4160-a6a7-b718d7a2c95c
+  name: test-rg-crd-2
+  location: westus2
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: VirtualNetwork
+metadata:
+  name: test-crd-2
+spec:
+  subscriptionId: bd6a4e14-55fa-4160-a6a7-b718d7a2c95c
+  resourceGroup: test-rg-crd-2
+  name: ace-vnet
+  location: westus2
+  addresses: 
+  - 10.0.0.0/8
+  - 192.168.0.0/24
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: Subnet
+metadata:
+  name: test-crd-2
+spec:
+  subscriptionId: bd6a4e14-55fa-4160-a6a7-b718d7a2c95c
+  resourceGroup: test-rg-crd-2
+  network: ace-vnet
+  name: ace-subnet
+  subnet: 10.0.0.0/28
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: SecurityGroup
+metadata:
+  name: test-crd-2
+spec:
+  subscriptionId: bd6a4e14-55fa-4160-a6a7-b718d7a2c95c
+  resourceGroup: test-rg-crd-2
+  name: ace-vnet
+  location: eastus2
+  rules:
+  - name: test_rule
+    protocol: tcp
+    access: deny
+    direction: inbound
+    sourcePortRange: 1-65535
+    destinationPortRange: "443"
+    sourceAddressPrefix: "*"
+    destinationAddressPrefix: "*"
+    priority: 205
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: PublicIP
+metadata:
+  name: test-crd-2
+spec:
+  subscriptionId: bd6a4e14-55fa-4160-a6a7-b718d7a2c95c
+  resourceGroup: test-rg-crd-2
+  name: ace-ip
+  location: eastus2
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: TrafficManager
+metadata:
+  name: test-crd
+spec:
+  name: ace-tm
+  subscriptionID: bd6a4e14-55fa-4160-a6a7-b718d7a2c95c
+  resourceGroup: test-rg-crd-2
+  profileStatus: enabled
+  trafficRoutingMethod: weighted
+  dnsConfig:
+    relativeName: acetmnew
+    ttl: 30
+  monitorConfig:
+    customHeaders:
+    - name: host
+      value: google.com
+    expectedStatusCodeRanges:
+    - max: 308
+      min: 200
+    intervalInSeconds: 10
+    path: /
+    port: 443
+    protocol: HTTPS
+    timeoutInSeconds: 5
+    toleratedNumberOfFailures: 3
+  endpoints:
+  - name: google-1
+    properties:
+      target: google.com
+      status: enabled
+      weight: 1
+      priority: 1
+      endpointLocation: westus2

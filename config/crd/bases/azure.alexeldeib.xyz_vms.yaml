@@ -1,0 +1,116 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: vms.azure.alexeldeib.xyz
+spec:
+  group: azure.alexeldeib.xyz
+  names:
+    categories:
+    - all
+    kind: VM
+    listKind: VMList
+    plural: vms
+    shortNames:
+    - vm
+    singular: vm
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: VM is the Schema for the VMs API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: VMSpec defines the desired state of VM
+          properties:
+            customData:
+              description: CustomData is the cloud-init/script user data for the machine.
+              type: string
+            diskSize:
+              description: DiskSize is the size of the OS disk in GB
+              format: int32
+              type: integer
+            location:
+              description: Location osecurity group (e.g., eastus2)
+              type: string
+            name:
+              description: Name is the name of the security group.
+              type: string
+            primaryNic:
+              description: PrimaryNIC is the Azure ID of the primary NIC on this machine.
+              type: string
+            resourceGroup:
+              description: ResourceGroup containsecurity group.
+              type: string
+            secondaryNics:
+              description: SecondaryNICs is the list of IDs of non-primary NICs on
+                this machine. +optional
+              items:
+                type: string
+              type: array
+            sku:
+              description: SKU is the sku of the machine in Azure, e.g. Standard_E4_v3
+              type: string
+            sshPublicKey:
+              description: SSHPublicKey is the key of the of the provisioned user
+                on the VM.
+              type: string
+            subscriptionId:
+              description: SubscriptionID contains the Resource group. Is a GUID.
+              type: string
+            zone:
+              description: Zone indicates the Availability Zone for this machine.
+                Usually either "1", "2", or "3".
+              type: string
+          required:
+          - diskSize
+          - location
+          - name
+          - primaryNic
+          - resourceGroup
+          - sku
+          - sshPublicKey
+          - subscriptionId
+          type: object
+        status:
+          description: VMStatus defines the observed state of VM
+          properties:
+            id:
+              description: ID is the fully qualified Azure resource ID.
+              type: string
+            provisioningState:
+              description: ProvisioningState sync the provisioning status of the resource
+                from Azure.
+              type: string
+            zone:
+              description: Zone indicates the Availability Zone for this machine.
+                Usually either "1", "2", or "3".
+              type: string
+          type: object
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: LoadBalancer
+    listKind: LoadBalancerList
     plural: loadbalancers
     shortNames:
     - lb
+    singular: loadbalancer
   scope: Namespaced
   subresources:
     status: {}
@@ -36,6 +38,20 @@ spec:
         spec:
           description: LoadBalancerSpec defines the desired state of Load Balancer
           properties:
+            backendPools:
+              description: BackendPools is a list names of backend pools to create
+                for this Load Balancers.
+              items:
+                type: string
+              minItems: 1
+              type: array
+            frontends:
+              description: Frontends is a list of fully qualified resource IDs to
+                Azure public IPs.
+              items:
+                type: string
+              minItems: 1
+              type: array
             location:
               description: Location of the resource group (e.g., eastus2 or "West
                 US")
@@ -43,9 +59,62 @@ spec:
             name:
               description: Name is the name of the Azure LoadBalancer.
               type: string
+            probes:
+              description: Probes is the list of load balancing health probes.
+              items:
+                type: integer
+              type: array
             resourceGroup:
               description: ResourceGroup contains the LoadBalancer.
               type: string
+            rules:
+              description: Rules is the list of load balancing rules.
+              items:
+                properties:
+                  backendPool:
+                    description: BackendPool - A reference to a pool of DIPs. Inbound
+                      traffic is randomly load balanced across IPs in the backend
+                      IPs.
+                    type: string
+                  backendPort:
+                    description: BackendPort - The port used for internal connections
+                      on the endpoint. Acceptable values are between 0 and 65535.
+                      Note that value 0 enables "Any Port".
+                    format: int32
+                    type: integer
+                  frontendIPConfiguration:
+                    description: Frontend fully qualified reference to a frontend
+                      IP addresses.
+                    type: string
+                  frontendPort:
+                    description: FrontendPort is the port for the external endpoint.
+                      Port numbers for each rule must be unique within the Load Balancer.
+                      Acceptable values are between 0 and 65534. Note that value 0
+                      enables "Any Port".
+                    format: int32
+                    type: integer
+                  name:
+                    description: Name is the name of the load balancing rule.
+                    type: string
+                  probe:
+                    description: Probe - The reference of the load balancer probe
+                      used by the load balancing rule.
+                    type: string
+                  protocol:
+                    description: 'Protocol is the transport protocol used by the load
+                      balancing rule. Possible values include: ''TransportProtocolUDP'',
+                      ''TransportProtocolTCP'', ''TransportProtocolAll'''
+                    type: string
+                required:
+                - backendPool
+                - backendPort
+                - frontendIPConfiguration
+                - frontendPort
+                - name
+                - probe
+                - protocol
+                type: object
+              type: array
             sku:
               description: SKU is either basic or standard.
               type: string
@@ -53,6 +122,8 @@ spec:
               description: SubscriptionID contains the Resource group. Is a GUID.
               type: string
           required:
+          - backendPools
+          - frontends
           - location
           - name
           - resourceGroup
@@ -62,8 +133,7 @@ spec:
           description: LoadBalancerStatus defines the observed state of Load Balancer
           properties:
             id:
-              description: ID is the fully qualified Azure resource ID of the virtual
-                network.
+              description: ID is the fully qualified Azure resource ID.
               type: string
             observedGeneration:
               description: ObservedGeneration is the iteration of user-provided spec
@@ -76,9 +146,7 @@ spec:
                 from Azure.
               type: string
           required:
-          - id
           - observedGeneration
-          - provisioningState
           type: object
       type: object
   version: v1alpha1

@@ -1,0 +1,79 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: vmscaleset.azure.alexeldeib.xyz
+spec:
+  group: azure.alexeldeib.xyz
+  names:
+    categories:
+    - all
+    kind: VMScaleSet
+    listKind: VMScaleSetList
+    plural: vmscaleset
+    shortNames:
+    - vmss
+    singular: vmscaleset
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: VMScaleSet is the schema for the VMSS API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: VMScaleSetSpec defines the desired state of VMScaleSet
+          properties:
+            location:
+              description: Location of the resource group (e.g., eastus2 or "West
+                US")
+              type: string
+            name:
+              description: Name is the name of the Azure resource group.
+              type: string
+            subscriptionId:
+              description: SubscriptionID is the GUID of the subscription for this
+                resource group.
+              type: string
+          required:
+          - location
+          - name
+          - subscriptionId
+          type: object
+        status:
+          description: VMScaleSetStatus defines the observed state of VMScaleSet
+          properties:
+            id:
+              description: ID is the fully qualified Azure resource ID.
+              type: string
+            provisioningState:
+              description: ProvisioningState sync the provisioning status of the resource
+                from Azure.
+              type: string
+          type: object
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

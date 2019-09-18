@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: TrafficManager
+    listKind: TrafficManagerList
     plural: trafficmanagers
     shortNames:
     - tm
+    singular: trafficmanager
   scope: Namespaced
   subresources:
     status: {}
@@ -49,8 +51,6 @@ spec:
             endpoints:
               items:
                 properties:
-                  location:
-                    type: string
                   name:
                     type: string
                   properties:
@@ -94,7 +94,6 @@ spec:
                         type: integer
                     type: object
                 required:
-                - location
                 - name
                 - properties
                 type: object
@@ -199,7 +198,6 @@ spec:
             profileStatus:
               type: string
           required:
-          - id
           - profileMonitorStatus
           - profileStatus
           type: object

@@ -6,28 +6,33 @@ package main
 
 import (
 	"flag"
+	"math/rand"
 	"os"
+	"time"
 
-	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/controllers"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/nics"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secrets"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
-	"github.com/alexeldeib/incendiary-iguana/pkg/config"
+	"github.com/sanity-io/litter"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
+	"github.com/alexeldeib/incendiary-iguana/controllers"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/nics"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/redis"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secrets"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebus"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/vms"
+	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	// +kubebuilder:scaffold:imports
-	"github.com/sanity-io/litter"
 )
 
 var (
@@ -42,6 +47,7 @@ func init() {
 }
 
 func main() {
+	rand.Seed(time.Now().Unix())
 	var metricsAddr string
 	var enableLeaderElection bool
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
@@ -68,112 +74,173 @@ func main() {
 		os.Exit(1)
 	}
 
-	log := ctrl.Log.WithName("controllers")
+	log := ctrl.Log.WithName("incendiaryiguana")
+	recorder := mgr.GetEventRecorderFor("incendiaryiguana")
 	client := mgr.GetClient()
 
 	// Global client initialization
-	secretsclient, err := secrets.New(configuration)
+	secretsclient, err := secrets.New(configuration, client, scheme)
 	if err != nil {
 		setupLog.Error(err, "failed to initialize keyvault secret client")
 		os.Exit(1)
 	}
 
+	// TODO(ace): handle this in a loop.
 	if err = (&controllers.ResourceGroupReconciler{
-		Client:       client,
-		Log:          log.WithName("ResourceGroup"),
-		Config:       configuration,
-		GroupsClient: resourcegroups.New(configuration),
+		Reconciler: &controllers.AsyncReconciler{
+			Client:   client,
+			Az:       resourcegroups.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ResourceGroup")
 		os.Exit(1)
 	}
 
 	if err = (&controllers.KeyvaultReconciler{
-		Client:       client,
-		Log:          log.WithName("Keyvault"),
-		Config:       configuration,
-		GroupsClient: resourcegroups.New(configuration),
-		VaultsClient: keyvaults.New(configuration),
-		Scheme:       scheme,
+		Reconciler: &controllers.SyncReconciler{
+			Client:   client,
+			Az:       keyvaults.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Keyvault")
 		os.Exit(1)
 	}
 
 	if err = (&controllers.SecretReconciler{
-		Client:        client,
-		Log:           ctrl.Log.WithName("controllers").WithName("Secret"),
-		SecretsClient: secretsclient,
-		Scheme:        scheme,
+		Reconciler: &controllers.SyncReconciler{
+			Client:   client,
+			Az:       secretsclient,
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Secret")
 		os.Exit(1)
 	}
 
 	if err = (&controllers.SecretBundleReconciler{
-		Client:        mgr.GetClient(),
-		Log:           ctrl.Log.WithName("controllers").WithName("SecretBundle"),
-		SecretsClient: secretsclient,
-		Scheme:        scheme,
+		Reconciler: &controllers.SyncReconciler{
+			Client:   client,
+			Az:       secretsclient,
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SecretBundle")
 		os.Exit(1)
 	}
 
 	if err = (&controllers.VirtualNetworkReconciler{
-		Client:      mgr.GetClient(),
-		Log:         ctrl.Log.WithName("controllers").WithName("VirtualNetwork"),
-		VnetsClient: virtualnetworks.New(configuration),
+		Reconciler: &controllers.AsyncReconciler{
+			Client:   client,
+			Az:       virtualnetworks.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VirtualNetwork")
 		os.Exit(1)
 	}
 
 	if err = (&controllers.SubnetReconciler{
-		Client:        mgr.GetClient(),
-		Log:           ctrl.Log.WithName("controllers").WithName("Subnet"),
-		SubnetsClient: subnets.New(configuration),
+		Reconciler: &controllers.AsyncReconciler{
+			Client:   client,
+			Az:       subnets.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Subnet")
 		os.Exit(1)
 	}
 
 	if err = (&controllers.SecurityGroupReconciler{
-		Client:               mgr.GetClient(),
-		Log:                  ctrl.Log.WithName("controllers").WithName("SecurityGroup"),
-		SecurityGroupsClient: securitygroups.New(configuration),
+		Reconciler: &controllers.AsyncReconciler{
+			Client:   client,
+			Az:       securitygroups.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SecurityGroup")
 		os.Exit(1)
 	}
 
 	if err = (&controllers.PublicIPReconciler{
-		Client:          mgr.GetClient(),
-		Log:             ctrl.Log.WithName("controllers").WithName("PublicIP"),
-		PublicIPsClient: publicips.New(configuration),
+		Reconciler: &controllers.AsyncReconciler{
+			Client:   client,
+			Az:       publicips.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PublicIP")
 		os.Exit(1)
 	}
 
 	if err = (&controllers.NetworkInterfaceReconciler{
-		Client:     mgr.GetClient(),
-		Log:        ctrl.Log.WithName("controllers").WithName("NetworkInterface"),
-		NICsClient: nics.New(configuration),
+		Reconciler: &controllers.AsyncReconciler{
+			Client:   client,
+			Az:       nics.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NetworkInterface")
 		os.Exit(1)
 	}
 
 	if err = (&controllers.TrafficManagerReconciler{
-		Client:                mgr.GetClient(),
+		Client:                client,
 		Log:                   ctrl.Log.WithName("controllers").WithName("TrafficManager"),
 		TrafficManagersClient: trafficmanagers.New(configuration),
+		Recorder:              recorder,
 	}).SetupWithManager(mgr); err != nil {
 		litter.Dump(err)
 		setupLog.Error(err, "unable to create controller", "controller", "TrafficManager")
 		os.Exit(1)
 	}
+
+	if err = (&controllers.RedisReconciler{
+		Reconciler: &controllers.AsyncReconciler{
+			Client:   client,
+			Az:       redis.New(configuration, &client, scheme),
+			Log:      log,
+			Recorder: recorder,
+		},
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Redis")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.ServiceBusNamespaceReconciler{
+		Reconciler: &controllers.AsyncReconciler{
+			Client:   client,
+			Az:       servicebus.New(configuration, &client, scheme),
+			Log:      log,
+			Recorder: recorder,
+		},
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ServiceBusNamespace")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.VMReconciler{
+		Reconciler: &controllers.AsyncReconciler{
+			Client:   client,
+			Az:       vms.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "VM")
+		os.Exit(1)
+	}
+
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")

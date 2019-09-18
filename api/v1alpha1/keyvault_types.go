@@ -24,10 +24,8 @@ type KeyvaultSpec struct {
 
 // KeyvaultStatus defines the observed state of Keyvault
 type KeyvaultStatus struct {
-	// Exists sync the provisioning status of the resource from Azure.
-	Exists bool `json:"exists"`
-	// Generation is the last reconciled generation.
-	Generation int64 `json:"generation"`
+	// ID is the fully qualified Azure resource ID.
+	ID *string `json:"id,omitempty"`
 }
 
 // +kubebuilder:object:root=true

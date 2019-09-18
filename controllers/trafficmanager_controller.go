@@ -6,13 +6,14 @@ package controllers
 
 import (
 	"context"
-	"net/http"
+	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/services/trafficmanager/mgmt/2018-04-01/trafficmanager"
 	"github.com/go-logr/logr"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	multierror "github.com/hashicorp/go-multierror"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
@@ -22,7 +23,8 @@ import (
 type TrafficManagerReconciler struct {
 	client.Client
 	Log                   logr.Logger
-	TrafficManagersClient trafficmanagers.Client
+	TrafficManagersClient *trafficmanagers.Client
+	Recorder              record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=trafficmanagers,verbs=get;list;watch;create;update;patch;delete
@@ -30,89 +32,55 @@ type TrafficManagerReconciler struct {
 
 func (r *TrafficManagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
-	log := r.Log.WithValues("trafficmanager", req.NamespacedName)
+	log := r.Log.WithValues("trafficmanager", fmt.Sprintf("%s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name))
 
 	var local azurev1alpha1.TrafficManager
-	var remote trafficmanager.Profile
-	var requeue bool
 
-	err := r.Get(ctx, req.NamespacedName, &local)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, &local); err != nil {
 		log.Info("error during fetch from api server")
-		return ctrl.Result{Requeue: !apierrs.IsNotFound(err)}, client.IgnoreNotFound(err)
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	remote, err = r.fetchRemote(ctx, local)
-	if err != nil && !remote.IsHTTPStatus(http.StatusNotFound) {
-		return ctrl.Result{}, err
-	}
-
-	if err = r.setStatus(ctx, &local, remote); err != nil {
+	if err := r.TrafficManagersClient.ForSubscription(local.Spec.SubscriptionID); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if local.DeletionTimestamp.IsZero() {
-		err := AddFinalizerAndUpdate(ctx, r.Client, finalizerName, &local)
-		if err != nil {
-			return ctrl.Result{}, err
+		if !HasFinalizer(&local, finalizerName) {
+			AddFinalizer(&local, finalizerName)
+			r.Recorder.Event(&local, "Normal", "Added", "Object finalizer is added")
+			return ctrl.Result{}, r.Update(ctx, &local)
 		}
 	} else {
-		requeue, err = r.deleteRemote(ctx, &local, remote, log)
-		if requeue || err != nil {
-			return ctrl.Result{Requeue: requeue}, err
+		if HasFinalizer(&local, finalizerName) {
+			err := multierror.Append(r.TrafficManagersClient.Delete(ctx, &local), r.Status().Update(ctx, &local))
+			if final := err.ErrorOrNil(); final != nil {
+				r.Recorder.Event(&local, "Warning", "FailedDelete", fmt.Sprintf("Failed to delete resource: %s", final.Error()))
+				return ctrl.Result{}, final
+			}
+			r.Recorder.Event(&local, "Normal", "Deleted", "Successfully deleted")
+			RemoveFinalizer(&local, finalizerName)
+			if err := r.Update(ctx, &local); err != nil {
+				return ctrl.Result{}, err
+			}
 		}
+		return ctrl.Result{}, nil
 	}
 
-	requeue, err = r.reconcileRemote(ctx, &local, log)
-	return ctrl.Result{Requeue: requeue}, err
-}
-
-func (r *TrafficManagerReconciler) fetchRemote(ctx context.Context, local azurev1alpha1.TrafficManager) (trafficmanager.Profile, error) {
-	// Authorize
-	err := r.TrafficManagersClient.ForSubscription(local.Spec.SubscriptionID)
+	done, ensureErr := r.TrafficManagersClient.Ensure(ctx, &local)
+	final := multierror.Append(ensureErr, r.Status().Update(ctx, &local))
+	err := final.ErrorOrNil()
 	if err != nil {
-		return trafficmanager.Profile{}, err
+		r.Recorder.Event(&local, "Warning", "FailedReconcile", fmt.Sprintf("Failed to reconcile resource: %s", err.Error()))
+	} else if done {
+		r.Recorder.Event(&local, "Normal", "Reconciled", "Successfully reconciled")
 	}
-
-	return r.TrafficManagersClient.Get(ctx, &local)
-}
-
-func (r *TrafficManagerReconciler) setStatus(ctx context.Context, local *azurev1alpha1.TrafficManager, remote trafficmanager.Profile) error {
-	if !remote.IsHTTPStatus(http.StatusNotFound) {
-		if remote.ID != nil {
-			local.Status.ID = *remote.ID
-		}
-	}
-	return r.Status().Update(ctx, local)
-}
-
-func (r *TrafficManagerReconciler) reconcileRemote(ctx context.Context, local *azurev1alpha1.TrafficManager, log logr.Logger) (bool, error) {
-	log.Info("reconciling")
-	err := r.TrafficManagersClient.Ensure(ctx, local)
-	if err != nil {
-		return true, err
-	}
-	return false, nil
-}
-
-func (r *TrafficManagerReconciler) deleteRemote(ctx context.Context, local *azurev1alpha1.TrafficManager, remote trafficmanager.Profile, log logr.Logger) (bool, error) {
-	if contains(local.ObjectMeta.Finalizers, finalizerName) {
-		if remote.IsHTTPStatus(http.StatusNotFound) {
-			log.Info("deletion complete")
-			return true, RemoveFinalizerAndUpdate(ctx, r.Client, finalizerName, local)
-		}
-		err := r.TrafficManagersClient.Delete(ctx, local)
-		if err != nil {
-			return true, err
-		}
-		return true, nil
-	}
-	log.Info("no finalizer, not handling deletion")
-	return false, nil
+	return ctrl.Result{Requeue: !done}, err
 }
 
 func (r *TrafficManagerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&azurev1alpha1.TrafficManager{}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }

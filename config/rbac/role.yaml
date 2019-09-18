@@ -9,6 +9,26 @@ rules:
 - apiGroups:
   - azure.alexeldeib.xyz
   resources:
+  - identities
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - identities/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
   - keyvaults
   verbs:
   - create
@@ -62,6 +82,26 @@ rules:
   - azure.alexeldeib.xyz
   resources:
   - publicips/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - redis
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - redis/status
   verbs:
   - get
   - patch
@@ -149,6 +189,26 @@ rules:
 - apiGroups:
   - azure.alexeldeib.xyz
   resources:
+  - servicebus
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - servicebus/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
   - subnets
   verbs:
   - create
@@ -202,6 +262,26 @@ rules:
   - azure.alexeldeib.xyz
   resources:
   - virtualnetworks/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - vms
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - vms/status
   verbs:
   - get
   - patch

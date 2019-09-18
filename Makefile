@@ -7,7 +7,6 @@ BAZEL_OPTIONS ?= --local_cpu_resources HOST_CPUS-2  --local_ram_resources HOST_R
 BAZEL_TEST_OPTIONS ?= $(BAZEL_OPTIONS) --test_output all --test_summary detailed 
 DEBUG_TEST_OPTIONS = $(BAZEL_TEST_OPTIONS) --sandbox_debug
 GO_TEST_OPTIONS ?= ./api/... ./controllers/... -coverprofile cover.out
-
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -19,15 +18,28 @@ all: manifests manager
 
 # Run tests
 # alternatively ginkgo -v ./...
-test: fmt vet
-ifeq (,$(DEBUG))
-	go test -v $(GO_TEST_OPTIONS)
-else
-	go test -v $(GO_TEST_OPTIONS) -ginkgo.v
-endif
+cli-test: # fmt vet
+	# n.b., should set $env:AZURE_AUTH_LOCATION first.
+	# $$env:AZURE_AUTH_LOCATION="$(pwd)/sp.json" => can't get this to work on windows
+	ginkgo -randomizeSuites -stream --slowSpecThreshold=180 -v -r ./cmd 
+	# go test -v -ginkgo.v ./cmd/...
+
+manager-test:
+	ginkgo -randomizeSuites -stream --slowSpecThreshold=180 -v -r ./controllers
+	# go test -v -ginkgo.v ./controllers/...
+
+ci-manager: manifests ci-fmt ci-vet # lint 
+	go1.13 build -gcflags '-N -l' -o manager.exe main.go
+
 # Build manager binary
-manager: manifests fmt vet lint 
-	go build -gcflags '-N -l' -o bin/manager main.go
+manager: manifests fmt vet # lint 
+	go build -gcflags '-N -l' -o manager.exe main.go
+
+ci-cli: manifests ci-fmt ci-vet # lint 
+	go1.13 build -gcflags '-N -l' -o tinker.exe ./cmd
+
+cli: manifests fmt vet # lint 
+	go build -gcflags '-N -l' -o tinker.exe ./cmd
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet
@@ -55,6 +67,15 @@ fmt:
 vet:
 	go vet ./...
 
+# Run go fmt against code
+ci-fmt:
+	go1.13 fmt ./... || exit 1
+	goimports -w . || exit 1
+
+# Run go vet against code
+ci-vet:
+	go1.13 vet ./... || exit 1
+
 # -j flag should be set to NUM_CPU_CORES - 1 or less, and be an integer. It defaults to 8 if removed.
 lint:
 	golangci-lint run --fix -j=2
@@ -77,18 +98,11 @@ docker-push:
 # download controller-gen if necessary
 controller-gen:
 ifeq (, $(shell which controller-gen))
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
-CONTROLLER_GEN=$(GOBIN)/controller-gen
+	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.1
+CONTROLLER_GEN=controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
-
-mockgen:
-ifeq (, $(shell which mockgen))
-	go get github.com/golang/mock/gomock
-	go install github.com/golang/mock/mockgen
-endif
-	go generate ./pkg/... ./controllers/... ./api/...
 
 deps:
 	bazel run gazelle -- update-repos -from_file go.mod

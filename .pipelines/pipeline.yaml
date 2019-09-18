@@ -1,0 +1,133 @@
+name: $(BuildDefinitionName)_$(SourceBranchName)_$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  batch: false
+  branches:
+    include:
+      - master
+  tags:
+    include:
+      - v*
+  paths:
+    exclude:
+      - README.md
+      - docs/*
+      - OWNERS
+
+pr:
+  autoCancel: true
+  branches:
+    include:
+      - master
+  paths:
+    exclude:
+      - README.md
+      - docs/*
+      - OWNERS
+
+variables:
+- name: GOBIN
+  value: '$(system.defaultWorkingDirectory)/$(build.repository.name)/bin'
+- name: GOROOT
+  value: '/usr/local/go1.12'
+- group: test-crd-sp
+
+stages:
+- stage: 
+  jobs:
+  - job: incendiary_iguana    
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - script: |
+        mkdir -p $(GOBIN)
+        echo '##vso[task.prependpath]$(GOBIN)'
+        echo '##vso[task.prependpath]$(GOROOT)/bin'
+        echo '##vso[task.prependpath]/usr/local/kubebuilder/bin'
+      displayName: 'configure path'
+    - script: |
+        # download go1.13
+        set -eu
+        echo Add other tasks to build, test, and deploy your project.
+        echo See https://aka.ms/yaml
+        echo $(go version)
+        go get golang.org/dl/go1.13
+        ls $(system.defaultWorkingDirectory)/$(build.repository.name)/bin
+        which go1.13
+        go1.13 download
+        go1.13 version
+        alias go=go1.13
+
+        # install goimports, ginkgo, kustomize
+        go get golang.org/x/tools/cmd/goimports
+        go get github.com/onsi/ginkgo/ginkgo
+        go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master
+        go get sigs.k8s.io/kind@v0.5.1
+        
+        # install kubebuilder, controller-gen, etcd, kubectl, and kube-apiserver
+        os=$(go env GOOS)
+        arch=$(go env GOARCH)
+        curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} | tar -xz -C /tmp/
+        sudo mv /tmp/kubebuilder_2.0.0_${os}_${arch} /usr/local/kubebuilder
+        go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
+        
+        # validate
+        which kubebuilder
+        which kustomize
+        which controller-gen
+        which kind
+      displayName: 'setup + install dependencies'
+      env:
+        GO111MODULE: on
+    - script: |
+        set -eu
+        go1.13 version
+        kind create cluster
+        cat $(kind get kubeconfig-path --name="kind") > $(system.defaultWorkingDirectory)/kubeconfig
+      displayName: 'kind create cluster'
+    - script: |
+        set -eu
+        go1.13 version
+        kubectl get node
+        make ci-manager
+      displayName: 'build manager'
+      env:
+        GO111MODULE: on
+        AZURE_CLIENT_ID: $(clientId)
+        AZURE_CLIENT_SECRET: $(clientSecret)
+        AZURE_TENANT_ID: $(tenantId)
+        KUBECONFIG: $(system.defaultWorkingDirectory)/kubeconfig
+    - script: |
+        set -eu
+        go1.13 version
+        make manager-test
+      displayName: 'test controllers'
+      env:
+        GO111MODULE: on
+        AZURE_CLIENT_ID: $(clientId)
+        AZURE_CLIENT_SECRET: $(clientSecret)
+        AZURE_TENANT_ID: $(tenantId)
+        USE_EXISTING_CLUSTER: "true"
+        KUBECONFIG: $(system.defaultWorkingDirectory)/kubeconfig
+    - script: |
+        set -eu
+        go1.13 version
+        make cli-test
+      displayName: 'test cli'
+      env:
+        GO111MODULE: on
+        AZURE_CLIENT_ID: $(clientId)
+        AZURE_CLIENT_SECRET: $(clientSecret)
+        AZURE_TENANT_ID: $(tenantId)
+        KUBECONFIG: $(system.defaultWorkingDirectory)/kubeconfig
+    - script: |
+        set -eu
+        go1.13 version
+        make manager-test
+      displayName: 'test controllers'
+      env:
+        GO111MODULE: on
+        AZURE_CLIENT_ID: $(clientId)
+        AZURE_CLIENT_SECRET: $(clientSecret)
+        AZURE_TENANT_ID: $(tenantId)
+        

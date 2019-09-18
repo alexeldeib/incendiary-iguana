@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: SecurityGroup
+    listKind: SecurityGroupList
     plural: securitygroups
     shortNames:
     - sg
+    singular: securitygroup
   scope: Namespaced
   subresources:
     status: {}
@@ -134,9 +136,7 @@ spec:
                 from Azure.
               type: string
           required:
-          - id
           - observedGeneration
-          - provisioningState
           type: object
       type: object
   version: v1alpha1

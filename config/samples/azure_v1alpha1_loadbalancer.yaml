@@ -1,0 +1,13 @@
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: LoadBalancer
+metadata:
+  name: lb-sample
+spec:
+  subscriptionId: e699b5b7-d254-4fd0-bc16-36ce1b79f04a
+  resourceGroup: ace-crd
+  name: ace-lb
+  location: eastus2
+  frontends:
+  - /subscriptions/e699b5b7-d254-4fd0-bc16-36ce1b79f04a/resourceGroups/ace-crd/providers/Microsoft.Network/publicIPAddresses/ace-ip
+  backends:
+  - backendPool

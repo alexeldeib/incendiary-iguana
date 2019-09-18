@@ -1,0 +1,8 @@
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: ResourceGroup
+metadata:
+  name: test-crd
+spec:
+  subscriptionId: bd6a4e14-55fa-4160-a6a7-b718d7a2c95c
+  name: test-crd
+  location: westus2

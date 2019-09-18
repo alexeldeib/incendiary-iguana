@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: ResourceGroup
+    listKind: ResourceGroupList
     plural: resourcegroups
     shortNames:
     - rg
+    singular: resourcegroup
   scope: Namespaced
   subresources:
     status: {}
@@ -55,8 +57,13 @@ spec:
         status:
           description: ResourceGroupStatus defines the observed state of ResourceGroup
           properties:
-            generation:
-              description: Generation is the last reconciled generation.
+            id:
+              description: ID is the fully qualified Azure resource ID.
+              type: string
+            observedGeneration:
+              description: ObservedGeneration is the iteration of user-provided spec
+                which has already been reconciled. This is used to decide when to
+                re-reconcile changes.
               format: int64
               type: integer
             provisioningState:
@@ -64,8 +71,7 @@ spec:
                 from Azure.
               type: string
           required:
-          - generation
-          - provisioningState
+          - observedGeneration
           type: object
       type: object
   version: v1alpha1

@@ -1,0 +1,90 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  name: identities.azure.alexeldeib.xyz
+spec:
+  group: azure.alexeldeib.xyz
+  names:
+    categories:
+    - all
+    kind: Identity
+    listKind: IdentityList
+    plural: identities
+    shortNames:
+    - msi
+    singular: identity
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: Identity is the Schema for the managed identities API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: IdentitySpec defines the desired state of Identity
+          properties:
+            location:
+              description: Location of resource group (e.g., eastus2)
+              type: string
+            name:
+              description: Name is the name of the resource.
+              type: string
+            resourceGroup:
+              description: ResourceGroup contain the resource..
+              type: string
+            subscriptionId:
+              description: SubscriptionID is the GUID of the Azure subscription containing
+                the resoruce group.
+              type: string
+          required:
+          - location
+          - name
+          - resourceGroup
+          - subscriptionId
+          type: object
+        status:
+          description: IdentityStatus defines the observed state of Identity
+          properties:
+            id:
+              description: ID is the fully qualified Azure resource ID.
+              type: string
+            observedGeneration:
+              description: ObservedGeneration is the iteration of user-provided spec
+                which has already been reconciled. This is used to decide when to
+                re-reconcile changes.
+              format: int64
+              type: integer
+            provisioningState:
+              description: ProvisioningState sync the provisioning status of the resource
+                from Azure.
+              type: string
+          required:
+          - observedGeneration
+          type: object
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
