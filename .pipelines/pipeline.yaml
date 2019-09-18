@@ -97,6 +97,7 @@ stages:
         AZURE_CLIENT_ID: $(clientId)
         AZURE_CLIENT_SECRET: $(clientSecret)
         AZURE_TENANT_ID: $(tenantId)
+        KUBECONFIG: $(system.defaultWorkingDirectory)/kubeconfig
     - script: |
         set -eu
         go1.13 version
