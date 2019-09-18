@@ -66,7 +66,9 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
           set -eux
-          export PATH=$PATH:/usr/local/kubebuilder/bin
+          export PATH=$PATH:/usr/local/kubebuilder/bin:$(go env GOPATH)/bin
+          go env
+          go version
           sudo mkdir -p /usr/local/kubebuilder
           go get golang.org/x/tools/cmd/goimports
           go get github.com/onsi/ginkgo/ginkgo
@@ -77,7 +79,6 @@ jobs:
           arch=$(go env GOARCH)
           curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}.tar.gz
           sudo tar -xzf kubebuilder_2.0.0_${os}_${arch}.tar.gz -C /usr/local/kubebuilder --strip-components=1
-          ls -al /usr/local/kubebuilder
           which kubebuilder
           which kustomize
           which controller-gen
@@ -97,7 +98,9 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
         run: |
           set -eux
-          export PATH=$PATH:/usr/local/kubebuilder/bin
+          export PATH=$PATH:/usr/local/kubebuilder/bin:$(go env GOPATH)/bin
+          go env
+          go version
           sudo mkdir -p /usr/local/kubebuilder
           go get golang.org/x/tools/cmd/goimports
           go get github.com/onsi/ginkgo/ginkgo
@@ -108,9 +111,6 @@ jobs:
           arch=$(go env GOARCH)
           curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}.tar.gz
           sudo tar -xzf kubebuilder_2.0.0_${os}_${arch}.tar.gz -C /usr/local/kubebuilder --strip-components=1
-          ls -al /usr/local/kubebuilder
-          ls -al /usr/local/kubebuilder
-          ls -al /usr/local/kubebuilder/bin
           which kustomize
           which controller-gen
           which kind 
