@@ -85,10 +85,7 @@ stages:
         kind create cluster
         kind get kubeconfig-path --name="kind" > ./kubeconfig
         export KUBECONFIG="$(kind get kubeconfig-path --name="kind")"
-      displayName: 'test controllers'
-      continueOnError: true
-      env:
-        GO111MODULE: on
+      displayName: 'kind create cluster'
     - script: |
         set -eu
         go1.13 version
@@ -111,7 +108,6 @@ stages:
         AZURE_CLIENT_ID: $(clientId)
         AZURE_CLIENT_SECRET: $(clientSecret)
         AZURE_TENANT_ID: $(tenantId)
-        KUBEBUILDER_ATTACH_CONTROL_PLANE_OUTPUT: "true"
     - script: |
         set -eu
         go1.13 version
@@ -123,3 +119,4 @@ stages:
         AZURE_CLIENT_SECRET: $(clientSecret)
         AZURE_TENANT_ID: $(tenantId)
         KUBECONFIG: ./kubeconfig
+        
