@@ -5,29 +5,23 @@ Copyright 2019 Alexander Eldeib.
 package controllers
 
 import (
-	"github.com/go-logr/logr"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
 )
 
 // VirtualNetworkReconciler reconciles a VirtualNetwork object
 type VirtualNetworkReconciler struct {
-	Reconciler *AzureReconciler
-	client.Client
-	Log         logr.Logger
-	VnetsClient *virtualnetworks.Client
+	Reconciler *AsyncReconciler
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=virtualnetworks,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=virtualnetworks/status,verbs=get;update;patch
 
+// Reconcile reconciles a specification for a virtual network against Azure.
 func (r *VirtualNetworkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	// ctx := context.Background()
-	return r.Reconciler.Reconcile(req, &azurev1alpha1.VirtualNetwork{})
+	return r.reconciler.Reconcile(req, &azurev1alpha1.VirtualNetwork{})
 }
 
 func (r *VirtualNetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {

@@ -17,7 +17,7 @@ import (
 
 // ServiceBusNamespaceReconciler reconciles a ServiceBusNamespace object
 type ServiceBusNamespaceReconciler struct {
-	Reconciler *AzureReconciler
+	Reconciler *AsyncReconciler
 	client.Client
 	Log                       logr.Logger
 	ServiceBusNamespaceClient *servicebus.Client
@@ -26,7 +26,7 @@ type ServiceBusNamespaceReconciler struct {
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=servicebus,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=servicebus/status,verbs=get;update;patch
 
-// Reconcile reconciles a user request for a Resource Group against Azure.
+// Reconcile reconciles a user request for a Service Bus namespace against Azure.
 func (r *ServiceBusNamespaceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return r.Reconciler.Reconcile(req, &azurev1alpha1.ServiceBusNamespace{})
 }

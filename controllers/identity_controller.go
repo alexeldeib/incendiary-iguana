@@ -5,23 +5,15 @@ Copyright 2019 Alexander Eldeib.
 package controllers
 
 import (
-	"github.com/go-logr/logr"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/identities"
-	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 )
 
 // IdentityReconciler reconciles a managed identity
 type IdentityReconciler struct {
-	client.Client
-	*config.Config
-	Log          logr.Logger
-	VaultsClient *identities.Client
-	Reconciler   *AzureSyncReconciler
+	Reconciler *SyncReconciler
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=identities,verbs=get;list;watch;create;update;patch;delete

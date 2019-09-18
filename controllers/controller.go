@@ -20,41 +20,38 @@ import (
 )
 
 const (
-	finalizerName              string = "azure.alexeldeib.xyz/finalizer"
-	provisioningStateDeleting  string = "Deleting"
-	provisioningStateNotFound  string = "NotFound"
-	provisioningStateSucceeded string = "Succeeded"
+	finalizerName string = "azure.alexeldeib.xyz/finalizer"
 )
 
-type AzureClient interface {
+type AsyncClient interface {
 	TryAuthorize(context.Context, runtime.Object) error
 	TryEnsure(context.Context, runtime.Object) (bool, error)
 	TryDelete(context.Context, runtime.Object) (bool, error)
 }
 
-type AzureSyncClient interface {
+type SyncClient interface {
 	TryAuthorize(context.Context, runtime.Object) error
 	TryEnsure(context.Context, runtime.Object) error
 	TryDelete(context.Context, runtime.Object) error
 }
 
-// AzureReconciler is a generic reconciler for Azure objects
-type AzureReconciler struct {
+// AsyncReconciler is a generic reconciler for Azure objects
+type AsyncReconciler struct {
 	client.Client
-	Az       AzureClient
+	Az       AsyncClient
 	Log      logr.Logger
 	Recorder record.EventRecorder
 }
 
-// AzureSyncReconciler is a generic reconciler for Azure resources which run fast, synchronous operations.
-type AzureSyncReconciler struct {
+// SyncReconciler is a generic reconciler for Azure resources which run fast, synchronous operations.
+type SyncReconciler struct {
 	client.Client
-	Az       AzureSyncClient
+	Az       SyncClient
 	Log      logr.Logger
 	Recorder record.EventRecorder
 }
 
-func (r *AzureReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctrl.Result, error) {
+func (r *AsyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctrl.Result, error) {
 	ctx := context.Background()
 	kind := strings.ToLower(local.GetObjectKind().GroupVersionKind().Kind)
 	log := r.Log.WithValues("type", kind, "namespacedName", fmt.Sprintf("%s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name))
@@ -108,7 +105,7 @@ func (r *AzureReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctr
 	return ctrl.Result{Requeue: !done}, err
 }
 
-func (r *AzureSyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctrl.Result, error) {
+func (r *SyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctrl.Result, error) {
 	ctx := context.Background()
 	kind := strings.ToLower(local.GetObjectKind().GroupVersionKind().Kind)
 	log := r.Log.WithValues("type", kind, "namespacedName", fmt.Sprintf("%s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name))

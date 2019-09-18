@@ -5,28 +5,21 @@ Copyright 2019 Alexander Eldeib.
 package controllers
 
 import (
-	"github.com/go-logr/logr"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
 )
 
 // SecurityGroupReconciler reconciles a SecurityGroup object
 type SecurityGroupReconciler struct {
-	Reconciler *AzureReconciler
-	client.Client
-	Log                  logr.Logger
-	SecurityGroupsClient *securitygroups.Client
+	Reconciler *AsyncReconciler
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=securitygroups,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=securitygroups/status,verbs=get;update;patch
 
 func (r *SecurityGroupReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	// ctx := context.Background()
 	return r.Reconciler.Reconcile(req, &azurev1alpha1.SecurityGroup{})
 }
 

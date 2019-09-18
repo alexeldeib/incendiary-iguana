@@ -99,7 +99,7 @@ var _ = BeforeSuite(func(done Done) {
 		Client:       k8sClient,
 		Log:          log.WithName("ResourceGroup"),
 		GroupsClient: resourcegroups.New(configuration),
-		Reconciler: &AzureReconciler{
+		Reconciler: &AsyncReconciler{
 			Client:   k8sClient,
 			Az:       resourcegroups.New(configuration),
 			Log:      log,

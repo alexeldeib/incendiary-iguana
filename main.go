@@ -85,11 +85,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	// TODO(ace): handle this in a loop.
 	if err = (&controllers.ResourceGroupReconciler{
-		Client:       client,
-		Log:          log.WithName("ResourceGroup"),
-		GroupsClient: resourcegroups.New(configuration),
-		Reconciler: &controllers.AzureReconciler{
+		Reconciler: &controllers.AsyncReconciler{
 			Client:   client,
 			Az:       resourcegroups.New(configuration),
 			Log:      log,
@@ -101,11 +99,7 @@ func main() {
 	}
 
 	if err = (&controllers.KeyvaultReconciler{
-		Client:       client,
-		Log:          log.WithName("Keyvault"),
-		Config:       configuration,
-		VaultsClient: keyvaults.New(configuration),
-		Reconciler: &controllers.AzureSyncReconciler{
+		Reconciler: &controllers.SyncReconciler{
 			Client:   client,
 			Az:       keyvaults.New(configuration),
 			Log:      log,
@@ -117,11 +111,7 @@ func main() {
 	}
 
 	if err = (&controllers.SecretReconciler{
-		Client:        client,
-		Log:           ctrl.Log.WithName("controllers").WithName("Secret"),
-		SecretsClient: secretsclient,
-		Scheme:        scheme,
-		Reconciler: &controllers.AzureSyncReconciler{
+		Reconciler: &controllers.SyncReconciler{
 			Client:   client,
 			Az:       secretsclient,
 			Log:      log,
@@ -133,11 +123,7 @@ func main() {
 	}
 
 	if err = (&controllers.SecretBundleReconciler{
-		Client:        client,
-		Log:           ctrl.Log.WithName("controllers").WithName("SecretBundle"),
-		SecretsClient: secretsclient,
-		Scheme:        scheme,
-		Reconciler: &controllers.AzureSyncReconciler{
+		Reconciler: &controllers.SyncReconciler{
 			Client:   client,
 			Az:       secretsclient,
 			Log:      log,
@@ -149,10 +135,7 @@ func main() {
 	}
 
 	if err = (&controllers.VirtualNetworkReconciler{
-		Client:      client,
-		Log:         ctrl.Log.WithName("controllers").WithName("VirtualNetwork"),
-		VnetsClient: virtualnetworks.New(configuration),
-		Reconciler: &controllers.AzureReconciler{
+		Reconciler: &controllers.AsyncReconciler{
 			Client:   client,
 			Az:       virtualnetworks.New(configuration),
 			Log:      log,
@@ -164,10 +147,7 @@ func main() {
 	}
 
 	if err = (&controllers.SubnetReconciler{
-		Client:        client,
-		Log:           ctrl.Log.WithName("controllers").WithName("Subnet"),
-		SubnetsClient: subnets.New(configuration),
-		Reconciler: &controllers.AzureReconciler{
+		Reconciler: &controllers.AsyncReconciler{
 			Client:   client,
 			Az:       subnets.New(configuration),
 			Log:      log,
@@ -179,10 +159,7 @@ func main() {
 	}
 
 	if err = (&controllers.SecurityGroupReconciler{
-		Client:               client,
-		Log:                  ctrl.Log.WithName("controllers").WithName("SecurityGroup"),
-		SecurityGroupsClient: securitygroups.New(configuration),
-		Reconciler: &controllers.AzureReconciler{
+		Reconciler: &controllers.AsyncReconciler{
 			Client:   client,
 			Az:       securitygroups.New(configuration),
 			Log:      log,
@@ -194,10 +171,7 @@ func main() {
 	}
 
 	if err = (&controllers.PublicIPReconciler{
-		Client:          client,
-		Log:             ctrl.Log.WithName("controllers").WithName("PublicIP"),
-		PublicIPsClient: publicips.New(configuration),
-		Reconciler: &controllers.AzureReconciler{
+		Reconciler: &controllers.AsyncReconciler{
 			Client:   client,
 			Az:       publicips.New(configuration),
 			Log:      log,
@@ -209,10 +183,7 @@ func main() {
 	}
 
 	if err = (&controllers.NetworkInterfaceReconciler{
-		Client:     client,
-		Log:        ctrl.Log.WithName("controllers").WithName("NetworkInterface"),
-		NICsClient: nics.New(configuration),
-		Reconciler: &controllers.AzureReconciler{
+		Reconciler: &controllers.AsyncReconciler{
 			Client:   client,
 			Az:       nics.New(configuration),
 			Log:      log,
@@ -235,10 +206,7 @@ func main() {
 	}
 
 	if err = (&controllers.RedisReconciler{
-		Client:      client,
-		Log:         ctrl.Log.WithName("controllers").WithName("Redis"),
-		RedisClient: redis.New(configuration, &client, scheme),
-		Reconciler: &controllers.AzureReconciler{
+		Reconciler: &controllers.AsyncReconciler{
 			Client:   client,
 			Az:       redis.New(configuration, &client, scheme),
 			Log:      log,
@@ -250,10 +218,7 @@ func main() {
 	}
 
 	if err = (&controllers.ServiceBusNamespaceReconciler{
-		Client:                    client,
-		Log:                       ctrl.Log.WithName("controllers").WithName("ServiceBusNamespace"),
-		ServiceBusNamespaceClient: servicebus.New(configuration, &client, scheme),
-		Reconciler: &controllers.AzureReconciler{
+		Reconciler: &controllers.AsyncReconciler{
 			Client:   client,
 			Az:       servicebus.New(configuration, &client, scheme),
 			Log:      log,
@@ -265,10 +230,7 @@ func main() {
 	}
 
 	if err = (&controllers.VMReconciler{
-		Client:   client,
-		Log:      ctrl.Log.WithName("controllers").WithName("VM"),
-		VMClient: vms.New(configuration),
-		Reconciler: &controllers.AzureReconciler{
+		Reconciler: &controllers.AsyncReconciler{
 			Client:   client,
 			Az:       vms.New(configuration),
 			Log:      log,
