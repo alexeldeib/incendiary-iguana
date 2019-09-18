@@ -35,4 +35,12 @@ ADD mgr_test.sh /scripts
 
 RUN chmod +x /scripts/*
 
+RUN apt update -y && apt -y install apt-transport-https ca-certificates curl software-properties-common
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
+RUN add-apt-repository \
+  "deb [arch=amd64] https://download.docker.com/linux/debian \
+  buster \
+  stable"
+RUN apt update -y && apt -y install docker-ce=18.06.2~ce~3-0~debian
+
 # RUN go get github.com/go-delve/delve/cmd/dlv@v1.3.0
