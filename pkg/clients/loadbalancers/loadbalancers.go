@@ -17,6 +17,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 )
 
+// TODO(ace): consts package
 const expand string = ""
 
 type Client struct {
@@ -34,7 +35,6 @@ func New(configuration *config.Config) *Client {
 
 // NewWithFactory returns an interface which can authorize the configured client to many subscriptions.
 // It uses the factory argument to instantiate new clients for a specific subscription.
-// This can be used to stub Azure client for testing.
 func NewWithFactory(configuration *config.Config, factory factoryFunc) *Client {
 	return &Client{
 		config:  configuration,

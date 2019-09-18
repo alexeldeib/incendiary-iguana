@@ -50,7 +50,7 @@ func Location(location string) func(*Spec) {
 
 func (s *Spec) NeedsUpdate(local *azurev1alpha1.ResourceGroup) bool {
 	return clientutil.Any([]func() bool{
-		clientutil.StringPtrChanged(s.Name(), &local.Spec.Name),
+		clientutil.StringPtrChanged(s.Name(), &local.Spec.Name), // this func just feels weird.
 		clientutil.StringPtrChanged(s.Location(), &local.Spec.Location),
 	})
 }

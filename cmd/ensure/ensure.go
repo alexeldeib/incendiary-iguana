@@ -350,6 +350,7 @@ func Delete(obj metav1.Object, configuration *config.Config, kubeclient *client.
 // TODO(ace): extract this pattern for async/sync resources (aka, things that return "done" vs things that only return err value)
 // generalize it across resources, natively if possible or by defining some interface
 func EnsureResourceGroup(client *resourcegroups.Client, obj metav1.Object, log logr.Logger) error {
+	// TODO(ace): simplify the typecasting and clint
 	local, ok := obj.(*azurev1alpha1.ResourceGroup)
 	if !ok {
 		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
@@ -357,10 +358,12 @@ func EnsureResourceGroup(client *resourcegroups.Client, obj metav1.Object, log l
 
 	log = log.WithValues("type", "resourcegroup", "name", local.Spec.Name)
 
+	// extract. consider keyvault and non-sub specific clients. Matrix size = 2x2 (async, sub)
 	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
 		return errors.Wrap(err, "failed to get client for subscription")
 	}
 
+	// extract this into async/sync, probably
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")
 		done, err = client.Ensure(context.Background(), local)

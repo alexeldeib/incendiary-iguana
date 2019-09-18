@@ -17,6 +17,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 )
 
+// TODO(ace): proably delete this file entirely, I was managing TMs with it but then worked around the issues I had.
 type Client struct {
 	factory  factoryFunc
 	internal resources.Client

@@ -70,6 +70,7 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.NetworkInterfa
 		}
 	}
 
+	// TODO(ace): use spec pattern from other clients
 	spec := network.Interface{
 		Location: &local.Spec.Location,
 	}

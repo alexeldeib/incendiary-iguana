@@ -49,6 +49,7 @@ func (c *Client) ForSubscription(subID string) error {
 
 // Ensure creates or updates a virtual network in an idempotent manner and sets its provisioning state.
 func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.PublicIP) (bool, error) {
+	// TODO(ace): use spec.Set() pattern from other packages
 	spec := network.PublicIPAddress{
 		Location: &local.Spec.Location,
 		Sku: &network.PublicIPAddressSku{

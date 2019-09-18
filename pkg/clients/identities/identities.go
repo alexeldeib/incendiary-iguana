@@ -74,7 +74,7 @@ func (c *Client) Get(ctx context.Context, local *azurev1alpha1.Identity) (msi.Id
 	return c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 }
 
-// Delete handles deletion of a resource groups.
+// Delete handles deletion of a managed identity.
 func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.Identity) error {
 	response, err := c.internal.Delete(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 	if err != nil && !response.IsHTTPStatus(http.StatusNotFound) {

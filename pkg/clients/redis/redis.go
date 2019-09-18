@@ -84,6 +84,7 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.Redis) (bool, 
 		}
 	}
 
+	// TODO(ace): spec.Set()
 	spec := redis.CreateParameters{
 		Location: &local.Spec.Location,
 		CreateProperties: &redis.CreateProperties{

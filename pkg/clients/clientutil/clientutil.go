@@ -10,6 +10,7 @@ import (
 	"fmt"
 )
 
+// TODO(ace): probably move this to a more descriptive package
 // Any executes an array of functions in order and returns true if any of them returns true. Returns false otherwise.
 func Any(funcs []func() bool) bool {
 	for _, f := range funcs {
@@ -41,6 +42,7 @@ func GenerateRandomString(n int) string {
 	return base64.URLEncoding.EncodeToString(b) //, err
 }
 
+// TODO(ace): probably do something smarter?
 // StringPtrChanged returns true if the new user-defined value for a string matches the existing value.
 // If the resource does not exist, old will be nil, which should be treated as requiring update.
 func StringPtrChanged(old *string, new *string) func() bool {

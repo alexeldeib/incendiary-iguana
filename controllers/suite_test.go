@@ -18,7 +18,6 @@ package controllers
 import (
 	"path/filepath"
 	"testing"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -62,9 +61,7 @@ var _ = BeforeSuite(func(done Done) {
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		AttachControlPlaneOutput: true,
-		ControlPlaneStartTimeout: 15 * time.Second,
-		CRDDirectoryPaths:        []string{filepath.Join("..", "config", "crd", "bases")},
+		CRDDirectoryPaths: []string{filepath.Join("..", "config", "crd", "bases")},
 	}
 
 	cfg, err := testEnv.Start()

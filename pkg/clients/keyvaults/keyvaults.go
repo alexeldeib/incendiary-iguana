@@ -51,6 +51,8 @@ func (c *Client) Ensure(ctx context.Context, vault *azurev1alpha1.Keyvault) erro
 	if err != nil {
 		return err
 	}
+
+	// TODO(ace): use spec here
 	opts := keyvault.VaultCreateOrUpdateParameters{
 		Properties: &keyvault.VaultProperties{
 			TenantID:       &tenantId,
