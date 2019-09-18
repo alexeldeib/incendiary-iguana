@@ -67,7 +67,7 @@ jobs:
         run: |
           set -eux
           export PATH=$PATH:/usr/local/kubebuilder/bin
-          mkdir -p /usr/local/kubebuilder
+          sudo mkdir -p /usr/local/kubebuilder
           go get golang.org/x/tools/cmd/goimports
           go get github.com/onsi/ginkgo/ginkgo
           go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master
@@ -76,7 +76,7 @@ jobs:
           os=$(go env GOOS)
           arch=$(go env GOARCH)
           curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}.tar.gz
-          tar -xzf kubebuilder_2.0.0_${os}_${arch}.tar.gz -C /usr/local/kubebuilder --strip-components=1
+          sudo tar -xzf kubebuilder_2.0.0_${os}_${arch}.tar.gz -C /usr/local/kubebuilder --strip-components=1
           ls -al /usr/local/kubebuilder
           which kubebuilder
           which kustomize
@@ -98,6 +98,7 @@ jobs:
         run: |
           set -eux
           export PATH=$PATH:/usr/local/kubebuilder/bin
+          sudo mkdir -p /usr/local/kubebuilder
           go get golang.org/x/tools/cmd/goimports
           go get github.com/onsi/ginkgo/ginkgo
           go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master
@@ -106,7 +107,7 @@ jobs:
           os=$(go env GOOS)
           arch=$(go env GOARCH)
           curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}.tar.gz
-          tar -xzf kubebuilder_2.0.0_${os}_${arch}.tar.gz -C /usr/local/kubebuilder --strip-components=1
+          sudo tar -xzf kubebuilder_2.0.0_${os}_${arch}.tar.gz -C /usr/local/kubebuilder --strip-components=1
           ls -al /usr/local/kubebuilder
           ls -al /usr/local/kubebuilder
           ls -al /usr/local/kubebuilder/bin
