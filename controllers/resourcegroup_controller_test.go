@@ -64,8 +64,7 @@ var _ = Describe("resource group controller", func() {
 			local := &azurev1alpha1.ResourceGroup{}
 			err := k8sClient.Get(context.Background(), key, local)
 			fmt.Printf("error: %+#v\n", err)
-			litter.Dump(local)
-			litter.Dump(local.Status)
+			litter.Dump(local.Status.ProvisioningState)
 			return err
 		}, timeout, interval).ShouldNot(Succeed())
 	})
