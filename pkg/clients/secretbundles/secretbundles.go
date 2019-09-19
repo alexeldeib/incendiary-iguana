@@ -25,11 +25,14 @@ import (
 
 type Client struct {
 	internal   keyvault.BaseClient
-	kubeclient ctrl.Client
+	kubeclient *ctrl.Client
 	scheme     *runtime.Scheme
 }
 
-func New(configuration *config.Config, kubeclient ctrl.Client, scheme *runtime.Scheme) (*Client, error) {
+func New(configuration *config.Config, kubeclient *ctrl.Client, scheme *runtime.Scheme) (*Client, error) {
+	if kubeclient == nil {
+		return nil, errors.New("nil kubeclient passed to secrets client is effectively noop")
+	}
 	kvclient := keyvault.New()
 	authorizer, err := configuration.GetKeyvaultAuthorizer()
 	if err != nil {
@@ -71,7 +74,7 @@ func (c *Client) Ensure(ctx context.Context, secret *azurev1alpha1.SecretBundle)
 		},
 	}
 
-	_, err := controllerutil.CreateOrUpdate(ctx, c.kubeclient, local, func() error {
+	_, err := controllerutil.CreateOrUpdate(ctx, *c.kubeclient, local, func() error {
 		innerErr := controllerutil.SetControllerReference(secret, secret, c.scheme)
 		if innerErr != nil {
 			return innerErr
@@ -104,7 +107,7 @@ func (c *Client) Delete(ctx context.Context, secret *azurev1alpha1.SecretBundle)
 			Namespace: secret.ObjectMeta.Namespace,
 		},
 	}
-	return client.IgnoreNotFound(c.kubeclient.Delete(ctx, local))
+	return client.IgnoreNotFound((*c.kubeclient).Delete(ctx, local))
 }
 
 func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {

@@ -28,6 +28,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebus"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/tlssecrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/vms"
@@ -79,9 +80,15 @@ func main() {
 	client := mgr.GetClient()
 
 	// Global client initialization
-	secretsclient, err := secrets.New(configuration, client, scheme)
+	secretsclient, err := secrets.New(configuration, &client, scheme)
 	if err != nil {
 		setupLog.Error(err, "failed to initialize keyvault secret client")
+		os.Exit(1)
+	}
+
+	tlssecretsclient, err := tlssecrets.New(configuration, &client, scheme)
+	if err != nil {
+		setupLog.Error(err, "failed to initialize keyvault tlssecret client")
 		os.Exit(1)
 	}
 
@@ -113,12 +120,24 @@ func main() {
 	if err = (&controllers.SecretReconciler{
 		Reconciler: &controllers.SyncReconciler{
 			Client:   client,
-			Az:       secretsclient,
+			Az:       tlssecretsclient,
 			Log:      log,
 			Recorder: recorder,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Secret")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.TLSSecretReconciler{
+		Reconciler: &controllers.SyncReconciler{
+			Client:   client,
+			Az:       tlssecretsclient,
+			Log:      log,
+			Recorder: recorder,
+		},
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "TLSSecret")
 		os.Exit(1)
 	}
 

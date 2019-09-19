@@ -80,9 +80,9 @@ var _ = BeforeSuite(func() {
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = azurev1alpha1.AddToScheme(scheme)
 
-	secretbundlesClient, err = secretbundles.New(configuration, kubeclient, scheme)
+	secretbundlesClient, err = secretbundles.New(configuration, &kubeclient, scheme)
 	Expect(err).ToNot(HaveOccurred())
-	secretsClient, err = secrets.New(configuration, kubeclient, scheme)
+	secretsClient, err = secrets.New(configuration, &kubeclient, scheme)
 	Expect(err).ToNot(HaveOccurred())
 })
 

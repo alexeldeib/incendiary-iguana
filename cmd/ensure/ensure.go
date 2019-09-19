@@ -39,6 +39,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebus"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/tlssecrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/vms"
@@ -261,23 +262,28 @@ func Ensure(obj metav1.Object, configuration *config.Config, kubeclient *client.
 	case *azurev1alpha1.NetworkInterface:
 		err = EnsureNIC(nics.New(configuration), obj, log)
 	case *azurev1alpha1.Redis:
-		err = EnsureRedis(redis.New(configuration, nil, nil), obj, log)
+		err = EnsureRedis(redis.New(configuration, kubeclient, scheme), obj, log)
 	case *azurev1alpha1.ResourceGroup:
 		err = EnsureResourceGroup(resourcegroups.New(configuration), obj, log)
 	case *azurev1alpha1.Secret:
-		client, err := secrets.New(configuration, nil, nil)
+		client, err := secrets.New(configuration, kubeclient, scheme)
 		if err == nil {
 			err = EnsureSecret(client, obj, log)
 		}
 	case *azurev1alpha1.SecretBundle:
-		client, err := secretbundles.New(configuration, nil, nil)
+		client, err := secretbundles.New(configuration, kubeclient, scheme)
 		if err == nil {
 			err = EnsureSecretBundle(client, obj, log)
 		}
 	case *azurev1alpha1.ServiceBusNamespace:
-		err = EnsureServiceBusNamespace(servicebus.New(configuration, nil, nil), obj, log)
+		err = EnsureServiceBusNamespace(servicebus.New(configuration, kubeclient, scheme), obj, log)
 	case *azurev1alpha1.Subnet:
 		err = EnsureSubnet(subnets.New(configuration), obj, log)
+	case *azurev1alpha1.TLSSecret:
+		client, err := tlssecrets.New(configuration, kubeclient, scheme)
+		if err == nil {
+			err = EnsureTLSSecret(client, obj, log)
+		}
 	case *azurev1alpha1.TrafficManager:
 		err = EnsureTrafficManager(trafficmanagers.New(configuration), obj, log)
 	case *azurev1alpha1.VirtualNetwork:
@@ -312,23 +318,28 @@ func Delete(obj metav1.Object, configuration *config.Config, kubeclient *client.
 	case *azurev1alpha1.NetworkInterface:
 		err = DeleteNIC(nics.New(configuration), obj, log)
 	case *azurev1alpha1.Redis:
-		err = DeleteRedis(redis.New(configuration, nil, nil), obj, log)
+		err = DeleteRedis(redis.New(configuration, kubeclient, scheme), obj, log)
 	case *azurev1alpha1.ResourceGroup:
 		err = DeleteResourceGroup(resourcegroups.New(configuration), obj, log)
 	case *azurev1alpha1.Secret:
-		client, err := secrets.New(configuration, nil, nil)
+		client, err := secrets.New(configuration, kubeclient, scheme)
 		if err == nil {
 			err = DeleteSecret(client, obj, log)
 		}
 	case *azurev1alpha1.SecretBundle:
-		client, err := secretbundles.New(configuration, nil, nil)
+		client, err := secretbundles.New(configuration, kubeclient, scheme)
 		if err == nil {
 			err = DeleteSecretBundle(client, obj, log)
 		}
 	case *azurev1alpha1.ServiceBusNamespace:
-		err = DeleteServiceBusNamespace(servicebus.New(configuration, nil, nil), obj, log)
+		err = DeleteServiceBusNamespace(servicebus.New(configuration, kubeclient, scheme), obj, log)
 	case *azurev1alpha1.Subnet:
 		err = DeleteSubnet(subnets.New(configuration), obj, log)
+	case *azurev1alpha1.TLSSecret:
+		client, err := tlssecrets.New(configuration, kubeclient, scheme)
+		if err == nil {
+			err = DeleteTLSSecret(client, obj, log)
+		}
 	case *azurev1alpha1.TrafficManager:
 		log.Info("Traffic Manager!")
 	case *azurev1alpha1.VirtualNetwork:
@@ -919,6 +930,39 @@ func DeleteSecret(client *secrets.Client, obj metav1.Object, log logr.Logger) er
 	}
 
 	log = log.WithValues("type", "secret", "name", local.Spec.Name)
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("deleting")
+		err = client.Delete(context.Background(), local)
+		return err == nil, err
+	})
+}
+
+func EnsureTLSSecret(client *tlssecrets.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.TLSSecret)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "tlssecret", "name", local.Spec.Name)
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("reconciling")
+		err = client.Ensure(context.Background(), local)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return err == nil, nil
+	})
+}
+
+func DeleteTLSSecret(client *tlssecrets.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.TLSSecret)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "tlssecret", "name", local.Spec.Name)
 
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("deleting")
