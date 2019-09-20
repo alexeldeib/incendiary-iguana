@@ -6,6 +6,7 @@ package redis
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -52,15 +53,21 @@ func NewWithFactory(configuration *config.Config, kubeclient *ctrl.Client, facto
 }
 
 // ForSubscription authorizes the client for a given subscription
-func (c *Client) ForSubscription(subID string) error {
-	c.internal = c.factory(subID)
-	// c.internal.RequestInspector = LogRequest()
-	// c.internal.ResponseInspector = LogResponse()
+func (c *Client) ForSubscription(ctx context.Context, obj runtime.Object) error {
+	local, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
+	c.internal = c.factory(local.Spec.SubscriptionID)
 	return c.config.AuthorizeClient(&c.internal.Client)
 }
 
-// Ensure creates or updates a resource group in an idempotent manner.
-func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.Redis) (bool, error) {
+// Ensure creates or updates a redis cache in an idempotent manner.
+func (c *Client) Ensure(ctx context.Context, obj runtime.Object) (bool, error) {
+	local, err := c.convert(obj)
+	if err != nil {
+		return false, err
+	}
 	remote, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 	found := !remote.IsHTTPStatus(http.StatusNotFound)
 	c.SetStatus(local, remote)
@@ -71,7 +78,7 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.Redis) (bool, 
 	if found {
 		if c.Done(ctx, local) {
 			if c.kubeclient != nil {
-				if err := c.SyncSecrets(ctx, local, remote); err != nil {
+				if err := c.SyncSecrets(ctx, local); err != nil {
 					return false, err
 				}
 			}
@@ -104,13 +111,7 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.Redis) (bool, 
 	return false, nil
 }
 
-// Get returns a resource group.
-func (c *Client) Get(ctx context.Context, local *azurev1alpha1.Redis) (redis.ResourceType, error) {
-	return c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
-}
-
-func (c *Client) SyncSecrets(ctx context.Context, local *azurev1alpha1.Redis, remote redis.ResourceType) error {
-	spew.Dump("listing keys")
+func (c *Client) SyncSecrets(ctx context.Context, local *azurev1alpha1.Redis) error {
 	if local.Spec.PrimaryKey == nil && local.Spec.SecondaryKey == nil {
 		return nil
 	}
@@ -135,7 +136,9 @@ func (c *Client) SyncSecrets(ctx context.Context, local *azurev1alpha1.Redis, re
 			targetSecret.Data = map[string][]byte{}
 		}
 
-		final = multierror.Append(final, controllerutil.SetControllerReference(local, targetSecret, c.scheme))
+		// if local.ObjectMeta.UID != "" {
+		// 	final = multierror.Append(final, controllerutil.SetControllerReference(local, targetSecret, c.scheme))
+		// }
 
 		if local.Spec.PrimaryKey != nil {
 			if keys.PrimaryKey != nil {
@@ -161,7 +164,11 @@ func (c *Client) SyncSecrets(ctx context.Context, local *azurev1alpha1.Redis, re
 }
 
 // Delete handles deletion of a resource groups.
-func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.Redis) (bool, error) {
+func (c *Client) Delete(ctx context.Context, obj runtime.Object) (bool, error) {
+	local, err := c.convert(obj)
+	if err != nil {
+		return false, err
+	}
 	future, err := c.internal.Delete(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 	if err != nil {
 		// Not found is a successful delete
@@ -191,11 +198,6 @@ func (c *Client) SetStatus(local *azurev1alpha1.Redis, remote redis.ResourceType
 // Done checks the current state of the CRD against the desired end state.
 func (c *Client) Done(ctx context.Context, local *azurev1alpha1.Redis) bool {
 	return local.Status.ProvisioningState == "Succeeded"
-}
-
-// InProgress
-func (c *Client) InProgress(ctx context.Context, local *azurev1alpha1.Redis) bool {
-	return local.Status.ProvisioningState != ""
 }
 
 func (c *Client) NeedsUpdate(local *azurev1alpha1.Redis, remote redis.ResourceType) bool {
@@ -228,27 +230,10 @@ func (c *Client) NeedsUpdate(local *azurev1alpha1.Redis, remote redis.ResourceTy
 	return false
 }
 
-// TODO(ace): improve naming and the structure of this pattern across all gvks
-func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {
+func (c *Client) convert(obj runtime.Object) (*azurev1alpha1.Redis, error) {
 	local, ok := obj.(*azurev1alpha1.Redis)
 	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+		return nil, fmt.Errorf("failed type assertion on kind: %s", obj.GetObjectKind().GroupVersionKind().String())
 	}
-	return c.ForSubscription(local.Spec.SubscriptionID)
-}
-
-func (c *Client) TryEnsure(ctx context.Context, obj runtime.Object) (bool, error) {
-	local, ok := obj.(*azurev1alpha1.Redis)
-	if !ok {
-		return false, errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return c.Ensure(ctx, local)
-}
-
-func (c *Client) TryDelete(ctx context.Context, obj runtime.Object) (bool, error) {
-	local, ok := obj.(*azurev1alpha1.Redis)
-	if !ok {
-		return false, errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return c.Delete(ctx, local)
+	return local, nil
 }

@@ -8,14 +8,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// +kubebuilder:object:generate=true
+
 // SecretBundleSpec defines the desired state of SecretBundle
 type SecretBundleSpec struct {
 	// Name is the name the corresponding Keyvault Secret.
 	Name string `json:"name"`
-	// +kubebuilder:validation:MinItems=1
 	// Secrets is a list of references to Keyvault secrets to sync to a single Kubernetes secret.
 	// The keys in the map will be the keys in the Kubernetes secret.
-	Secrets []SecretIdentifier `json:"secrets"`
+	Secrets map[string]SecretIdentifier `json:"secrets"`
 }
 
 // SecretBundleStatus defines the observed state of SecretBundle
@@ -38,6 +39,7 @@ type SecretBundle struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:object:generate=true
 
 // SecretBundleList contains a list of SecretBundle
 type SecretBundleList struct {

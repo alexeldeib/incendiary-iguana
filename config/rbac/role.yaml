@@ -209,6 +209,26 @@ rules:
 - apiGroups:
   - azure.alexeldeib.xyz
   resources:
+  - sqlservers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - sqlservers/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
   - subnets
   verbs:
   - create
@@ -222,6 +242,26 @@ rules:
   - azure.alexeldeib.xyz
   resources:
   - subnets/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - tlssecrets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - tlssecrets/status
   verbs:
   - get
   - patch

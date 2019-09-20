@@ -6,7 +6,7 @@ package keyvaults
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2018-02-14/keyvault"
@@ -39,13 +39,21 @@ func NewWithFactory(configuration *config.Config, factory factoryFunc) *Client {
 }
 
 // ForSubscription authorizes the client for a given subscription
-func (c *Client) ForSubscription(subID string) error {
-	c.internal = c.factory(subID)
+func (c *Client) ForSubscription(ctx context.Context, obj runtime.Object) error {
+	local, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
+	c.internal = c.factory(local.Spec.SubscriptionID)
 	return c.config.AuthorizeClient(&c.internal.Client)
 }
 
 // Ensure creates or updates a keyvault in an idempotent manner and sets its provisioning state.
-func (c *Client) Ensure(ctx context.Context, vault *azurev1alpha1.Keyvault) error {
+func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
+	vault, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
 	// TODO(ace): handle location/name changes? via status somehow
 	tenantId, err := uuid.FromString(vault.Spec.TenantID)
 	if err != nil {
@@ -77,12 +85,20 @@ func (c *Client) Ensure(ctx context.Context, vault *azurev1alpha1.Keyvault) erro
 }
 
 // Get returns a keyvault.
-func (c *Client) Get(ctx context.Context, vault *azurev1alpha1.Keyvault) (keyvault.Vault, error) {
-	return c.internal.Get(ctx, vault.Spec.ResourceGroup, vault.Spec.Name)
+func (c *Client) Get(ctx context.Context, obj runtime.Object) (keyvault.Vault, error) {
+	local, err := c.convert(obj)
+	if err != nil {
+		return keyvault.Vault{}, err
+	}
+	return c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 }
 
 // Delete handles deletion of a keyvault and returns its provisioning state.
-func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.Keyvault) error {
+func (c *Client) Delete(ctx context.Context, obj runtime.Object) error {
+	local, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
 	response, err := c.internal.Delete(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 	if err != nil && !response.IsHTTPStatus(http.StatusNotFound) {
 		return err
@@ -90,32 +106,16 @@ func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.Keyvault) erro
 	return nil
 }
 
-func (c *Client) SetStatus(ctx context.Context, vault *azurev1alpha1.Keyvault) error {
-	remote, err := c.internal.Get(ctx, vault.Spec.ResourceGroup, vault.Spec.Name)
-	vault.Status.ID = remote.ID
+func (c *Client) SetStatus(ctx context.Context, local *azurev1alpha1.Keyvault) error {
+	remote, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
+	local.Status.ID = remote.ID
 	return err
 }
 
-func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {
+func (c *Client) convert(obj runtime.Object) (*azurev1alpha1.Keyvault, error) {
 	local, ok := obj.(*azurev1alpha1.Keyvault)
 	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+		return nil, fmt.Errorf("failed type assertion on kind: %s", obj.GetObjectKind().GroupVersionKind().String())
 	}
-	return c.ForSubscription(local.Spec.SubscriptionID)
-}
-
-func (c *Client) TryEnsure(ctx context.Context, obj runtime.Object) error {
-	local, ok := obj.(*azurev1alpha1.Keyvault)
-	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return c.Ensure(ctx, local)
-}
-
-func (c *Client) TryDelete(ctx context.Context, obj runtime.Object) error {
-	local, ok := obj.(*azurev1alpha1.Keyvault)
-	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return c.Delete(ctx, local)
+	return local, nil
 }

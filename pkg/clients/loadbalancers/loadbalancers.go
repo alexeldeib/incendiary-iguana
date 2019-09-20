@@ -6,7 +6,7 @@ package loadbalancers
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2019-04-01/network"
@@ -43,13 +43,21 @@ func NewWithFactory(configuration *config.Config, factory factoryFunc) *Client {
 }
 
 // ForSubscription authorizes the client for a given subscription
-func (c *Client) ForSubscription(subID string) error {
-	c.internal = c.factory(subID)
+func (c *Client) ForSubscription(ctx context.Context, obj runtime.Object) error {
+	local, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
+	c.internal = c.factory(local.Spec.SubscriptionID)
 	return c.config.AuthorizeClient(&c.internal.Client)
 }
 
 // Ensure creates or updates a virtual network in an idempotent manner and sets its provisioning state.
-func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.LoadBalancer) (bool, error) {
+func (c *Client) Ensure(ctx context.Context, obj runtime.Object) (bool, error) {
+	local, err := c.convert(obj)
+	if err != nil {
+		return false, err
+	}
 	remote, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name, expand)
 	found := !remote.HasHTTPStatus(http.StatusNotFound, http.StatusConflict)
 	c.SetStatus(local, remote)
@@ -86,12 +94,21 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.LoadBalancer) 
 }
 
 // Get returns a virtual network.
-func (c *Client) Get(ctx context.Context, local *azurev1alpha1.LoadBalancer) (network.LoadBalancer, error) {
+func (c *Client) Get(ctx context.Context, obj runtime.Object) (network.LoadBalancer, error) {
+	local, err := c.convert(obj)
+	if err != nil {
+		return network.LoadBalancer{}, err
+	}
 	return c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name, expand)
 }
 
 // Delete handles deletion of a virtual network.
-func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.LoadBalancer) (bool, error) {
+func (c *Client) Delete(ctx context.Context, obj runtime.Object) (bool, error) {
+	local, err := c.convert(obj)
+	if err != nil {
+		return false, err
+	}
+
 	future, err := c.internal.Delete(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 	if err != nil {
 		// Not found is a successful delete
@@ -121,26 +138,10 @@ func (c *Client) Done(ctx context.Context, local *azurev1alpha1.LoadBalancer) bo
 	return local.Status.ProvisioningState != nil || *local.Status.ProvisioningState == "Succeeded"
 }
 
-func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {
+func (c *Client) convert(obj runtime.Object) (*azurev1alpha1.LoadBalancer, error) {
 	local, ok := obj.(*azurev1alpha1.LoadBalancer)
 	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+		return nil, fmt.Errorf("failed type assertion on kind: %s", obj.GetObjectKind().GroupVersionKind().String())
 	}
-	return c.ForSubscription(local.Spec.SubscriptionID)
-}
-
-func (c *Client) TryEnsure(ctx context.Context, obj runtime.Object) (bool, error) {
-	local, ok := obj.(*azurev1alpha1.LoadBalancer)
-	if !ok {
-		return false, errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return c.Ensure(ctx, local)
-}
-
-func (c *Client) TryDelete(ctx context.Context, obj runtime.Object) (bool, error) {
-	local, ok := obj.(*azurev1alpha1.LoadBalancer)
-	if !ok {
-		return false, errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return c.Delete(ctx, local)
+	return local, nil
 }

@@ -8,6 +8,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type AzureRef struct {
+	// Name is the name of some resource in Azure.
+	Name string `json:"name"`
+	// ResourceGroup is the name of an Azure resource group.
+	ResourceGroup string `json:"resourceGroup"`
+	// SubscriptionID contains the resource group. Is a GUID.
+	SubscriptionID string `json:"subscriptionId"`
+}
+
 // ResourceGroupSpec defines the desired state of ResourceGroup
 type ResourceGroupSpec struct {
 	// Name is the name of the Azure resource group.
