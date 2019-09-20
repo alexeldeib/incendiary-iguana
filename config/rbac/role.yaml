@@ -229,6 +229,26 @@ rules:
 - apiGroups:
   - azure.alexeldeib.xyz
   resources:
+  - tlssecrets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - tlssecrets/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
   - trafficmanagers
   verbs:
   - create

@@ -76,7 +76,7 @@ func (c *Client) Ensure(ctx context.Context, secret *azurev1alpha1.TLSSecret) er
 	}
 	var certPEM bytes.Buffer
 	pem.Encode(&certPEM, certBlock)
-	output := fmt.Sprintf("%s\n%s\n%s", generateSubject(pfxCert), generateIssuer(pfxCert), string(certPEM.Bytes()))
+	output := fmt.Sprintf("%s\n%s\n%s", GenerateSubject(pfxCert), GenerateIssuer(pfxCert), string(certPEM.Bytes()))
 
 	// Fix cert chain order (reverse them and fix headers)
 	for _, cert := range caCerts {
@@ -86,7 +86,7 @@ func (c *Client) Ensure(ctx context.Context, secret *azurev1alpha1.TLSSecret) er
 		}
 		var certPEM bytes.Buffer
 		pem.Encode(&certPEM, certBlock)
-		output = fmt.Sprintf("%s\n%s\n%s%s", generateSubject(cert), generateIssuer(cert), string(certPEM.Bytes()), output)
+		output = fmt.Sprintf("%s\n%s\n%s%s", GenerateSubject(cert), GenerateIssuer(cert), string(certPEM.Bytes()), output)
 	}
 
 	keyX509, err := x509.MarshalPKCS8PrivateKey(pfxKey)
@@ -107,7 +107,6 @@ func (c *Client) Ensure(ctx context.Context, secret *azurev1alpha1.TLSSecret) er
 			Name:      secret.ObjectMeta.Name,
 			Namespace: secret.ObjectMeta.Namespace,
 		},
-		Type: "kubernetes.io/tls",
 	}
 
 	_, err = controllerutil.CreateOrUpdate(ctx, *c.kubeclient, local, func() error {
@@ -117,10 +116,11 @@ func (c *Client) Ensure(ctx context.Context, secret *azurev1alpha1.TLSSecret) er
 				return innerErr
 			}
 		}
-		local.Data = map[string][]byte{
-			"tls.crt": []byte(output),
-			"tls.key": keyPEM.Bytes(),
+		if local.Data == nil {
+			local.Data = map[string][]byte{}
 		}
+		local.Data["tls.crt"] = []byte(output)
+		local.Data["tls.key"] = keyPEM.Bytes()
 		return nil
 	})
 
@@ -166,7 +166,7 @@ func (c *Client) TryDelete(ctx context.Context, obj runtime.Object) error {
 	return c.Delete(ctx, local)
 }
 
-func generateSubject(cert *x509.Certificate) string {
+func GenerateSubject(cert *x509.Certificate) string {
 	subject := "subject="
 	if cert.Subject.Country != nil {
 		subject = fmt.Sprintf("%s/C=%s", subject, cert.Subject.Country[0])
@@ -186,7 +186,7 @@ func generateSubject(cert *x509.Certificate) string {
 	return fmt.Sprintf("%s/CN=%s", subject, cert.Subject.CommonName)
 }
 
-func generateIssuer(cert *x509.Certificate) string {
+func GenerateIssuer(cert *x509.Certificate) string {
 	issuer := "issuer="
 	if cert.Issuer.Country != nil {
 		issuer = fmt.Sprintf("%s/C=%s", issuer, cert.Issuer.Country[0])

@@ -11,6 +11,8 @@ import (
 // SecretSpec defines the desired state of Secret
 type SecretSpec struct {
 	SecretIdentifier `json:",inline"`
+	// FriendlyName is the name of the secret locally inside the kubernetes object (a key in the map[][])
+	FriendlyName *string `json:"friendlyName,omitempty"`
 	// Location is the Azure location of the resource group (e.g., eastus2 or "West US").
 	// Only required if Vault does not exist.
 	// Must be used it conjuction with ResourceGroup and SubscriptionID
@@ -30,9 +32,9 @@ type SecretIdentifier struct {
 	Name string `json:"name"`
 	// Vault is the name of the Keyvault where this secret should be stored.
 	Vault string `json:"vault"`
-	// NewName is the desired name of the target Kubernetes secret.
-	// Defaults to Name if not specified.
-	NewName *string `json:"newName,omitempty"`
+	// +optional
+	// Kind allows specification of formatting other than the raw bytes in Keyvault.
+	Kind *string `json:"kind,omitempty"`
 }
 
 // SecretStatus defines the observed state of Secret

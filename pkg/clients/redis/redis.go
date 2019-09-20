@@ -71,7 +71,7 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.Redis) (bool, 
 	if found {
 		if c.Done(ctx, local) {
 			if c.kubeclient != nil {
-				if err := c.SyncSecrets(ctx, local, remote); err != nil {
+				if err := c.SyncSecrets(ctx, local); err != nil {
 					return false, err
 				}
 			}
@@ -109,8 +109,7 @@ func (c *Client) Get(ctx context.Context, local *azurev1alpha1.Redis) (redis.Res
 	return c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 }
 
-func (c *Client) SyncSecrets(ctx context.Context, local *azurev1alpha1.Redis, remote redis.ResourceType) error {
-	spew.Dump("listing keys")
+func (c *Client) SyncSecrets(ctx context.Context, local *azurev1alpha1.Redis) error {
 	if local.Spec.PrimaryKey == nil && local.Spec.SecondaryKey == nil {
 		return nil
 	}
@@ -135,7 +134,9 @@ func (c *Client) SyncSecrets(ctx context.Context, local *azurev1alpha1.Redis, re
 			targetSecret.Data = map[string][]byte{}
 		}
 
-		final = multierror.Append(final, controllerutil.SetControllerReference(local, targetSecret, c.scheme))
+		// if local.ObjectMeta.UID != "" {
+		// 	final = multierror.Append(final, controllerutil.SetControllerReference(local, targetSecret, c.scheme))
+		// }
 
 		if local.Spec.PrimaryKey != nil {
 			if keys.PrimaryKey != nil {

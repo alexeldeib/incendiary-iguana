@@ -352,7 +352,7 @@ var _ = Describe("reconcile", func() {
 		},
 		Spec: azurev1alpha1.SecretBundleSpec{
 			Name:    "ace-secretbundle",
-			Secrets: []azurev1alpha1.SecretIdentifier{},
+			Secrets: map[string]azurev1alpha1.SecretIdentifier{},
 		},
 	}
 

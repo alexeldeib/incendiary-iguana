@@ -69,9 +69,9 @@ func (c *Client) Ensure(ctx context.Context, secret *azurev1alpha1.Secret) error
 		if innerErr != nil {
 			return innerErr
 		}
-		if secret.Spec.NewName != nil {
+		if secret.Spec.FriendlyName != nil {
 			local.Data = map[string][]byte{
-				*secret.Spec.NewName: []byte(*bundle.Value),
+				*secret.Spec.FriendlyName: []byte(*bundle.Value),
 			}
 			return nil
 		}

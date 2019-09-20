@@ -33,11 +33,13 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/nics"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/redis"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/rediskeys"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secretbundles"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebus"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebuskey"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/tlssecrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
@@ -50,7 +52,7 @@ import (
 type token struct{}
 
 const (
-	limit           = 1
+	limit           = 5
 	backoffSteps    = 30
 	backoffFactor   = 1.25
 	backoffInterval = 5 * time.Second
@@ -279,6 +281,10 @@ func Ensure(obj metav1.Object, configuration *config.Config, kubeclient *client.
 		err = EnsureServiceBusNamespace(servicebus.New(configuration, kubeclient, scheme), obj, log)
 	case *azurev1alpha1.Subnet:
 		err = EnsureSubnet(subnets.New(configuration), obj, log)
+	case *azurev1alpha1.ServiceBusKey:
+		err = EnsureServiceBusKey(servicebuskey.New(configuration, kubeclient, scheme), obj, log)
+	case *azurev1alpha1.RedisKey:
+		err = EnsureRedisKey(rediskeys.New(configuration, kubeclient, scheme), obj, log)
 	case *azurev1alpha1.TLSSecret:
 		client, err := tlssecrets.New(configuration, kubeclient, scheme)
 		if err == nil {
@@ -996,6 +1002,88 @@ func DeleteSecretBundle(client *secretbundles.Client, obj metav1.Object, log log
 	}
 
 	log = log.WithValues("type", "secretbundle", "name", local.Spec.Name)
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("deleting")
+		err = client.Delete(context.Background(), local)
+		return err == nil, err
+	})
+}
+
+func EnsureRedisKey(client *rediskeys.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.RedisKey)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "rediskey", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("reconciling")
+		err = client.Ensure(context.Background(), local)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return err == nil, nil
+	})
+}
+
+func DeleteRedisKey(client *rediskeys.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.RedisKey)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "rediskey", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("deleting")
+		err = client.Delete(context.Background(), local)
+		return err == nil, err
+	})
+}
+
+func EnsureServiceBusKey(client *servicebuskey.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.ServiceBusKey)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", "servicebuskey", "name", local.Spec.Name)
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("reconciling")
+		err = client.Ensure(context.Background(), local)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return err == nil, nil
+	})
+}
+
+func DeleteServiceBusKey(client *servicebuskey.Client, obj metav1.Object, log logr.Logger) error {
+	local, ok := obj.(*azurev1alpha1.ServiceBusKey)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	log = log.WithValues("type", "servicebuskey", "name", local.Spec.Name)
 
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("deleting")
