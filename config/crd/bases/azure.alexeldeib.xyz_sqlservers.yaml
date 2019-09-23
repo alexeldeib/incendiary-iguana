@@ -4,24 +4,24 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   creationTimestamp: null
-  name: servicebussecrets.azure.alexeldeib.xyz
+  name: sqlservers.azure.alexeldeib.xyz
 spec:
   group: azure.alexeldeib.xyz
   names:
     categories:
     - all
-    kind: ServiceBusKey
-    listKind: ServiceBusKeyList
-    plural: servicebussecrets
+    kind: SQLServer
+    listKind: SQLServerList
+    plural: sqlservers
     shortNames:
-    - sbsecret
-    singular: servicebuskey
+    - sqlserver
+    singular: sqlserver
   scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: ServiceBusKey is the Schema for the publicips API
+      description: SQLServer is the Schema for the SQL server API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -36,32 +36,38 @@ spec:
         metadata:
           type: object
         spec:
-          description: ServiceBusKeySpec defines the desired state of ServiceBusKey
+          description: SQLServerSpec defines the desired state of the SQL server.
           properties:
+            allowazureserviceaccess:
+              description: AllowAzureServiceAccess will allow access to this server
+                from other Azure managed services if true.
+              type: boolean
+            location:
+              description: Location is the region of the resource (e.g., eastus2)
+              type: string
             name:
-              description: Name is the name of some resource in Azure.
+              description: Name is the name of the resource.
               type: string
             resourceGroup:
-              description: ResourceGroup is the name of an Azure resource group.
-              type: string
-            secretName:
-              description: SecretName is the name of the output secret in Kubernetes.
+              description: ResourceGroup is the resourceg group containing the resource.
               type: string
             subscriptionId:
               description: SubscriptionID contains the resource group. Is a GUID.
               type: string
           required:
+          - location
           - name
           - resourceGroup
-          - secretName
           - subscriptionId
           type: object
         status:
-          description: ServiceBusKeyStatus defines the observed state of ServiceBusKey
+          description: SQLServerStatus defines the observed state of SQLServer
           properties:
-            provisioningState:
-              description: ProvisioningState sync the provisioning status of the resource
-                from Azure.
+            id:
+              description: ID is the fully qualified Azure resource ID.
+              type: string
+            state:
+              description: State sync the status of the resource from Azure.
               type: string
           type: object
       type: object

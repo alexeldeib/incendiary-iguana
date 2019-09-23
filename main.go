@@ -27,6 +27,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebus"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/sqlservers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/tlssecrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
@@ -257,6 +258,18 @@ func main() {
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VM")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.SQLServerReconciler{
+		Reconciler: &controllers.SyncReconciler{
+			Client:   client,
+			Az:       sqlservers.New(configuration, &client, scheme),
+			Log:      log,
+			Recorder: recorder,
+		},
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "SQLServer")
 		os.Exit(1)
 	}
 

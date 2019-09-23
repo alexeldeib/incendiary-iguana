@@ -20,7 +20,6 @@ type PublicIPReconciler struct {
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=publicips/status,verbs=get;update;patch
 
 func (r *PublicIPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	// ctx := context.Background()
 	return r.Reconciler.Reconcile(req, &azurev1alpha1.PublicIP{})
 }
 
