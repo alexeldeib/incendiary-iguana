@@ -6,10 +6,10 @@ package identities
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
-	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
@@ -39,13 +39,21 @@ func NewWithFactory(configuration *config.Config, factory factoryFunc) *Client {
 }
 
 // ForSubscription authorizes the client for a given subscription
-func (c *Client) ForSubscription(subID string) error {
-	c.internal = c.factory(subID)
+func (c *Client) ForSubscription(ctx context.Context, obj runtime.Object) error {
+	local, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
+	c.internal = c.factory(local.Spec.SubscriptionID)
 	return c.config.AuthorizeClient(&c.internal.Client)
 }
 
 // Ensure creates or updates a managed identity in an idempotent manner.
-func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.Identity) error {
+func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
+	local, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
 	remote, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 	found := !remote.IsHTTPStatus(http.StatusNotFound)
 	c.SetStatus(local, remote)
@@ -70,12 +78,20 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.Identity) erro
 }
 
 // Get returns a managed identity.
-func (c *Client) Get(ctx context.Context, local *azurev1alpha1.Identity) (msi.Identity, error) {
+func (c *Client) Get(ctx context.Context, obj runtime.Object) (msi.Identity, error) {
+	local, err := c.convert(obj)
+	if err != nil {
+		return msi.Identity{}, err
+	}
 	return c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 }
 
 // Delete handles deletion of a managed identity.
-func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.Identity) error {
+func (c *Client) Delete(ctx context.Context, obj runtime.Object) error {
+	local, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
 	response, err := c.internal.Delete(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 	if err != nil && !response.IsHTTPStatus(http.StatusNotFound) {
 		return err
@@ -95,27 +111,10 @@ func (c *Client) SetStatus(local *azurev1alpha1.Identity, remote msi.Identity) {
 	local.Status.ID = remote.ID
 }
 
-// TODO(ace): improve naming and the structure of this pattern across all gvks
-func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {
+func (c *Client) convert(obj runtime.Object) (*azurev1alpha1.Identity, error) {
 	local, ok := obj.(*azurev1alpha1.Identity)
 	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+		return nil, fmt.Errorf("failed type assertion on kind: %s", obj.GetObjectKind().GroupVersionKind().String())
 	}
-	return c.ForSubscription(local.Spec.SubscriptionID)
-}
-
-func (c *Client) TryEnsure(ctx context.Context, obj runtime.Object) error {
-	local, ok := obj.(*azurev1alpha1.Identity)
-	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return c.Ensure(ctx, local)
-}
-
-func (c *Client) TryDelete(ctx context.Context, obj runtime.Object) error {
-	local, ok := obj.(*azurev1alpha1.Identity)
-	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return c.Delete(ctx, local)
+	return local, nil
 }

@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/go-logr/logr"
 	multierror "github.com/hashicorp/go-multierror"
@@ -20,9 +19,9 @@ import (
 )
 
 type AsyncClient interface {
-	TryAuthorize(context.Context, runtime.Object) error
-	TryEnsure(context.Context, runtime.Object) (bool, error)
-	TryDelete(context.Context, runtime.Object) (bool, error)
+	ForSubscription(context.Context, runtime.Object) error
+	Ensure(context.Context, runtime.Object) (bool, error)
+	Delete(context.Context, runtime.Object) (bool, error)
 }
 
 // AsyncReconciler is a generic reconciler for Azure objects
@@ -35,15 +34,14 @@ type AsyncReconciler struct {
 
 func (r *AsyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctrl.Result, error) {
 	ctx := context.Background()
-	kind := strings.ToLower(local.GetObjectKind().GroupVersionKind().Kind)
-	log := r.Log.WithValues("type", kind, "namespacedName", fmt.Sprintf("%s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name))
+	log := r.Log.WithValues("type", local.GetObjectKind().GroupVersionKind().String(), "namespace", req.Namespace, "name", req.Name)
 
 	if err := r.Get(ctx, req.NamespacedName, local); err != nil {
 		log.Info("error during fetch from api server")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if err := r.Az.TryAuthorize(ctx, local); err != nil {
+	if err := r.Az.ForSubscription(ctx, local); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -60,7 +58,7 @@ func (r *AsyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctr
 		}
 	} else {
 		if HasFinalizer(res, finalizerName) {
-			found, deleteErr := r.Az.TryDelete(ctx, local)
+			found, deleteErr := r.Az.Delete(ctx, local)
 			final := multierror.Append(deleteErr, r.Status().Update(ctx, local))
 			if err := final.ErrorOrNil(); err != nil {
 				r.Recorder.Event(local, "Warning", "FailedDelete", fmt.Sprintf("Failed to delete resource: %s", err.Error()))
@@ -77,7 +75,7 @@ func (r *AsyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctr
 	}
 
 	log.Info("reconciling object")
-	done, ensureErr := r.Az.TryEnsure(ctx, local)
+	done, ensureErr := r.Az.Ensure(ctx, local)
 	if ensureErr != nil {
 		log.Error(ensureErr, "ensure err")
 	}

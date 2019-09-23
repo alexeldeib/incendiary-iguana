@@ -17,7 +17,6 @@ import (
 	"github.com/sanity-io/litter"
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -27,19 +26,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
+	"github.com/alexeldeib/incendiary-iguana/controllers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/identities"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/loadbalancers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/nics"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/redis"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/rediskeys"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secretbundles"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secrets"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebus"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebuskey"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/sqlservers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/tlssecrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
@@ -93,8 +92,8 @@ func NewEnsureCommand() *cobra.Command {
 func NewDeleteCommand() *cobra.Command {
 	opts := &EnsureOptions{}
 	cmd := &cobra.Command{
-		Use:   "ensure",
-		Short: "Ensure reconciles actual resource state to match desired",
+		Use:   "delete",
+		Short: "Delete enforces deletion of supplied resources.",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := opts.Delete(); err != nil {
 				fmt.Printf("%+#v\n", err)
@@ -142,9 +141,9 @@ func (opts *EnsureOptions) Delete() error {
 	return do(objects, configuration, Delete)
 }
 
-func (opts *EnsureOptions) Read() ([]metav1.Object, error) {
+func (opts *EnsureOptions) Read() ([]runtime.Object, error) {
 	if opts.File == "" {
-		return []metav1.Object{}, errors.New("must provide non-empty filepath")
+		return []runtime.Object{}, errors.New("must provide non-empty filepath")
 	}
 
 	var reader io.ReadCloser
@@ -153,12 +152,12 @@ func (opts *EnsureOptions) Read() ([]metav1.Object, error) {
 	} else {
 		path, err := filepath.Abs(opts.File)
 		if err != nil {
-			return []metav1.Object{}, err
+			return []runtime.Object{}, err
 		}
 
 		reader, err = os.Open(path)
 		if err != nil {
-			return []metav1.Object{}, err
+			return []runtime.Object{}, err
 		}
 	}
 
@@ -167,7 +166,7 @@ func (opts *EnsureOptions) Read() ([]metav1.Object, error) {
 
 	// accumulators
 	// gvks := []schema.GroupVersionKind{}
-	objects := []metav1.Object{}
+	objects := []runtime.Object{}
 
 	// parsing
 	for {
@@ -176,7 +175,7 @@ func (opts *EnsureOptions) Read() ([]metav1.Object, error) {
 			break
 		} else if err != nil {
 			fmt.Printf("%+#v\n", err)
-			return []metav1.Object{}, err
+			return []runtime.Object{}, err
 		}
 
 		if runtime.IsNotRegisteredError(err) {
@@ -185,16 +184,16 @@ func (opts *EnsureOptions) Read() ([]metav1.Object, error) {
 		}
 
 		if err != nil {
-			return []metav1.Object{}, err
+			return []runtime.Object{}, err
 		}
 
-		actual, err := meta.Accessor(obj)
-		if err != nil {
-			return []metav1.Object{}, err
-		}
+		// actual, err := meta.Accessor(obj)
+		// if err != nil {
+		// 	return []runtime.Object{}, err
+		// }
 
 		// gvks = append(gvks, *gvk)
-		objects = append(objects, actual)
+		objects = append(objects, obj)
 	}
 
 	if opts.Debug {
@@ -207,7 +206,7 @@ func (opts *EnsureOptions) Read() ([]metav1.Object, error) {
 	return objects, nil
 }
 
-func do(objects []metav1.Object, configuration *config.Config, applyFunc func(obj metav1.Object, configuration *config.Config, kubeclient *client.Client, errs chan error)) error {
+func do(objects []runtime.Object, configuration *config.Config, applyFunc func(obj runtime.Object, configuration *config.Config, kubeclient *client.Client, errs chan error)) error {
 	var kubeclient *client.Client
 	kubeconfig, err := ctrl.GetConfig()
 	if err != nil {
@@ -227,7 +226,7 @@ func do(objects []metav1.Object, configuration *config.Config, applyFunc func(ob
 	for _, obj := range objects {
 		// n.b. acquire
 		pool <- token{}
-		go func(o metav1.Object) {
+		go func(o runtime.Object) {
 			applyFunc(o, configuration, kubeclient, errs)
 			// n.b. release
 			<-pool
@@ -248,7 +247,7 @@ func do(objects []metav1.Object, configuration *config.Config, applyFunc func(ob
 	return nil
 }
 
-func Ensure(obj metav1.Object, configuration *config.Config, kubeclient *client.Client, errs chan error) {
+func Ensure(obj runtime.Object, configuration *config.Config, kubeclient *client.Client, errs chan error) {
 	var err error
 	log := log.WithValues("action", "ensure")
 	log.Info("starting reconciliation")
@@ -256,46 +255,48 @@ func Ensure(obj metav1.Object, configuration *config.Config, kubeclient *client.
 	case *appsv1.Deployment:
 		log.Info("Deployment!")
 	case *azurev1alpha1.Identity:
-		err = EnsureIdentity(identities.New(configuration), obj, log)
+		err = EnsureSync(identities.New(configuration), obj, log)
 	case *azurev1alpha1.Keyvault:
-		err = EnsureKeyvault(keyvaults.New(configuration), obj, log)
+		err = EnsureSync(keyvaults.New(configuration), obj, log)
 	case *azurev1alpha1.LoadBalancer:
-		err = EnsureLoadBalancer(loadbalancers.New(configuration), obj, log)
+		err = EnsureAsync(loadbalancers.New(configuration), obj, log)
 	case *azurev1alpha1.NetworkInterface:
-		err = EnsureNIC(nics.New(configuration), obj, log)
+		err = EnsureAsync(nics.New(configuration), obj, log)
 	case *azurev1alpha1.Redis:
-		err = EnsureRedis(redis.New(configuration, kubeclient, scheme), obj, log)
+		err = EnsureAsync(redis.New(configuration, kubeclient, scheme), obj, log)
 	case *azurev1alpha1.ResourceGroup:
-		err = EnsureResourceGroup(resourcegroups.New(configuration), obj, log)
+		err = EnsureAsync(resourcegroups.New(configuration), obj, log)
 	case *azurev1alpha1.Secret:
 		client, err := secrets.New(configuration, kubeclient, scheme)
 		if err == nil {
-			err = EnsureSecret(client, obj, log)
+			err = EnsureSync(client, obj, log)
 		}
 	case *azurev1alpha1.SecretBundle:
 		client, err := secretbundles.New(configuration, kubeclient, scheme)
 		if err == nil {
-			err = EnsureSecretBundle(client, obj, log)
+			err = EnsureSync(client, obj, log)
 		}
-	case *azurev1alpha1.ServiceBusNamespace:
-		err = EnsureServiceBusNamespace(servicebus.New(configuration, kubeclient, scheme), obj, log)
-	case *azurev1alpha1.Subnet:
-		err = EnsureSubnet(subnets.New(configuration), obj, log)
 	case *azurev1alpha1.ServiceBusKey:
-		err = EnsureServiceBusKey(servicebuskey.New(configuration, kubeclient, scheme), obj, log)
+		err = EnsureSync(servicebuskey.New(configuration, kubeclient, scheme), obj, log)
+	case *azurev1alpha1.ServiceBusNamespace:
+		err = EnsureAsync(servicebus.New(configuration, kubeclient, scheme), obj, log)
+	case *azurev1alpha1.SQLServer:
+		err = EnsureSync(sqlservers.New(configuration, kubeclient, scheme), obj, log)
+	case *azurev1alpha1.Subnet:
+		err = EnsureAsync(subnets.New(configuration), obj, log)
 	case *azurev1alpha1.RedisKey:
-		err = EnsureRedisKey(rediskeys.New(configuration, kubeclient, scheme), obj, log)
+		err = EnsureSync(rediskeys.New(configuration, kubeclient, scheme), obj, log)
 	case *azurev1alpha1.TLSSecret:
 		client, err := tlssecrets.New(configuration, kubeclient, scheme)
 		if err == nil {
-			err = EnsureTLSSecret(client, obj, log)
+			err = EnsureSync(client, obj, log)
 		}
 	case *azurev1alpha1.TrafficManager:
 		err = EnsureTrafficManager(trafficmanagers.New(configuration), obj, log)
 	case *azurev1alpha1.VirtualNetwork:
-		err = EnsureVirtualNetwork(virtualnetworks.New(configuration), obj, log)
+		err = EnsureAsync(virtualnetworks.New(configuration), obj, log)
 	case *azurev1alpha1.VM:
-		err = EnsureVM(vms.New(configuration), obj, log)
+		err = EnsureAsync(vms.New(configuration), obj, log)
 	default:
 		log.Info("nothing to do.")
 	}
@@ -308,7 +309,7 @@ func Ensure(obj metav1.Object, configuration *config.Config, kubeclient *client.
 	log.Info("sucessfully reconciled")
 }
 
-func Delete(obj metav1.Object, configuration *config.Config, kubeclient *client.Client, errs chan error) {
+func Delete(obj runtime.Object, configuration *config.Config, kubeclient *client.Client, errs chan error) {
 	var err error
 	log := log.WithValues("action", "delete")
 	log.Info("starting deletion")
@@ -316,42 +317,44 @@ func Delete(obj metav1.Object, configuration *config.Config, kubeclient *client.
 	case *appsv1.Deployment:
 		log.Info("Deployment!")
 	case *azurev1alpha1.Identity:
-		err = DeleteIdentity(identities.New(configuration), obj, log)
+		err = DeleteSync(identities.New(configuration), obj, log)
 	case *azurev1alpha1.Keyvault:
-		err = DeleteKeyvault(keyvaults.New(configuration), obj, log)
+		err = DeleteSync(keyvaults.New(configuration), obj, log)
 	case *azurev1alpha1.LoadBalancer:
-		err = DeleteLoadBalancer(loadbalancers.New(configuration), obj, log)
+		err = DeleteAsync(loadbalancers.New(configuration), obj, log)
 	case *azurev1alpha1.NetworkInterface:
-		err = DeleteNIC(nics.New(configuration), obj, log)
+		err = DeleteAsync(nics.New(configuration), obj, log)
 	case *azurev1alpha1.Redis:
-		err = DeleteRedis(redis.New(configuration, kubeclient, scheme), obj, log)
+		err = DeleteAsync(redis.New(configuration, kubeclient, scheme), obj, log)
 	case *azurev1alpha1.ResourceGroup:
-		err = DeleteResourceGroup(resourcegroups.New(configuration), obj, log)
+		err = DeleteAsync(resourcegroups.New(configuration), obj, log)
 	case *azurev1alpha1.Secret:
 		client, err := secrets.New(configuration, kubeclient, scheme)
 		if err == nil {
-			err = DeleteSecret(client, obj, log)
+			err = DeleteSync(client, obj, log)
 		}
 	case *azurev1alpha1.SecretBundle:
 		client, err := secretbundles.New(configuration, kubeclient, scheme)
 		if err == nil {
-			err = DeleteSecretBundle(client, obj, log)
+			err = DeleteSync(client, obj, log)
 		}
 	case *azurev1alpha1.ServiceBusNamespace:
-		err = DeleteServiceBusNamespace(servicebus.New(configuration, kubeclient, scheme), obj, log)
+		err = DeleteAsync(servicebus.New(configuration, kubeclient, scheme), obj, log)
+	case *azurev1alpha1.SQLServer:
+		err = DeleteSync(sqlservers.New(configuration, kubeclient, scheme), obj, log)
 	case *azurev1alpha1.Subnet:
-		err = DeleteSubnet(subnets.New(configuration), obj, log)
+		err = DeleteAsync(subnets.New(configuration), obj, log)
 	case *azurev1alpha1.TLSSecret:
 		client, err := tlssecrets.New(configuration, kubeclient, scheme)
 		if err == nil {
-			err = DeleteTLSSecret(client, obj, log)
+			err = DeleteSync(client, obj, log)
 		}
 	case *azurev1alpha1.TrafficManager:
 		log.Info("Traffic Manager!")
 	case *azurev1alpha1.VirtualNetwork:
-		err = DeleteVirtualNetwork(virtualnetworks.New(configuration), obj, log)
+		err = DeleteAsync(virtualnetworks.New(configuration), obj, log)
 	case *azurev1alpha1.VM:
-		err = DeleteVM(vms.New(configuration), obj, log)
+		err = DeleteAsync(vms.New(configuration), obj, log)
 	default:
 		log.Info("nothing to do.")
 	}
@@ -364,67 +367,71 @@ func Delete(obj metav1.Object, configuration *config.Config, kubeclient *client.
 	log.Info("sucessfully deleted")
 }
 
-// TODO(ace): extract this pattern for async/sync resources (aka, things that return "done" vs things that only return err value)
-// generalize it across resources, natively if possible or by defining some interface
-func EnsureResourceGroup(client *resourcegroups.Client, obj metav1.Object, log logr.Logger) error {
-	// TODO(ace): simplify the typecasting and clint
-	local, ok := obj.(*azurev1alpha1.ResourceGroup)
+func EnsureSync(client controllers.SyncClient, obj runtime.Object, log logr.Logger) error {
+	local, ok := obj.(metav1.Object)
 	if !ok {
 		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
 	}
 
-	log = log.WithValues("type", "resourcegroup", "name", local.Spec.Name)
+	log = log.WithValues("type", obj.GetObjectKind().GroupVersionKind().String(), "namespace", local.GetNamespace(), "name", local.GetName())
 
 	// extract. consider keyvault and non-sub specific clients. Matrix size = 2x2 (async, sub)
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+	if err := client.ForSubscription(context.Background(), obj); err != nil {
 		return errors.Wrap(err, "failed to get client for subscription")
 	}
 
 	// extract this into async/sync, probably
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")
-		done, err = client.Ensure(context.Background(), local)
+		err = client.Ensure(context.Background(), obj)
 		if err != nil {
 			log.Error(err, "failed reconcile attempt")
 		}
-		return done, nil
+		return err == nil, nil
 	})
 }
 
-func DeleteResourceGroup(client *resourcegroups.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.ResourceGroup)
+func DeleteSync(client controllers.SyncClient, obj runtime.Object, log logr.Logger) error {
+	local, ok := obj.(metav1.Object)
 	if !ok {
 		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
 	}
 
-	log = log.WithValues("type", "resourcegroup", "name", local.Spec.Name)
+	log = log.WithValues("type", obj.GetObjectKind().GroupVersionKind().String(), "namespace", local.GetNamespace(), "name", local.GetName())
 
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+	// extract. consider keyvault and non-sub specific clients. Matrix size = 2x2 (async, sub)
+	if err := client.ForSubscription(context.Background(), obj); err != nil {
 		return errors.Wrap(err, "failed to get client for subscription")
 	}
 
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("deleting")
-		found, err := client.Delete(context.Background(), local)
-		return !found, err
-	})
-}
-
-func EnsureVirtualNetwork(client *virtualnetworks.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.VirtualNetwork)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "virtualnetwork", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
+	// extract this into async/sync, probably
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")
-		done, err = client.Ensure(context.Background(), local)
+		err = client.Delete(context.Background(), obj)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return err == nil, nil
+	})
+}
+
+func EnsureAsync(client controllers.AsyncClient, obj runtime.Object, log logr.Logger) error {
+	local, ok := obj.(metav1.Object)
+	if !ok {
+		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
+	}
+
+	log = log.WithValues("type", obj.GetObjectKind().GroupVersionKind().String(), "namespace", local.GetNamespace(), "name", local.GetName())
+
+	// extract. consider keyvault and non-sub specific clients. Matrix size = 2x2 (async, sub)
+	if err := client.ForSubscription(context.Background(), obj); err != nil {
+		return errors.Wrap(err, "failed to get client for subscription")
+	}
+
+	// extract this into async/sync, probably
+	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+		log.Info("reconciling")
+		done, err = client.Ensure(context.Background(), obj)
 		if err != nil {
 			log.Error(err, "failed reconcile attempt")
 		}
@@ -432,26 +439,31 @@ func EnsureVirtualNetwork(client *virtualnetworks.Client, obj metav1.Object, log
 	})
 }
 
-func DeleteVirtualNetwork(client *virtualnetworks.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.VirtualNetwork)
+func DeleteAsync(client controllers.AsyncClient, obj runtime.Object, log logr.Logger) error {
+	local, ok := obj.(metav1.Object)
 	if !ok {
 		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
 	}
 
-	log = log.WithValues("type", "virtualnetwork", "name", local.Spec.Name)
+	log = log.WithValues("type", obj.GetObjectKind().GroupVersionKind().String(), "namespace", local.GetNamespace(), "name", local.GetName())
 
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
+	// extract. consider keyvault and non-sub specific clients. Matrix size = 2x2 (async, sub)
+	if err := client.ForSubscription(context.Background(), obj); err != nil {
 		return errors.Wrap(err, "failed to get client for subscription")
 	}
 
+	// extract this into async/sync, probably
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("deleting")
-		found, err := client.Delete(context.Background(), local)
-		return !found, err
+		log.Info("reconciling")
+		found, err := client.Delete(context.Background(), obj)
+		if err != nil {
+			log.Error(err, "failed reconcile attempt")
+		}
+		return !found, nil
 	})
 }
 
-func EnsureTrafficManager(client *trafficmanagers.Client, obj metav1.Object, log logr.Logger) error {
+func EnsureTrafficManager(client *trafficmanagers.Client, obj runtime.Object, log logr.Logger) error {
 	local, ok := obj.(*azurev1alpha1.TrafficManager)
 	if !ok {
 		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
@@ -480,7 +492,7 @@ func EnsureTrafficManager(client *trafficmanagers.Client, obj metav1.Object, log
 	})
 }
 
-func DeleteTrafficManager(client *trafficmanagers.Client, obj metav1.Object, log logr.Logger) error {
+func DeleteTrafficManager(client *trafficmanagers.Client, obj runtime.Object, log logr.Logger) error {
 	local, ok := obj.(*azurev1alpha1.TrafficManager)
 	if !ok {
 		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
@@ -498,597 +510,6 @@ func DeleteTrafficManager(client *trafficmanagers.Client, obj metav1.Object, log
 		// implementation:
 		// https://github.com/kubernetes/apimachinery/blob/461753078381c979582f217a28eb759ebee5295d/pkg/util/wait/wait.go#L290-L301
 		return true, client.Delete(context.Background(), local)
-	})
-}
-
-func EnsureSubnet(client *subnets.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.Subnet)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "subnet", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("reconciling")
-		done, err = client.Ensure(context.Background(), local)
-		if err != nil {
-			log.Error(err, "failed reconcile attempt")
-		}
-		return done, nil
-	})
-}
-
-func DeleteSubnet(client *subnets.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.Subnet)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "subnet", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("deleting")
-		found, err := client.Delete(context.Background(), local)
-		return !found, err
-	})
-}
-
-func EnsurePublicIP(client *publicips.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.PublicIP)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "publicip", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("reconciling")
-		done, err = client.Ensure(context.Background(), local)
-		if err != nil {
-			log.Error(err, "failed reconcile attempt")
-		}
-		return done, nil
-	})
-}
-
-func DeletePublicIP(client *publicips.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.PublicIP)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "publicip", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("deleting")
-		found, err := client.Delete(context.Background(), local)
-		return !found, err
-	})
-}
-
-func EnsureSecurityGroup(client *securitygroups.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.SecurityGroup)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "securitygroup", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("reconciling")
-		done, err = client.Ensure(context.Background(), local)
-		if err != nil {
-			log.Error(err, "failed reconcile attempt")
-		}
-		return done, nil
-	})
-}
-
-func DeleteSecurityGroup(client *securitygroups.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.SecurityGroup)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "securitygroup", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("deleting")
-		found, err := client.Delete(context.Background(), local)
-		return !found, err
-	})
-}
-
-func EnsureRedis(client *redis.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.Redis)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "redis", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("reconciling")
-		done, err = client.Ensure(context.Background(), local)
-		if err != nil {
-			log.Error(err, "failed reconcile attempt")
-		}
-		return done, nil
-	})
-}
-
-func DeleteRedis(client *redis.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.Redis)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "redis", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("deleting")
-		found, err := client.Delete(context.Background(), local)
-		return !found, err
-	})
-}
-
-func EnsureNIC(client *nics.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.NetworkInterface)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "nics", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("reconciling")
-		done, err = client.Ensure(context.Background(), local)
-		if err != nil {
-			log.Error(err, "failed reconcile attempt")
-		}
-		return done, nil
-	})
-}
-
-func DeleteNIC(client *nics.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.NetworkInterface)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "nics", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("deleting")
-		found, err := client.Delete(context.Background(), local)
-		return !found, err
-	})
-}
-
-func EnsureServiceBusNamespace(client *servicebus.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.ServiceBusNamespace)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "servicebus", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("reconciling")
-		done, err = client.Ensure(context.Background(), local)
-		if err != nil {
-			log.Error(err, "failed reconcile attempt")
-		}
-		return done, nil
-	})
-}
-
-func DeleteServiceBusNamespace(client *servicebus.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.ServiceBusNamespace)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "servicebus", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("deleting")
-		found, err := client.Delete(context.Background(), local)
-		return !found, err
-	})
-}
-
-func EnsureVM(client *vms.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.VM)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "vm", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("reconciling")
-		done, err = client.Ensure(context.Background(), local)
-		if err != nil {
-			log.Error(err, "failed reconcile attempt")
-		}
-		return done, nil
-	})
-}
-
-func DeleteVM(client *vms.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.VM)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "vm", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("deleting")
-		found, err := client.Delete(context.Background(), local)
-		return !found, err
-	})
-}
-
-func EnsureKeyvault(client *keyvaults.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.Keyvault)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "keyvault", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("reconciling")
-		err = client.Ensure(context.Background(), local)
-		if err != nil {
-			log.Error(err, "failed reconcile attempt")
-		}
-		return err == nil, nil
-	})
-}
-
-func DeleteKeyvault(client *keyvaults.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.Keyvault)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "keyvault", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("deleting")
-		err = client.Delete(context.Background(), local)
-		return err == nil, err
-	})
-}
-
-func EnsureIdentity(client *identities.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.Identity)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "identity", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("reconciling")
-		err = client.Ensure(context.Background(), local)
-		if err != nil {
-			log.Error(err, "failed reconcile attempt")
-		}
-		return err == nil, nil
-	})
-}
-
-func DeleteIdentity(client *identities.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.Identity)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "identity", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("deleting")
-		err = client.Delete(context.Background(), local)
-		return err == nil, err
-	})
-}
-
-func EnsureLoadBalancer(client *loadbalancers.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.LoadBalancer)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "loadbalancer", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("reconciling")
-		done, err = client.Ensure(context.Background(), local)
-		if err != nil {
-			log.Error(err, "failed reconcile attempt")
-		}
-		return done, nil
-	})
-}
-
-func DeleteLoadBalancer(client *loadbalancers.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.LoadBalancer)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "loadbalancer", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("deleting")
-		found, err := client.Delete(context.Background(), local)
-		return !found, err
-	})
-}
-
-func EnsureSecret(client *secrets.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.Secret)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "secret", "name", local.Spec.Name)
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("reconciling")
-		err = client.Ensure(context.Background(), local)
-		if err != nil {
-			log.Error(err, "failed reconcile attempt")
-		}
-		return err == nil, nil
-	})
-}
-
-func DeleteSecret(client *secrets.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.Secret)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "secret", "name", local.Spec.Name)
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("deleting")
-		err = client.Delete(context.Background(), local)
-		return err == nil, err
-	})
-}
-
-func EnsureTLSSecret(client *tlssecrets.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.TLSSecret)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "tlssecret", "name", local.Spec.Name)
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("reconciling")
-		err = client.Ensure(context.Background(), local)
-		if err != nil {
-			log.Error(err, "failed reconcile attempt")
-		}
-		return err == nil, nil
-	})
-}
-
-func DeleteTLSSecret(client *tlssecrets.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.TLSSecret)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "tlssecret", "name", local.Spec.Name)
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("deleting")
-		err = client.Delete(context.Background(), local)
-		return err == nil, err
-	})
-}
-
-func EnsureSecretBundle(client *secretbundles.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.SecretBundle)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "secretbundle", "name", local.Spec.Name)
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("reconciling")
-		err = client.Ensure(context.Background(), local)
-		if err != nil {
-			log.Error(err, "failed reconcile attempt")
-		}
-		return err == nil, nil
-	})
-}
-
-func DeleteSecretBundle(client *secretbundles.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.SecretBundle)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "secretbundle", "name", local.Spec.Name)
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("deleting")
-		err = client.Delete(context.Background(), local)
-		return err == nil, err
-	})
-}
-
-func EnsureRedisKey(client *rediskeys.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.RedisKey)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "rediskey", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("reconciling")
-		err = client.Ensure(context.Background(), local)
-		if err != nil {
-			log.Error(err, "failed reconcile attempt")
-		}
-		return err == nil, nil
-	})
-}
-
-func DeleteRedisKey(client *rediskeys.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.RedisKey)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "rediskey", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("deleting")
-		err = client.Delete(context.Background(), local)
-		return err == nil, err
-	})
-}
-
-func EnsureServiceBusKey(client *servicebuskey.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.ServiceBusKey)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	log = log.WithValues("type", "servicebuskey", "name", local.Spec.Name)
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("reconciling")
-		err = client.Ensure(context.Background(), local)
-		if err != nil {
-			log.Error(err, "failed reconcile attempt")
-		}
-		return err == nil, nil
-	})
-}
-
-func DeleteServiceBusKey(client *servicebuskey.Client, obj metav1.Object, log logr.Logger) error {
-	local, ok := obj.(*azurev1alpha1.ServiceBusKey)
-	if !ok {
-		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
-	}
-
-	if err := client.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
-
-	log = log.WithValues("type", "servicebuskey", "name", local.Spec.Name)
-
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
-		log.Info("deleting")
-		err = client.Delete(context.Background(), local)
-		return err == nil, err
 	})
 }
 

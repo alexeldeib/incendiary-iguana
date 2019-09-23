@@ -23,6 +23,7 @@ func NewRootCommand(version string) *cobra.Command {
 	}
 	root.AddCommand(NewVersionCommand(version))
 	root.AddCommand(ensure.NewEnsureCommand())
+	root.AddCommand(ensure.NewDeleteCommand())
 	return root
 }
 

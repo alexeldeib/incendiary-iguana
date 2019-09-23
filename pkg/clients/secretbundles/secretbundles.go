@@ -61,15 +61,18 @@ func New(configuration *config.Config, kubeclient *ctrl.Client, scheme *runtime.
 	}, nil
 }
 
-// Get gets a secret from Keyvault.
-func (c *Client) Get(ctx context.Context, secret *azurev1alpha1.Secret) (keyvault.SecretBundle, error) {
-	vault := fmt.Sprintf("https://%s.%s", secret.Spec.Vault, azure.PublicCloud.KeyVaultDNSSuffix)
-	return c.internal.GetSecret(ctx, vault, secret.Spec.Name, "")
+// ForSubscription authorizes the client for a given subscription
+func (c *Client) ForSubscription(ctx context.Context, obj runtime.Object) error {
+	return nil
 }
 
 // Ensure takes a spec corresponding to one Azure KV secret. It syncs that secret into Kubernetes, remapping the name if necessary.
-func (c *Client) Ensure(ctx context.Context, secret *azurev1alpha1.SecretBundle) error {
+func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 	// TODO(ace): cloud-sensitive
+	secret, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
 	secrets := map[string][]byte{}
 	for name, item := range secret.Spec.Secrets {
 		// TODO(ace): more graceful error handling?
@@ -116,7 +119,7 @@ func (c *Client) Ensure(ctx context.Context, secret *azurev1alpha1.SecretBundle)
 		},
 	}
 
-	_, err := controllerutil.CreateOrUpdate(ctx, *c.kubeclient, local, func() error {
+	_, err = controllerutil.CreateOrUpdate(ctx, *c.kubeclient, local, func() error {
 		if local.Data == nil {
 			local.Data = map[string][]byte{}
 		}
@@ -138,7 +141,11 @@ func (c *Client) Ensure(ctx context.Context, secret *azurev1alpha1.SecretBundle)
 }
 
 // Delete deletes a secret from Keyvault.
-func (c *Client) Delete(ctx context.Context, secret *azurev1alpha1.SecretBundle) error {
+func (c *Client) Delete(ctx context.Context, obj runtime.Object) error {
+	secret, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
 	local := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secret.Spec.Name,
@@ -146,30 +153,6 @@ func (c *Client) Delete(ctx context.Context, secret *azurev1alpha1.SecretBundle)
 		},
 	}
 	return client.IgnoreNotFound((*c.kubeclient).Delete(ctx, local))
-}
-
-func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {
-	_, ok := obj.(*azurev1alpha1.SecretBundle)
-	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return nil
-}
-
-func (c *Client) TryEnsure(ctx context.Context, obj runtime.Object) error {
-	local, ok := obj.(*azurev1alpha1.SecretBundle)
-	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return c.Ensure(ctx, local)
-}
-
-func (c *Client) TryDelete(ctx context.Context, obj runtime.Object) error {
-	local, ok := obj.(*azurev1alpha1.SecretBundle)
-	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return c.Delete(ctx, local)
 }
 
 func format(format *string, secret string) ([]byte, error) {
@@ -248,4 +231,12 @@ func formatSha(thumbprint string) ([]byte, error) {
 	hex.Encode(dst, src)
 	dst = []byte(strings.ToUpper(string(dst)))
 	return dst, nil
+}
+
+func (c *Client) convert(obj runtime.Object) (*azurev1alpha1.SecretBundle, error) {
+	local, ok := obj.(*azurev1alpha1.SecretBundle)
+	if !ok {
+		return nil, fmt.Errorf("failed type assertion on kind: %s", obj.GetObjectKind().GroupVersionKind().String())
+	}
+	return local, nil
 }

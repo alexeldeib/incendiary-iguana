@@ -47,15 +47,29 @@ func New(configuration *config.Config, kubeclient *ctrl.Client, scheme *runtime.
 	return &Client{internal: kvclient, kubeclient: kubeclient, scheme: scheme}, nil
 }
 
+// ForSubscription authorizes the client for a given subscription
+func (c *Client) ForSubscription(ctx context.Context, obj runtime.Object) error {
+	// noop for keyvault secrets and kubeclients
+	return nil
+}
+
 // Get gets a secret from Keyvault.
-func (c *Client) Get(ctx context.Context, secret *azurev1alpha1.TLSSecret) (keyvault.SecretBundle, error) {
+func (c *Client) Get(ctx context.Context, obj runtime.Object) (keyvault.SecretBundle, error) {
+	secret, err := c.convert(obj)
+	if err != nil {
+		return keyvault.SecretBundle{}, err
+	}
 	vault := fmt.Sprintf("https://%s.%s", secret.Spec.Vault, azure.PublicCloud.KeyVaultDNSSuffix)
 	return c.internal.GetSecret(ctx, vault, secret.Spec.Name, "")
 }
 
 // Ensure takes a spec corresponding to one Azure KV secret. It syncs that secret into Kubernetes, remapping the name if necessary.
-func (c *Client) Ensure(ctx context.Context, secret *azurev1alpha1.TLSSecret) error {
+func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 	// TODO(ace): cloud-sensitive
+	secret, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
 	vault := fmt.Sprintf("https://%s.%s", secret.Spec.Vault, azure.PublicCloud.KeyVaultDNSSuffix)
 	bundle, err := c.internal.GetSecret(ctx, vault, secret.Spec.Name, "")
 	if err != nil {
@@ -132,7 +146,11 @@ func (c *Client) Ensure(ctx context.Context, secret *azurev1alpha1.TLSSecret) er
 }
 
 // Delete deletes a secret from Keyvault.
-func (c *Client) Delete(ctx context.Context, secret *azurev1alpha1.TLSSecret) error {
+func (c *Client) Delete(ctx context.Context, obj runtime.Object) error {
+	secret, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
 	local := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secret.Spec.Name,
@@ -140,30 +158,6 @@ func (c *Client) Delete(ctx context.Context, secret *azurev1alpha1.TLSSecret) er
 		},
 	}
 	return client.IgnoreNotFound((*c.kubeclient).Delete(ctx, local))
-}
-
-func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {
-	_, ok := obj.(*azurev1alpha1.TLSSecret)
-	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return nil
-}
-
-func (c *Client) TryEnsure(ctx context.Context, obj runtime.Object) error {
-	local, ok := obj.(*azurev1alpha1.TLSSecret)
-	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return c.Ensure(ctx, local)
-}
-
-func (c *Client) TryDelete(ctx context.Context, obj runtime.Object) error {
-	local, ok := obj.(*azurev1alpha1.TLSSecret)
-	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return c.Delete(ctx, local)
 }
 
 func GenerateSubject(cert *x509.Certificate) string {
@@ -204,4 +198,12 @@ func GenerateIssuer(cert *x509.Certificate) string {
 		issuer = fmt.Sprintf("%s/OU=%s", issuer, cert.Issuer.OrganizationalUnit[0])
 	}
 	return fmt.Sprintf("%s/CN=%s", issuer, cert.Issuer.CommonName)
+}
+
+func (c *Client) convert(obj runtime.Object) (*azurev1alpha1.TLSSecret, error) {
+	local, ok := obj.(*azurev1alpha1.TLSSecret)
+	if !ok {
+		return nil, fmt.Errorf("failed type assertion on kind: %s", obj.GetObjectKind().GroupVersionKind().String())
+	}
+	return local, nil
 }

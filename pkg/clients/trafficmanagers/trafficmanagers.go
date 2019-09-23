@@ -12,6 +12,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/trafficmanager/mgmt/2018-04-01/trafficmanager"
 	"github.com/Azure/go-autorest/autorest/to"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
@@ -190,4 +191,12 @@ func (c *Client) GetEndpointStatus(ctx context.Context, local *azurev1alpha1.Tra
 		}
 	}
 	return "", errors.New("endpoint not found in current tm configuration")
+}
+
+func (c *Client) convert(obj runtime.Object) (*azurev1alpha1.TrafficManager, error) {
+	local, ok := obj.(*azurev1alpha1.TrafficManager)
+	if !ok {
+		return nil, fmt.Errorf("failed type assertion on kind: %s", obj.GetObjectKind().GroupVersionKind().String())
+	}
+	return local, nil
 }

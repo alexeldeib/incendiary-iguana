@@ -6,11 +6,13 @@ package zones
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2019-07-01/compute"
 	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
@@ -146,7 +148,7 @@ func (c *Client) Get(ctx context.Context, local *azurev1alpha1.VM) ([]string, er
 // func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {
 // 	local, ok := obj.(*azurev1alpha1.VM)
 // 	if !ok {
-// 		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+// 		return fmt.Errorf("failed type assertion on kind: %s", obj.GetObjectKind().GroupVersionKind().String())
 // 	}
 // 	return c.ForSubscription(local.Spec.SubscriptionID)
 // }
@@ -154,7 +156,7 @@ func (c *Client) Get(ctx context.Context, local *azurev1alpha1.VM) ([]string, er
 // func (c *Client) TryEnsure(ctx context.Context, obj runtime.Object) (bool, error) {
 // 	local, ok := obj.(*azurev1alpha1.VM)
 // 	if !ok {
-// 		return false, errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+// 		return false, fmt.Errorf("failed type assertion on kind: %s", obj.GetObjectKind().GroupVersionKind().String())
 // 	}
 // 	return c.Ensure(ctx, local)
 // }
@@ -162,7 +164,15 @@ func (c *Client) Get(ctx context.Context, local *azurev1alpha1.VM) ([]string, er
 // func (c *Client) TryDelete(ctx context.Context, obj runtime.Object) (bool, error) {
 // 	local, ok := obj.(*azurev1alpha1.VM)
 // 	if !ok {
-// 		return false, errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+// 		return false, fmt.Errorf("failed type assertion on kind: %s", obj.GetObjectKind().GroupVersionKind().String())
 // 	}
 // 	return c.Delete(ctx, local)
 // }
+
+func (c *Client) convert(obj runtime.Object) (*azurev1alpha1.VM, error) {
+	local, ok := obj.(*azurev1alpha1.VM)
+	if !ok {
+		return nil, fmt.Errorf("failed type assertion on kind: %s", obj.GetObjectKind().GroupVersionKind().String())
+	}
+	return local, nil
+}

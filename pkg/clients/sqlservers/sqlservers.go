@@ -6,7 +6,7 @@ package sqlservers
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
@@ -51,19 +51,31 @@ func NewWithFactory(configuration *config.Config, kubeclient *client.Client, fac
 }
 
 // ForSubscription authorizes the client for a given subscription
-func (c *Client) ForSubscription(subID string) error {
-	c.internal = c.factory(subID)
+func (c *Client) ForSubscription(ctx context.Context, obj runtime.Object) error {
+	local, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
+	c.internal = c.factory(local.Spec.SubscriptionID)
 	return c.config.AuthorizeClient(&c.internal.Client)
 }
 
 // Ensure creates or updates a SQL server in an idempotent manner and sets its provisioning state.
-func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.SQLServer) error {
+func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
+	local, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
+
 	remote, err := c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 	found := !remote.IsHTTPStatus(http.StatusNotFound)
 	c.SetStatus(local, remote)
 	if err != nil && found {
 		return err
 	}
+
+	// TODO(ace): create something like SQLServerCredential CRD, and pivot on state of that
+	// Will allow for higher level orchestration better than the raw Kubernetes secret (?)
 
 	// Set up secret name/object
 	targetName := types.NamespacedName{
@@ -150,12 +162,20 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.SQLServer) err
 }
 
 // Get returns a SQL server.
-func (c *Client) Get(ctx context.Context, local *azurev1alpha1.SQLServer) (sql.Server, error) {
+func (c *Client) Get(ctx context.Context, obj runtime.Object) (sql.Server, error) {
+	local, err := c.convert(obj)
+	if err != nil {
+		return sql.Server{}, err
+	}
 	return c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 }
 
 // Delete handles deletion of a SQL server.
-func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.SQLServer) error {
+func (c *Client) Delete(ctx context.Context, obj runtime.Object) error {
+	local, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
 	future, err := c.internal.Delete(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 	if err != nil {
 		return err
@@ -181,26 +201,10 @@ func (c *Client) SetStatus(local *azurev1alpha1.SQLServer, remote sql.Server) {
 	}
 }
 
-func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {
+func (c *Client) convert(obj runtime.Object) (*azurev1alpha1.SQLServer, error) {
 	local, ok := obj.(*azurev1alpha1.SQLServer)
 	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+		return nil, fmt.Errorf("failed type assertion on kind: %s", obj.GetObjectKind().GroupVersionKind().String())
 	}
-	return c.ForSubscription(local.Spec.SubscriptionID)
-}
-
-func (c *Client) TryEnsure(ctx context.Context, obj runtime.Object) error {
-	local, ok := obj.(*azurev1alpha1.SQLServer)
-	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return c.Ensure(ctx, local)
-}
-
-func (c *Client) TryDelete(ctx context.Context, obj runtime.Object) error {
-	local, ok := obj.(*azurev1alpha1.SQLServer)
-	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return c.Delete(ctx, local)
+	return local, nil
 }

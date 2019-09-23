@@ -8,6 +8,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2018-02-14/keyvault"
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/clientutil"
+	"github.com/google/go-cmp/cmp"
 )
 
 type Spec struct {
@@ -50,8 +51,8 @@ func Location(location string) func(*Spec) {
 
 func (s *Spec) NeedsUpdate(local *azurev1alpha1.ResourceGroup) bool {
 	return clientutil.Any([]func() bool{
-		clientutil.StringPtrChanged(s.Name(), &local.Spec.Name),
-		clientutil.StringPtrChanged(s.Location(), &local.Spec.Location),
+		func() bool { return !cmp.Equal(s.Name(), &local.Spec.Name) },
+		func() bool { return !cmp.Equal(s.Location(), &local.Spec.Location) },
 	})
 }
 

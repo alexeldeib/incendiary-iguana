@@ -6,6 +6,7 @@ package rediskeys
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/services/redis/mgmt/2018-03-01/redis"
 	"github.com/hashicorp/go-multierror"
@@ -51,14 +52,21 @@ func NewWithFactory(configuration *config.Config, kubeclient *ctrl.Client, facto
 }
 
 // ForSubscription authorizes the client for a given subscription
-func (c *Client) ForSubscription(subID string) error {
-	c.internal = c.factory(subID)
-	// c.internal.RequestInspector = LogRequest()
-	// c.internal.ResponseInspector = LogResponse()
+func (c *Client) ForSubscription(ctx context.Context, obj runtime.Object) error {
+	local, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
+	c.internal = c.factory(local.Spec.SubscriptionID)
 	return c.config.AuthorizeClient(&c.internal.Client)
 }
 
-func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.RedisKey) error {
+func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
+	local, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
+
 	if local.Spec.PrimaryKey == nil && local.Spec.SecondaryKey == nil {
 		return nil
 	}
@@ -111,7 +119,11 @@ func (c *Client) Ensure(ctx context.Context, local *azurev1alpha1.RedisKey) erro
 }
 
 // Delete handles deletion of a resource groups.
-func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.RedisKey) error {
+func (c *Client) Delete(ctx context.Context, obj runtime.Object) error {
+	local, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      local.Spec.TargetSecret,
@@ -130,27 +142,10 @@ func (c *Client) Delete(ctx context.Context, local *azurev1alpha1.RedisKey) erro
 // 	}
 // }
 
-// TODO(ace): improve naming and the structure of this pattern across all gvks
-func (c *Client) TryAuthorize(ctx context.Context, obj runtime.Object) error {
+func (c *Client) convert(obj runtime.Object) (*azurev1alpha1.RedisKey, error) {
 	local, ok := obj.(*azurev1alpha1.RedisKey)
 	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
+		return nil, fmt.Errorf("failed type assertion on kind: %s", obj.GetObjectKind().GroupVersionKind().String())
 	}
-	return c.ForSubscription(local.Spec.SubscriptionID)
-}
-
-func (c *Client) TryEnsure(ctx context.Context, obj runtime.Object) error {
-	local, ok := obj.(*azurev1alpha1.RedisKey)
-	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return c.Ensure(ctx, local)
-}
-
-func (c *Client) TryDelete(ctx context.Context, obj runtime.Object) error {
-	local, ok := obj.(*azurev1alpha1.RedisKey)
-	if !ok {
-		return errors.New("attempted to parse wrong object type during reconciliation (dev error)")
-	}
-	return c.Delete(ctx, local)
+	return local, nil
 }
