@@ -419,27 +419,27 @@ var _ = Describe("reconcile", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should create redis successfully", func() {
-			err := ensure.EnsureAsync(redisClient, cache, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should create redis successfully", func() {
+		// 	err := ensure.EnsureAsync(redisClient, cache, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 
-		It("should create servicebus namespace successfully", func() {
-			err := ensure.EnsureAsync(sbnamespaceClient, sbnamespace, log)
-			Expect(err).ToNot(HaveOccurred())
-		})
+		// It("should create servicebus namespace successfully", func() {
+		// 	err := ensure.EnsureAsync(sbnamespaceClient, sbnamespace, log)
+		// 	Expect(err).ToNot(HaveOccurred())
+		// })
 	})
 
 	Context("delete", func() {
-		// It("should delete servicebus namespace successfully", func() {
-		// 	err := ensure.DeleteAsync(sbnamespaceClient, sbnamespace, log)
-		// 	Expect(err).ToNot(HaveOccurred())
-		// })
+		It("should delete servicebus namespace successfully", func() {
+			err := ensure.DeleteAsync(sbnamespaceClient, sbnamespace, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-		// It("should delete redis successfully", func() {
-		// 	err := ensure.DeleteAsync(redisClient, cache, log)
-		// 	Expect(err).ToNot(HaveOccurred())
-		// })
+		It("should delete redis successfully", func() {
+			err := ensure.DeleteAsync(redisClient, cache, log)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
 		It("should delete managed identity successfully", func() {
 			err := ensure.DeleteSync(identitiesClient, identity, log)
