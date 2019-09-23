@@ -24,7 +24,8 @@ type AsyncClient interface {
 	Delete(context.Context, runtime.Object) (bool, error)
 }
 
-// AsyncReconciler is a generic reconciler for Azure objects
+// AsyncReconciler is a generic reconciler for Azure resources.
+// It reconciles object which require long running operations.
 type AsyncReconciler struct {
 	client.Client
 	Az       AsyncClient
