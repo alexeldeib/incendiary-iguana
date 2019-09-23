@@ -4,7 +4,7 @@ metadata:
   name: rg-sample2
   namespace: default
 spec:
-  subscriptionId: bd6a4e14-55fa-4160-a6a7-b718d7a2c95c
+  subscriptionId: eb4644c9-9cf4-4383-ac9f-ab2854720aef
   name: ace-sql-demo4
   location: eastus
 ---
@@ -14,7 +14,7 @@ metadata:
   name: sql-sample
   namespace: default
 spec:
-  subscriptionId: bd6a4e14-55fa-4160-a6a7-b718d7a2c95c
+  subscriptionId: eb4644c9-9cf4-4383-ac9f-ab2854720aef
   resourceGroup: ace-sql-demo4
   name: ace-sql
   location: eastus
