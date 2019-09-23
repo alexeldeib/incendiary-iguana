@@ -1,6 +1,7 @@
 updateBranch: true
 deleteBranchAfterMerge: true
 reportStatus: true
+mergeMethod: merge
 
 minApprovals:
   OWNER: 1
