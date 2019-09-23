@@ -75,7 +75,9 @@ var _ = Describe("sql server controller", func() {
 
 		By("changing firewall rule")
 		server.Spec.AllowAzureServiceAccess = to.BoolPtr(true)
-		Expect(k8sClient.Update(context.Background(), server)).Should(Succeed())
+		Eventually(func() error {
+			return k8sClient.Update(context.Background(), server)
+		}, timeout, interval).Should(Succeed())
 
 		By("waiting for update")
 		Eventually(func() bool {
@@ -89,11 +91,6 @@ var _ = Describe("sql server controller", func() {
 			local := &azurev1alpha1.SQLFirewallRule{}
 			return k8sClient.Get(context.Background(), key, local)
 		}).Should(Succeed())
-
-		server.Spec.AllowAzureServiceAccess = to.BoolPtr(true)
-		Eventually(func() error {
-			return k8sClient.Update(context.Background(), server)
-		}, timeout, interval).Should(Succeed())
 
 		By("expecting to find secret")
 		Eventually(func() error {
