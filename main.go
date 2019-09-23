@@ -27,6 +27,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebus"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/sqlfirewallrules"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/sqlservers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/tlssecrets"
@@ -270,6 +271,18 @@ func main() {
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SQLServer")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.SQLFirewallRuleReconciler{
+		Reconciler: &controllers.SyncReconciler{
+			Client:   client,
+			Az:       sqlfirewallrules.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "SQLFirewallRule")
 		os.Exit(1)
 	}
 
