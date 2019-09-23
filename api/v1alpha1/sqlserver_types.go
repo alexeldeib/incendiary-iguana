@@ -19,7 +19,7 @@ type SQLServerSpec struct {
 	// SubscriptionID contains the resource group. Is a GUID.
 	SubscriptionID string `json:"subscriptionId"`
 	// AllowAzureServiceAccess will allow access to this server from other Azure managed services if true.
-	AllowAzureServiceAccess *bool `json:"allowazureserviceaccess,omitempty"`
+	AllowAzureServiceAccess *bool `json:"allowAzureServiceAccess,omitempty"`
 }
 
 // SQLServerStatus defines the observed state of SQLServer

@@ -4,24 +4,24 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   creationTimestamp: null
-  name: sqlservers.azure.alexeldeib.xyz
+  name: sqlfirewalls.azure.alexeldeib.xyz
 spec:
   group: azure.alexeldeib.xyz
   names:
     categories:
     - all
-    kind: SQLServer
-    listKind: SQLServerList
-    plural: sqlservers
+    kind: SQLFirewallRule
+    listKind: SQLFirewallRuleList
+    plural: sqlfirewalls
     shortNames:
-    - sqlserver
-    singular: sqlserver
+    - sqlfw
+    singular: sqlfirewallrule
   scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: SQLServer is the Schema for the SQL server API
+      description: SQLFirewallRule is the Schema for the SQL server API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -36,14 +36,11 @@ spec:
         metadata:
           type: object
         spec:
-          description: SQLServerSpec defines the desired state of the SQL server.
+          description: SQLFirewallRuleSpec defines the desired state of the firewall
+            rule.
           properties:
-            allowAzureServiceAccess:
-              description: AllowAzureServiceAccess will allow access to this server
-                from other Azure managed services if true.
-              type: boolean
-            location:
-              description: Location is the region of the resource (e.g., eastus2)
+            end:
+              description: End is the end of the IP range to allow
               type: string
             name:
               description: Name is the name of the resource.
@@ -51,17 +48,26 @@ spec:
             resourceGroup:
               description: ResourceGroup is the resourceg group containing the resource.
               type: string
+            server:
+              description: Server is the name of the SQL server this rule should apply
+                to.
+              type: string
+            start:
+              description: Start is the beginning of the IP range to allow
+              type: string
             subscriptionId:
               description: SubscriptionID contains the resource group. Is a GUID.
               type: string
           required:
-          - location
+          - end
           - name
           - resourceGroup
+          - server
+          - start
           - subscriptionId
           type: object
         status:
-          description: SQLServerStatus defines the observed state of SQLServer
+          description: SQLFirewallRuleStatus defines the observed state of SQLFirewallRule
           properties:
             id:
               description: ID is the fully qualified Azure resource ID.

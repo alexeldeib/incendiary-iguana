@@ -32,6 +32,8 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/sqlfirewallrules"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/sqlservers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	// +kubebuilder:scaffold:imports
 )
@@ -96,6 +98,24 @@ var _ = BeforeSuite(func(done Done) {
 		Reconciler: &AsyncReconciler{
 			Client:   k8sClient,
 			Az:       resourcegroups.New(configuration),
+			Log:      log,
+			Recorder: recorder,
+		},
+	}).SetupWithManager(mgr)).NotTo(HaveOccurred())
+
+	Expect((&SQLServerReconciler{
+		Reconciler: &SyncReconciler{
+			Client:   k8sClient,
+			Az:       sqlservers.New(configuration, &k8sClient, mgr.GetScheme()),
+			Log:      log,
+			Recorder: recorder,
+		},
+	}).SetupWithManager(mgr)).NotTo(HaveOccurred())
+
+	Expect((&SQLFirewallRuleReconciler{
+		Reconciler: &SyncReconciler{
+			Client:   k8sClient,
+			Az:       sqlfirewallrules.New(configuration),
 			Log:      log,
 			Recorder: recorder,
 		},
