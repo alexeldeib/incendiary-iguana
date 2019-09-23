@@ -98,12 +98,12 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 
 	// Create if not found
 	if _, err = controllerutil.CreateOrUpdate(ctx, *c.kubeclient, targetSecret, func() error {
-		if apierrs.IsNotFound(getErr) {
-			if local.ObjectMeta.UID != "" {
-				if ownerErr := controllerutil.SetControllerReference(local, targetSecret, c.scheme); ownerErr != nil {
-					return ownerErr
-				}
+		if local.ObjectMeta.UID != "" {
+			if ownerErr := controllerutil.SetControllerReference(local, targetSecret, c.scheme); ownerErr != nil {
+				return ownerErr
 			}
+		}
+		if apierrs.IsNotFound(getErr) {
 			targetSecret.Data = map[string][]byte{
 				"username":           []byte(clientutil.GenerateRandomString(8)),
 				"password":           []byte(clientutil.GenerateRandomString(16)),
@@ -176,6 +176,19 @@ func (c *Client) Delete(ctx context.Context, obj runtime.Object) error {
 	if err != nil {
 		return err
 	}
+
+	targetSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      local.Spec.Name,
+			Namespace: local.ObjectMeta.Namespace,
+		},
+	}
+
+	// Get SQL Server secret
+	if err = (*c.kubeclient).Delete(ctx, targetSecret); client.IgnoreNotFound(err) != nil {
+		return err
+	}
+
 	future, err := c.internal.Delete(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 	if err != nil {
 		return err
