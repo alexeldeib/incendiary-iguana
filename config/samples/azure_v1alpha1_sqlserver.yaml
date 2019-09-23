@@ -1,0 +1,21 @@
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: ResourceGroup
+metadata:
+  name: rg-sample2
+  namespace: default
+spec:
+  subscriptionId: bd6a4e14-55fa-4160-a6a7-b718d7a2c95c
+  name: ace-sql-demo4
+  location: eastus
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: SQLServer
+metadata:
+  name: sql-sample
+  namespace: default
+spec:
+  subscriptionId: bd6a4e14-55fa-4160-a6a7-b718d7a2c95c
+  resourceGroup: ace-sql-demo4
+  name: ace-sql
+  location: eastus
+  allowAzureServiceAccess: true

@@ -1,0 +1,144 @@
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: ResourceGroup
+metadata:
+  name: rg-sample
+spec:
+  subscriptionId: eb4644c9-9cf4-4383-ac9f-ab2854720aef
+  name: ace-crd-again
+  location: eastus2
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: VirtualNetwork
+metadata:
+  name: vnet-sample
+spec:
+  subscriptionId: eb4644c9-9cf4-4383-ac9f-ab2854720aef
+  resourceGroup: ace-crd-again
+  name: ace-vnet
+  location: eastus2
+  addresses: 
+  - 10.0.0.0/8
+  - 192.168.1.0/24
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: Subnet
+metadata:
+  name: subnet-sample
+spec:
+  subscriptionId: eb4644c9-9cf4-4383-ac9f-ab2854720aef
+  resourceGroup: ace-crd-again
+  network: ace-vnet
+  name: ace-subnet
+  subnet: 10.0.0.0/24 
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: NetworkInterface
+metadata:
+  name: nic-sample
+spec:
+  subscriptionId: eb4644c9-9cf4-4383-ac9f-ab2854720aef
+  resourceGroup: ace-crd-again
+  name: ace-nic-mon
+  location: eastus2
+  network: ace-vnet
+  subnet: ace-subnet
+  ipConfigurations: 
+  - privateIP: 10.0.0.9
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: VM
+metadata:
+  name: vm-sample
+spec:
+  subscriptionId: eb4644c9-9cf4-4383-ac9f-ab2854720aef
+  resourceGroup: ace-crd-again
+  name: ace-vm-mon
+  location: eastus2
+  sku: Standard_E4s_v3
+  diskSize: 100
+  primaryNic: /subscriptions/eb4644c9-9cf4-4383-ac9f-ab2854720aef/resourceGroups/ace-crd-again/provider/Microsoft.Network/networkInterfaces/ace-nic-mon
+  sshPublicKey: "ssh-rsa YOUR_PUB_KEY"
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: NetworkInterface
+metadata:
+  name: nic-sample-2
+spec:
+  subscriptionId: eb4644c9-9cf4-4383-ac9f-ab2854720aef
+  resourceGroup: ace-crd-again
+  name: ace-nic-tue
+  location: eastus2
+  network: ace-vnet
+  subnet: ace-subnet
+  ipConfigurations: 
+  - privateIP: 10.0.0.10
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: VM
+metadata:
+  name: vm-sample-2
+spec:
+  subscriptionId: eb4644c9-9cf4-4383-ac9f-ab2854720aef
+  resourceGroup: ace-crd-again
+  name: ace-vm-tue
+  location: eastus2
+  sku: Standard_E4s_v3
+  diskSize: 100
+  primaryNic: /subscriptions/eb4644c9-9cf4-4383-ac9f-ab2854720aef/resourceGroups/ace-crd-again/provider/Microsoft.Network/networkInterfaces/ace-nic-tue
+  sshPublicKey: "ssh-rsa YOUR_PUB_KEY"
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: NetworkInterface
+metadata:
+  name: nic-sample-again
+spec:
+  subscriptionId: eb4644c9-9cf4-4383-ac9f-ab2854720aef
+  resourceGroup: ace-crd-again
+  name: ace-nic-again-mon
+  location: eastus2
+  network: ace-vnet
+  subnet: ace-subnet
+  ipConfigurations: 
+  - privateIP: 10.0.0.12
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: VM
+metadata:
+  name: vm-sample-again
+spec:
+  subscriptionId: eb4644c9-9cf4-4383-ac9f-ab2854720aef
+  resourceGroup: ace-crd-again
+  name: ace-vm-again-mon
+  location: eastus2
+  sku: Standard_E4s_v3
+  diskSize: 100
+  primaryNic: /subscriptions/eb4644c9-9cf4-4383-ac9f-ab2854720aef/resourceGroups/ace-crd-again/provider/Microsoft.Network/networkInterfaces/ace-nic-again-mon
+  sshPublicKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQChyOluDaB2fxchXil9yTJWXIKo8zt9THOsl+BF3ZTCLde3Ks9ODKjhN89nY4gsnrHZcjbsbMWaEFwH3ieiGudTTlJmqGzk7PherYMUE3WtO3d4jKNoyd6hrSxaKEY2ECY+J/TVUFuZgN0xegw3ClHvEcB7BecdOm1P3slWeB2stAFeUmcUVEPhk110eq/ZA60HsYfbRb1YSKnX7lz0JC7Xad6zj8SVQUoUAYrLkdLBanw4dc1VdXysC/t9LJYCHNnP4dsMsZeiJIrlspF/iPppWLA5mDMu10zFoLOmulauBq3CwOA2Bv90eVBDBdDbqn55SyEh282jIXb5HhjaBTjf alexe@DESKTOP-GTPEBP5"
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: NetworkInterface
+metadata:
+  name: nic-sample-again-2
+spec:
+  subscriptionId: eb4644c9-9cf4-4383-ac9f-ab2854720aef
+  resourceGroup: ace-crd-again
+  name: ace-nic-again-tue
+  location: eastus2
+  network: ace-vnet
+  subnet: ace-subnet
+  ipConfigurations: 
+  - privateIP: 10.0.0.11
+---
+apiVersion: azure.alexeldeib.xyz/v1alpha1
+kind: VM
+metadata:
+  name: vm-sample-again-2
+spec:
+  subscriptionId: eb4644c9-9cf4-4383-ac9f-ab2854720aef
+  resourceGroup: ace-crd-again
+  name: ace-vm-again-tue
+  location: eastus2
+  sku: Standard_E4s_v3
+  diskSize: 100
+  primaryNic: /subscriptions/eb4644c9-9cf4-4383-ac9f-ab2854720aef/resourceGroups/ace-crd-again/provider/Microsoft.Network/networkInterfaces/ace-nic-again-tue
+  sshPublicKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQChyOluDaB2fxchXil9yTJWXIKo8zt9THOsl+BF3ZTCLde3Ks9ODKjhN89nY4gsnrHZcjbsbMWaEFwH3ieiGudTTlJmqGzk7PherYMUE3WtO3d4jKNoyd6hrSxaKEY2ECY+J/TVUFuZgN0xegw3ClHvEcB7BecdOm1P3slWeB2stAFeUmcUVEPhk110eq/ZA60HsYfbRb1YSKnX7lz0JC7Xad6zj8SVQUoUAYrLkdLBanw4dc1VdXysC/t9LJYCHNnP4dsMsZeiJIrlspF/iPppWLA5mDMu10zFoLOmulauBq3CwOA2Bv90eVBDBdDbqn55SyEh282jIXb5HhjaBTjf alexe@DESKTOP-GTPEBP5"
