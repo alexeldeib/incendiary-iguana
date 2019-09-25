@@ -106,7 +106,7 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) (bool, error) {
 	return false, nil
 }
 
-// Get returns a virtual network.
+// Get returns a service bus.
 func (c *Client) Get(ctx context.Context, obj runtime.Object) (servicebus.SBNamespace, error) {
 	local, err := c.convert(obj)
 	if err != nil {
@@ -115,7 +115,7 @@ func (c *Client) Get(ctx context.Context, obj runtime.Object) (servicebus.SBName
 	return c.internal.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 }
 
-// ListKeys returns a virtual network.
+// ListKeys returns an array of keys for a storage account.
 func (c *Client) ListKeys(ctx context.Context, local *azurev1alpha1.ServiceBusNamespace) (map[string][]byte, error) {
 	keys, err := c.internal.ListKeys(ctx, local.Spec.ResourceGroup, local.Spec.Name, "RootManageSharedAccessKey")
 	if err != nil {

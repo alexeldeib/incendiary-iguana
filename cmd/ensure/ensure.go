@@ -39,6 +39,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebus"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebuskey"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/sqlservers"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/storagekeys"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/tlssecrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
@@ -67,7 +68,6 @@ var (
 func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = azurev1alpha1.AddToScheme(scheme)
-
 	ctrl.SetLogger(zap.Logger(false))
 }
 
@@ -282,6 +282,8 @@ func Ensure(obj runtime.Object, configuration *config.Config, kubeclient *client
 		err = EnsureAsync(servicebus.New(configuration, kubeclient, scheme), obj, log)
 	case *azurev1alpha1.SQLServer:
 		err = EnsureSync(sqlservers.New(configuration, kubeclient, scheme), obj, log)
+	case *azurev1alpha1.StorageKey:
+		err = EnsureSync(storagekeys.New(configuration, kubeclient, scheme), obj, log)
 	case *azurev1alpha1.Subnet:
 		err = EnsureAsync(subnets.New(configuration), obj, log)
 	case *azurev1alpha1.RedisKey:
@@ -342,6 +344,8 @@ func Delete(obj runtime.Object, configuration *config.Config, kubeclient *client
 		err = DeleteAsync(servicebus.New(configuration, kubeclient, scheme), obj, log)
 	case *azurev1alpha1.SQLServer:
 		err = DeleteSync(sqlservers.New(configuration, kubeclient, scheme), obj, log)
+	case *azurev1alpha1.StorageKey:
+		err = DeleteSync(storagekeys.New(configuration, kubeclient, scheme), obj, log)
 	case *azurev1alpha1.Subnet:
 		err = DeleteAsync(subnets.New(configuration), obj, log)
 	case *azurev1alpha1.TLSSecret:

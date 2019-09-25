@@ -72,25 +72,25 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 
 	local := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      secret.Spec.Name,
+			Name:      secret.ObjectMeta.Name,
 			Namespace: secret.ObjectMeta.Namespace,
 		},
 	}
 
 	_, err = controllerutil.CreateOrUpdate(ctx, *c.kubeclient, local, func() error {
-		innerErr := controllerutil.SetControllerReference(secret, local, c.scheme)
-		if innerErr != nil {
-			return innerErr
+		if secret.ObjectMeta.UID != "" {
+			if ownerErr := controllerutil.SetControllerReference(secret, local, c.scheme); ownerErr != nil {
+				return ownerErr
+			}
+		}
+		if local.Data == nil {
+			local.Data = map[string][]byte{}
 		}
 		if secret.Spec.FriendlyName != nil {
-			local.Data = map[string][]byte{
-				*secret.Spec.FriendlyName: []byte(*bundle.Value),
-			}
+			local.Data[*secret.Spec.FriendlyName] = []byte(*bundle.Value)
 			return nil
 		}
-		local.Data = map[string][]byte{
-			secret.Spec.Name: []byte(*bundle.Value),
-		}
+		local.Data[secret.Spec.Name] = []byte(*bundle.Value)
 		return nil
 	})
 

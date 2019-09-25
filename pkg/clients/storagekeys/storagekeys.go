@@ -2,15 +2,13 @@
 Copyright 2019 Alexander Eldeib.
 */
 
-package storageaccounts
+package storagekeys
 
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/storage/mgmt/2019-04-01/storage"
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/davecgh/go-spew/spew"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,7 +49,7 @@ func NewWithFactory(configuration *config.Config, kubeclient *ctrl.Client, facto
 }
 
 // ForSubscription authorizes the client for a given subscription
-func (c *Client) ForSubscription(obj runtime.Object) error {
+func (c *Client) ForSubscription(ctx context.Context, obj runtime.Object) error {
 	local, err := c.convert(obj)
 	if err != nil {
 		return err
@@ -60,54 +58,8 @@ func (c *Client) ForSubscription(obj runtime.Object) error {
 	return c.config.AuthorizeClient(&c.internal.Client)
 }
 
-// Ensure creates or updates a SQL server in an idempotent manner and sets its provisioning state.
-func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
-	local, err := c.convert(obj)
-	if err != nil {
-		return err
-	}
-
-	// Set status
-	remote, err := c.internal.GetProperties(ctx, local.Spec.ResourceGroup, local.Spec.Name, "")
-	found := !remote.IsHTTPStatus(http.StatusNotFound)
-	c.SetStatus(local, remote)
-	if err != nil && found {
-		return err
-	}
-
-	// Wrap, check status, and exit early if appropriate
-	var spec *Spec
-	if found {
-		spec = NewSpecWithRemote(&remote)
-		if err := c.SyncSecret(ctx, local); err != nil {
-			return err
-		}
-		// TODO(ace): this should be an extension point to gracefully handle immutable updates
-		// if c.Done(local)
-		// if !spec.NeedsUpdate(local) {
-		// 	return nil
-		// }
-	} else {
-		spec = NewSpec()
-	}
-
-	// Overlay new properties over old/default spec
-	spec.Set(
-		Location(&local.Spec.Location),
-	)
-
-	if !found {
-		if _, err = c.internal.Create(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec.ForCreate()); err != nil {
-			return err
-		}
-		return nil
-	}
-	_, err = c.internal.Update(ctx, local.Spec.ResourceGroup, local.Spec.Name, spec.ForUpdate())
-	return err
-}
-
 // ListKeys returns a virtual network.
-func (c *Client) ListKeys(ctx context.Context, local *azurev1alpha1.StorageAccount) (map[string][]byte, error) {
+func (c *Client) ListKeys(ctx context.Context, local *azurev1alpha1.StorageKey) (map[string][]byte, error) {
 	keys, err := c.internal.ListKeys(ctx, local.Spec.ResourceGroup, local.Spec.Name)
 	if err != nil {
 		return nil, err
@@ -118,7 +70,12 @@ func (c *Client) ListKeys(ctx context.Context, local *azurev1alpha1.StorageAccou
 	return result, nil
 }
 
-func (c *Client) SyncSecret(ctx context.Context, local *azurev1alpha1.StorageAccount) error {
+func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
+	local, err := c.convert(obj)
+	if err != nil {
+		return err
+	}
+
 	if local.Spec.TargetSecret == nil {
 		return nil
 	}
@@ -135,7 +92,6 @@ func (c *Client) SyncSecret(ctx context.Context, local *azurev1alpha1.StorageAcc
 			Namespace: local.ObjectMeta.Namespace,
 		},
 	}
-
 	_, err = controllerutil.CreateOrUpdate(ctx, *c.kubeclient, targetSecret, func() error {
 		if targetSecret.Data == nil {
 			targetSecret.Data = map[string][]byte{}
@@ -168,31 +124,12 @@ func (c *Client) Delete(ctx context.Context, obj runtime.Object) error {
 		},
 	}
 
-	// Get SQL Server secret
-	if err = (*c.kubeclient).Delete(ctx, targetSecret); client.IgnoreNotFound(err) != nil {
-		return err
-	}
-
-	_, err = c.internal.Delete(ctx, local.Spec.ResourceGroup, local.Spec.Name)
-	return err
+	err = (*c.kubeclient).Delete(ctx, targetSecret)
+	return client.IgnoreNotFound(err)
 }
 
-// SetStatus sets the status subresource fields of the CRD reflecting the state of the object in Azure.
-func (c *Client) SetStatus(local *azurev1alpha1.StorageAccount, remote storage.Account) {
-	local.Status.ID = remote.ID
-	local.Status.ProvisioningState = nil
-	if remote.AccountProperties != nil {
-		local.Status.ProvisioningState = to.StringPtr(string(remote.AccountProperties.ProvisioningState))
-	}
-}
-
-// Done checks the current state of the CRD against the desired end state.
-func (c *Client) Done(local *azurev1alpha1.StorageAccount) bool {
-	return local.Status.ProvisioningState != nil && *local.Status.ProvisioningState == "Succeeded"
-}
-
-func (c *Client) convert(obj runtime.Object) (*azurev1alpha1.StorageAccount, error) {
-	local, ok := obj.(*azurev1alpha1.StorageAccount)
+func (c *Client) convert(obj runtime.Object) (*azurev1alpha1.StorageKey, error) {
+	local, ok := obj.(*azurev1alpha1.StorageKey)
 	if !ok {
 		return nil, fmt.Errorf("failed type assertion on kind: %s", obj.GetObjectKind().GroupVersionKind().String())
 	}

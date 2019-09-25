@@ -8,7 +8,10 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	mrand "math/rand"
 )
+
+const safeBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 // TODO(ace): probably move this to a more descriptive package
 // Any executes an array of functions in order and returns true if any of them returns true. Returns false otherwise.
@@ -39,5 +42,13 @@ func GenerateRandomString(n int) string {
 	if err != nil {
 		fmt.Printf("error in generate random: %+#v", err.Error())
 	}
-	return base64.URLEncoding.EncodeToString(b) //, err
+	return base64.StdEncoding.EncodeToString(b) //, err
+}
+
+func GenerateSafeRandomString(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = safeBytes[mrand.Intn(len(safeBytes))]
+	}
+	return string(b)
 }

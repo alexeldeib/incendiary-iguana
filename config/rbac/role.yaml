@@ -249,6 +249,26 @@ rules:
 - apiGroups:
   - azure.alexeldeib.xyz
   resources:
+  - storagekeys
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
+  - storagekeys/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - azure.alexeldeib.xyz
+  resources:
   - subnets
   verbs:
   - create
