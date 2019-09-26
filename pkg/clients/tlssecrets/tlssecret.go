@@ -156,6 +156,7 @@ func (c *Client) Delete(ctx context.Context, obj runtime.Object) error {
 			Name:      secret.Spec.Name,
 			Namespace: secret.ObjectMeta.Namespace,
 		},
+		Type: corev1.SecretTypeTLS,
 	}
 	return client.IgnoreNotFound((*c.kubeclient).Delete(ctx, local))
 }
