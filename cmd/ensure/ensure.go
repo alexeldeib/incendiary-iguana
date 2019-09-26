@@ -17,6 +17,7 @@ import (
 	"github.com/sanity-io/litter"
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
+	extensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -27,6 +28,7 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/controllers"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/dockercfg"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/identities"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/loadbalancers"
@@ -68,6 +70,7 @@ var (
 func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = azurev1alpha1.AddToScheme(scheme)
+	_ = extensionsv1beta1.AddToScheme(scheme)
 	ctrl.SetLogger(zap.Logger(false))
 }
 
@@ -254,6 +257,11 @@ func Ensure(obj runtime.Object, configuration *config.Config, kubeclient *client
 	switch obj.(type) {
 	case *appsv1.Deployment:
 		log.Info("Deployment!")
+	case *azurev1alpha1.DockerConfig:
+		client, err := dockercfg.New(configuration, kubeclient, scheme)
+		if err == nil {
+			err = EnsureSync(client, obj, log)
+		}
 	case *azurev1alpha1.Identity:
 		err = EnsureSync(identities.New(configuration), obj, log)
 	case *azurev1alpha1.Keyvault:
@@ -318,6 +326,11 @@ func Delete(obj runtime.Object, configuration *config.Config, kubeclient *client
 	switch obj.(type) {
 	case *appsv1.Deployment:
 		log.Info("Deployment!")
+	case *azurev1alpha1.DockerConfig:
+		client, err := dockercfg.New(configuration, kubeclient, scheme)
+		if err == nil {
+			err = DeleteSync(client, obj, log)
+		}
 	case *azurev1alpha1.Identity:
 		err = DeleteSync(identities.New(configuration), obj, log)
 	case *azurev1alpha1.Keyvault:
