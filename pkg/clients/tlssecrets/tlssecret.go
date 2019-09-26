@@ -135,6 +135,7 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 		}
 		local.Data["tls.crt"] = []byte(output)
 		local.Data["tls.key"] = keyPEM.Bytes()
+		local.Type = corev1.SecretTypeTLS
 		return nil
 	})
 
@@ -156,7 +157,6 @@ func (c *Client) Delete(ctx context.Context, obj runtime.Object) error {
 			Name:      secret.Spec.Name,
 			Namespace: secret.ObjectMeta.Namespace,
 		},
-		Type: corev1.SecretTypeTLS,
 	}
 	return client.IgnoreNotFound((*c.kubeclient).Delete(ctx, local))
 }
