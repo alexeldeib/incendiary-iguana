@@ -66,7 +66,13 @@ func (c *Client) ListKeys(ctx context.Context, local *azurev1alpha1.StorageKey) 
 	}
 	result := map[string][]byte{}
 	// TODO(ace): think this might be safe? confirm.
-	result[*local.Spec.PrimaryKey] = []byte(*(*keys.Keys)[0].Value)
+	if local.Spec.PrimaryKey != nil {
+		result[*local.Spec.PrimaryKey] = []byte(*(*keys.Keys)[0].Value)
+	}
+	if local.Spec.PrimaryConnectionString != nil {
+		connectionString := fmt.Sprintf("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=core.windows.net", local.Spec.Name, *(*keys.Keys)[0].Value)
+		result[*local.Spec.PrimaryConnectionString] = []byte(connectionString)
+	}
 	return result, nil
 }
 

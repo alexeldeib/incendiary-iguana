@@ -39,6 +39,9 @@ spec:
             name:
               description: Name is the name of the resource.
               type: string
+            primaryConnectionString:
+              description: PrimaryConnectionString +optional
+              type: string
             primaryKey:
               description: PrimaryKey +optional
               type: string

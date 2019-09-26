@@ -20,6 +20,8 @@ type StorageKeySpec struct {
 	TargetSecret *string `json:"targetSecret,omitempty"`
 	// PrimaryKey +optional
 	PrimaryKey *string `json:"primaryKey,omitempty"`
+	// PrimaryConnectionString +optional
+	PrimaryConnectionString *string `json:"primaryConnectionString,omitempty"`
 }
 
 // StorageKeyStatus defines the observed state of StorageKey
