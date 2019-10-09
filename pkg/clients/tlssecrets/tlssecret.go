@@ -12,6 +12,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
 	"github.com/Azure/go-autorest/autorest/azure"
@@ -91,7 +92,7 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 	}
 	var certPEM bytes.Buffer
 	pem.Encode(&certPEM, certBlock)
-	output := fmt.Sprintf("%s\n%s\n%s", GenerateSubject(pfxCert), GenerateIssuer(pfxCert), certPEM.String())
+	output := fmt.Sprintf("%s\n%s\n%s", GenerateSubject(pfxCert), GenerateIssuer(pfxCert), strings.TrimRight(certPEM.String(), "\n"))
 
 	// Fix cert chain order (reverse them and fix headers)
 	for _, cert := range caCerts {
@@ -101,7 +102,7 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 		}
 		var certPEM bytes.Buffer
 		pem.Encode(&certPEM, certBlock)
-		output = fmt.Sprintf("%s%s\n%s\n%s", output, GenerateSubject(cert), GenerateIssuer(cert), certPEM.String())
+		output = fmt.Sprintf("%s%s\n%s\n%s", output, GenerateSubject(cert), GenerateIssuer(cert), strings.TrimRight(certPEM.String(), "\n"))
 	}
 
 	keyX509 := x509.MarshalPKCS1PrivateKey(pfxKey.(*rsa.PrivateKey))
