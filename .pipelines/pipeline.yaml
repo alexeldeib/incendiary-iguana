@@ -16,9 +16,6 @@ trigger:
 
 pr:
   autoCancel: true
-  branches:
-    include:
-      - master
   paths:
     exclude:
       - README.md
