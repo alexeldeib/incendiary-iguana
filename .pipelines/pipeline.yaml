@@ -16,6 +16,9 @@ trigger:
 
 pr:
   autoCancel: true
+  branches:
+    include:
+      - master
   paths:
     exclude:
       - README.md
@@ -58,7 +61,7 @@ stages:
         # install goimports, ginkgo, kustomize
         go get golang.org/x/tools/cmd/goimports
         go get github.com/onsi/ginkgo/ginkgo
-        go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master
+        go get sigs.k8s.io/kustomize/kustomize/v3@v3.2.3
         go get sigs.k8s.io/kind@v0.5.1
         
         # install kubebuilder, controller-gen, etcd, kubectl, and kube-apiserver
