@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
+	"github.com/sanity-io/litter"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -119,6 +120,8 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 		if err != nil {
 			return err
 		}
+		b, err := future.MarshalJSON()
+		litter.Dump(string(b))
 		if err := future.WaitForCompletionRef(ctx, c.internal.Client); err != nil {
 			return err
 		}
@@ -128,6 +131,8 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 		if err != nil {
 			return nil
 		}
+		b, err := future.MarshalJSON()
+		litter.Dump(string(b))
 		if err := future.WaitForCompletionRef(ctx, c.internal.Client); err != nil {
 			return err
 		}
