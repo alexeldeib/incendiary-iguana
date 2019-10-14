@@ -12,6 +12,7 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          GO111MODULE: on
         run: |
           set -eux
           export PATH=$PATH:/usr/local/kubebuilder/bin:$(go env GOPATH)/bin
@@ -39,7 +40,8 @@ jobs:
         env:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          GO111MODULE: on
         run: |
           set -eux
           export PATH=$PATH:/usr/local/kubebuilder/bin:$(go env GOPATH)/bin
@@ -68,6 +70,7 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          GO111MODULE: on
         run: |
           set -eux
           export PATH=$PATH:/usr/local/kubebuilder/bin:$(go env GOPATH)/bin
@@ -99,7 +102,8 @@ jobs:
         env:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          GO111MODULE: on
         run: |
           set -eux
           export PATH=$PATH:/usr/local/kubebuilder/bin:$(go env GOPATH)/bin
