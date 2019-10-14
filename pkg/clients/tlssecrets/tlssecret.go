@@ -7,10 +7,12 @@ package tlssecrets
 import (
 	"bytes"
 	"context"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
 	"github.com/Azure/go-autorest/autorest/azure"
@@ -90,7 +92,7 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 	}
 	var certPEM bytes.Buffer
 	pem.Encode(&certPEM, certBlock)
-	output := fmt.Sprintf("%s\n%s\n%s", GenerateSubject(pfxCert), GenerateIssuer(pfxCert), string(certPEM.Bytes()))
+	output := fmt.Sprintf("%s\n%s\n%s", GenerateSubject(pfxCert), GenerateIssuer(pfxCert), strings.TrimRight(certPEM.String(), "\n"))
 
 	// Fix cert chain order (reverse them and fix headers)
 	for _, cert := range caCerts {
@@ -100,15 +102,12 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 		}
 		var certPEM bytes.Buffer
 		pem.Encode(&certPEM, certBlock)
-		output = fmt.Sprintf("%s\n%s\n%s%s", GenerateSubject(cert), GenerateIssuer(cert), string(certPEM.Bytes()), output)
+		output = fmt.Sprintf("%s%s\n%s\n%s", output, GenerateSubject(cert), GenerateIssuer(cert), strings.TrimRight(certPEM.String(), "\n"))
 	}
 
-	keyX509, err := x509.MarshalPKCS8PrivateKey(pfxKey)
-	if err != nil {
-		return err
-	}
+	keyX509 := x509.MarshalPKCS1PrivateKey(pfxKey.(*rsa.PrivateKey))
 	keyBlock := &pem.Block{
-		Type:  "PRIVATE KEY",
+		Type:  "RSA PRIVATE KEY",
 		Bytes: keyX509,
 	}
 	var keyPEM bytes.Buffer
@@ -135,6 +134,7 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 		}
 		local.Data["tls.crt"] = []byte(output)
 		local.Data["tls.key"] = keyPEM.Bytes()
+		local.Type = corev1.SecretTypeTLS
 		return nil
 	})
 

@@ -12,6 +12,7 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          GO111MODULE: on
         run: |
           set -eux
           export PATH=$PATH:/usr/local/kubebuilder/bin:$(go env GOPATH)/bin
@@ -20,7 +21,7 @@ jobs:
           sudo mkdir -p /usr/local/kubebuilder
           go get golang.org/x/tools/cmd/goimports
           go get github.com/onsi/ginkgo/ginkgo
-          go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master
+          go get sigs.k8s.io/kustomize/kustomize/v3@v3.2.3
           go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
           os=$(go env GOOS)
           arch=$(go env GOARCH)
@@ -39,7 +40,8 @@ jobs:
         env:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          GO111MODULE: on
         run: |
           set -eux
           export PATH=$PATH:/usr/local/kubebuilder/bin:$(go env GOPATH)/bin
@@ -48,7 +50,7 @@ jobs:
           sudo mkdir -p /usr/local/kubebuilder
           go get golang.org/x/tools/cmd/goimports
           go get github.com/onsi/ginkgo/ginkgo
-          go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master
+          go get sigs.k8s.io/kustomize/kustomize/v3@v3.2.3
           go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
           os=$(go env GOOS)
           arch=$(go env GOARCH)
@@ -68,6 +70,7 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          GO111MODULE: on
         run: |
           set -eux
           export PATH=$PATH:/usr/local/kubebuilder/bin:$(go env GOPATH)/bin
@@ -76,8 +79,8 @@ jobs:
           sudo mkdir -p /usr/local/kubebuilder
           go get golang.org/x/tools/cmd/goimports
           go get github.com/onsi/ginkgo/ginkgo
-          go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master
           go get sigs.k8s.io/kind@v0.5.1
+          go get sigs.k8s.io/kustomize/kustomize/v3@v3.2.3
           go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
           os=$(go env GOOS)
           arch=$(go env GOARCH)
@@ -99,7 +102,8 @@ jobs:
         env:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }} 
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          GO111MODULE: on
         run: |
           set -eux
           export PATH=$PATH:/usr/local/kubebuilder/bin:$(go env GOPATH)/bin
@@ -108,8 +112,8 @@ jobs:
           sudo mkdir -p /usr/local/kubebuilder
           go get golang.org/x/tools/cmd/goimports
           go get github.com/onsi/ginkgo/ginkgo
-          go get sigs.k8s.io/kustomize/v3/cmd/kustomize@master
           go get sigs.k8s.io/kind@v0.5.1
+          go get sigs.k8s.io/kustomize/kustomize/v3@v3.2.3
           go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
           os=$(go env GOOS)
           arch=$(go env GOARCH)
