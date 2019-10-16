@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -55,7 +56,7 @@ import (
 type token struct{}
 
 const (
-	limit           = 5
+	limit           = 1
 	backoffSteps    = 30
 	backoffFactor   = 1.25
 	backoffInterval = 5 * time.Second
@@ -134,8 +135,8 @@ type EnsureOptions struct {
 func (opts *EnsureOptions) authorize() (*config.Config, error) {
 	return config.New(
 		config.App(opts.App),
-		config.App(opts.Key),
-		config.App(opts.Tenant),
+		config.Key(opts.Key),
+		config.Tenant(opts.Tenant),
 	)
 }
 
@@ -148,6 +149,7 @@ func (opts *EnsureOptions) Ensure() error {
 	if err != nil {
 		return err
 	}
+	log.WithValues("App", opts.App, "Tenant", opts.Tenant, "KeyLen", len(opts.Key)).Info("args")
 	return do(objects, configuration, Ensure)
 }
 
@@ -160,7 +162,6 @@ func (opts *EnsureOptions) Delete() error {
 	if err != nil {
 		return err
 	}
-	log.WithValues("App", opts.App, "Tenant", opts.Tenant, "KeyLen", len(opts.Key))
 	return do(objects, configuration, Delete)
 }
 
@@ -229,27 +230,14 @@ func (opts *EnsureOptions) Read() ([]runtime.Object, error) {
 	return objects, nil
 }
 
-func do(objects []runtime.Object, configuration *config.Config, applyFunc func(obj runtime.Object, configuration *config.Config, kubeclient *client.Client, errs chan error)) error {
-	var kubeclient *client.Client
-	kubeconfig, err := ctrl.GetConfig()
-	if err != nil {
-		log.Error(err, "failed to get kubeconfig")
-		kubeconfig = nil
-	} else {
-		c, err := client.New(kubeconfig, client.Options{})
-		if err != nil {
-			log.Error(err, "expected to create kubeclient after finding kubeconfig")
-		} else {
-			kubeclient = &c
-		}
-	}
+func do(objects []runtime.Object, configuration *config.Config, applyFunc func(obj runtime.Object, configuration *config.Config, errs chan error)) error {
 
 	// apply objects
 	pool := semaphore.New(limit)
 	errs := make(chan error, limit)
 	for key := range objects {
 		fn := func() {
-			applyFunc(objects[key], configuration, kubeclient, errs)
+			applyFunc(objects[key], configuration, errs)
 		}
 		pool.MustAdd(fn)
 	}
@@ -265,18 +253,28 @@ func do(objects []runtime.Object, configuration *config.Config, applyFunc func(o
 	return nil
 }
 
-func Ensure(obj runtime.Object, configuration *config.Config, kubeclient *client.Client, errs chan error) {
+func Ensure(obj runtime.Object, configuration *config.Config, errs chan error) {
 	var err error
-	log := log.WithValues("action", "ensure")
+	log = log.WithValues("action", "ensure", "type", obj.GetObjectKind().GroupVersionKind().String())
 	log.Info("starting reconciliation")
+
+	kubeclient, err := GetKubeclient()
+	if err != nil {
+		fmt.Printf("%#+v\n", err)
+		errs <- err
+		return
+	}
+
 	switch obj.(type) {
 	case *appsv1.Deployment:
 		log.Info("Deployment!")
 	case *azurev1alpha1.DockerConfig:
-		client, err := dockercfg.New(configuration, kubeclient, scheme)
-		if err == nil {
-			err = EnsureSync(client, obj, log)
+		client, err := dockercfg.New(configuration, &kubeclient, scheme)
+		if err != nil {
+			fmt.Printf("%#+v\n", err.Error())
+			break
 		}
+		err = EnsureSync(client, obj, log)
 	case *azurev1alpha1.Identity:
 		err = EnsureSync(identities.New(configuration), obj, log)
 	case *azurev1alpha1.Keyvault:
@@ -286,33 +284,37 @@ func Ensure(obj runtime.Object, configuration *config.Config, kubeclient *client
 	case *azurev1alpha1.NetworkInterface:
 		err = EnsureAsync(nics.New(configuration), obj, log)
 	case *azurev1alpha1.Redis:
-		err = EnsureAsync(redis.New(configuration, kubeclient, scheme), obj, log)
+		err = EnsureAsync(redis.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.ResourceGroup:
 		err = EnsureAsync(resourcegroups.New(configuration), obj, log)
 	case *azurev1alpha1.Secret:
-		client, err := secrets.New(configuration, kubeclient, scheme)
-		if err == nil {
-			err = EnsureSync(client, obj, log)
+		client, err := secrets.New(configuration, &kubeclient, scheme)
+		if err != nil {
+			fmt.Printf("%#+v\n", err)
+		}
+		err = EnsureSync(client, obj, log)
+		if err != nil {
+			fmt.Printf("%#+v\n", err)
 		}
 	case *azurev1alpha1.SecretBundle:
-		client, err := secretbundles.New(configuration, kubeclient, scheme)
+		client, err := secretbundles.New(configuration, &kubeclient, scheme)
 		if err == nil {
 			err = EnsureSync(client, obj, log)
 		}
 	case *azurev1alpha1.ServiceBusKey:
-		err = EnsureSync(servicebuskey.New(configuration, kubeclient, scheme), obj, log)
+		err = EnsureSync(servicebuskey.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.ServiceBusNamespace:
-		err = EnsureAsync(servicebus.New(configuration, kubeclient, scheme), obj, log)
+		err = EnsureAsync(servicebus.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.SQLServer:
-		err = EnsureSync(sqlservers.New(configuration, kubeclient, scheme), obj, log)
+		err = EnsureSync(sqlservers.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.StorageKey:
-		err = EnsureSync(storagekeys.New(configuration, kubeclient, scheme), obj, log)
+		err = EnsureSync(storagekeys.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.Subnet:
 		err = EnsureAsync(subnets.New(configuration), obj, log)
 	case *azurev1alpha1.RedisKey:
-		err = EnsureSync(rediskeys.New(configuration, kubeclient, scheme), obj, log)
+		err = EnsureSync(rediskeys.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.TLSSecret:
-		client, err := tlssecrets.New(configuration, kubeclient, scheme)
+		client, err := tlssecrets.New(configuration, &kubeclient, scheme)
 		if err == nil {
 			err = EnsureSync(client, obj, log)
 		}
@@ -327,6 +329,7 @@ func Ensure(obj runtime.Object, configuration *config.Config, kubeclient *client
 	}
 	if err != nil {
 		log.Info("failed to reconcile")
+		fmt.Printf("%#+v\n", err)
 		fmt.Printf("%s\n", err.Error())
 		errs <- err
 		return
@@ -334,15 +337,21 @@ func Ensure(obj runtime.Object, configuration *config.Config, kubeclient *client
 	log.Info("sucessfully reconciled")
 }
 
-func Delete(obj runtime.Object, configuration *config.Config, kubeclient *client.Client, errs chan error) {
-	var err error
-	log := log.WithValues("action", "delete")
+func Delete(obj runtime.Object, configuration *config.Config, errs chan error) {
+	log := log.WithValues("action", "delete", "type", obj.GetObjectKind().GroupVersionKind().String())
 	log.Info("starting deletion")
+
+	kubeclient, err := GetKubeclient()
+	if err != nil {
+		fmt.Printf("%#+v\n", err)
+		errs <- err
+	}
+
 	switch obj.(type) {
 	case *appsv1.Deployment:
 		log.Info("Deployment!")
 	case *azurev1alpha1.DockerConfig:
-		client, err := dockercfg.New(configuration, kubeclient, scheme)
+		client, err := dockercfg.New(configuration, &kubeclient, scheme)
 		if err == nil {
 			err = DeleteSync(client, obj, log)
 		}
@@ -355,29 +364,29 @@ func Delete(obj runtime.Object, configuration *config.Config, kubeclient *client
 	case *azurev1alpha1.NetworkInterface:
 		err = DeleteAsync(nics.New(configuration), obj, log)
 	case *azurev1alpha1.Redis:
-		err = DeleteAsync(redis.New(configuration, kubeclient, scheme), obj, log)
+		err = DeleteAsync(redis.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.ResourceGroup:
 		err = DeleteAsync(resourcegroups.New(configuration), obj, log)
 	case *azurev1alpha1.Secret:
-		client, err := secrets.New(configuration, kubeclient, scheme)
+		client, err := secrets.New(configuration, &kubeclient, scheme)
 		if err == nil {
 			err = DeleteSync(client, obj, log)
 		}
 	case *azurev1alpha1.SecretBundle:
-		client, err := secretbundles.New(configuration, kubeclient, scheme)
+		client, err := secretbundles.New(configuration, &kubeclient, scheme)
 		if err == nil {
 			err = DeleteSync(client, obj, log)
 		}
 	case *azurev1alpha1.ServiceBusNamespace:
-		err = DeleteAsync(servicebus.New(configuration, kubeclient, scheme), obj, log)
+		err = DeleteAsync(servicebus.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.SQLServer:
-		err = DeleteSync(sqlservers.New(configuration, kubeclient, scheme), obj, log)
+		err = DeleteSync(sqlservers.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.StorageKey:
-		err = DeleteSync(storagekeys.New(configuration, kubeclient, scheme), obj, log)
+		err = DeleteSync(storagekeys.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.Subnet:
 		err = DeleteAsync(subnets.New(configuration), obj, log)
 	case *azurev1alpha1.TLSSecret:
-		client, err := tlssecrets.New(configuration, kubeclient, scheme)
+		client, err := tlssecrets.New(configuration, &kubeclient, scheme)
 		if err == nil {
 			err = DeleteSync(client, obj, log)
 		}
@@ -412,8 +421,10 @@ func EnsureSync(client controllers.SyncClient, obj runtime.Object, log logr.Logg
 		return errors.Wrap(err, "failed to get client for subscription")
 	}
 
+	var err error
+
 	// extract this into async/sync, probably
-	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
+	return wait.ExponentialBackoff(backoff(), func() (bool, error) {
 		log.Info("reconciling")
 		err = client.Ensure(context.Background(), obj)
 		if err != nil {
@@ -553,4 +564,17 @@ func backoff() wait.Backoff {
 		Duration: backoffInterval,
 		Jitter:   backoffJitter,
 	}
+}
+
+func GetKubeclient() (client.Client, error) {
+	var (
+		kubeconfig *rest.Config
+		err        error
+	)
+
+	if kubeconfig, err = ctrl.GetConfig(); err != nil {
+		return nil, err
+	}
+
+	return client.New(kubeconfig, client.Options{})
 }
