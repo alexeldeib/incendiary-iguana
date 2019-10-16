@@ -88,7 +88,13 @@ func NewEnsureCommand() *cobra.Command {
 	}
 	cmd.Flags().BoolVarP(&opts.Debug, "debug", "d", false, "Enable debug output")
 	cmd.Flags().StringVarP(&opts.File, "file", "f", "", "File containt one or more Kubernetes manifests from a file containing multiple YAML documents (---)")
+	cmd.Flags().StringVar(&opts.App, "AppId", "", "app id to authenticate with")
+	cmd.Flags().StringVar(&opts.Key, "AppKey", "", "app key to authenticate with")
+	cmd.Flags().StringVar(&opts.Tenant, "AppTenant", "", "tenant id to authenticate with")
 	cmd.MarkFlagRequired("file")
+	cmd.MarkFlagRequired("AppId")
+	cmd.MarkFlagRequired("AppKey")
+	cmd.MarkFlagRequired("AppTenant")
 	return cmd
 }
 
@@ -106,18 +112,30 @@ func NewDeleteCommand() *cobra.Command {
 	}
 	cmd.Flags().BoolVarP(&opts.Debug, "debug", "d", false, "Enable debug output")
 	cmd.Flags().StringVarP(&opts.File, "file", "f", "", "File containt one or more Kubernetes manifests from a file containing multiple YAML documents (---)")
+	cmd.Flags().StringVar(&opts.App, "AppId", "", "app id to authenticate with")
+	cmd.Flags().StringVar(&opts.Key, "AppKey", "", "app key to authenticate with")
+	cmd.Flags().StringVar(&opts.Tenant, "AppTenant", "", "tenant id to authenticate with")
 	cmd.MarkFlagRequired("file")
+	cmd.MarkFlagRequired("AppId")
+	cmd.MarkFlagRequired("AppKey")
+	cmd.MarkFlagRequired("AppTenant")
 	return cmd
 }
 
 type EnsureOptions struct {
-	File  string
-	Debug bool
+	File   string
+	Debug  bool
+	App    string
+	Key    string
+	Tenant string
 }
 
-func authorize() (*config.Config, error) {
-	c := config.New(log)
-	return c, c.DetectAuthorizer()
+func (opts *EnsureOptions) authorize() (*config.Config, error) {
+	return config.New(
+		config.App(opts.App),
+		config.App(opts.Key),
+		config.App(opts.Tenant),
+	)
 }
 
 func (opts *EnsureOptions) Ensure() error {
@@ -125,7 +143,7 @@ func (opts *EnsureOptions) Ensure() error {
 	if err != nil {
 		return err
 	}
-	configuration, err := authorize()
+	configuration, err := opts.authorize()
 	if err != nil {
 		return err
 	}
@@ -137,7 +155,7 @@ func (opts *EnsureOptions) Delete() error {
 	if err != nil {
 		return err
 	}
-	configuration, err := authorize()
+	configuration, err := opts.authorize()
 	if err != nil {
 		return err
 	}

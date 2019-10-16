@@ -44,7 +44,7 @@ func NewWithFactory(configuration *config.Config, factory factoryFunc) *Client {
 // ForSubscription authorizes the client for a given subscription
 func (c *Client) ForSubscription(subID string) error {
 	c.internal = c.factory(subID)
-	return c.config.AuthorizeClient(&c.internal.Client)
+	return c.config.AuthorizeClientFromArgs(&c.internal.Client)
 }
 
 // Ensure creates or updates a virtual network in an idempotent manner and sets its provisioning state.

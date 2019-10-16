@@ -86,8 +86,8 @@ var _ = BeforeSuite(func(done Done) {
 
 	// +kubebuilder:scaffold:scheme
 	By("initializing azure config")
-	configuration := config.New(logf.Log.WithName("configuration"))
-	Expect(configuration.DetectAuthorizer()).ToNot(HaveOccurred())
+	configuration, err := config.New()
+	Expect(err).ToNot(HaveOccurred())
 
 	groupsClient = resourcegroups.New(configuration)
 	log := logf.Log.WithName("testmanager")

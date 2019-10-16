@@ -44,7 +44,7 @@ func NewWithFactory(configuration *config.Config, factory factoryFunc) *Client {
 // ForSubscription authorizes the client for a given subscription
 func (c *Client) ForSubscription(subID string) error {
 	c.internal = c.factory(subID)
-	return c.config.AuthorizeClient(&c.internal.Client)
+	return c.config.AuthorizeClientFromArgs(&c.internal.Client)
 }
 
 // Get returns a resource group.
