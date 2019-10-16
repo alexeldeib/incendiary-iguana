@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sanity-io/litter"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 	appsv1 "k8s.io/api/apps/v1"
 	extensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,7 +51,6 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/vms"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	"github.com/alexeldeib/incendiary-iguana/pkg/decoder"
-	"github.com/alexeldeib/semaphore"
 )
 
 type token struct{}
@@ -230,51 +230,52 @@ func (opts *EnsureOptions) Read() ([]runtime.Object, error) {
 	return objects, nil
 }
 
-func do(objects []runtime.Object, configuration *config.Config, applyFunc func(obj runtime.Object, configuration *config.Config, errs chan error)) error {
-
+func do(objects []runtime.Object, configuration *config.Config, applyFunc func(obj runtime.Object, configuration *config.Config) error) error {
 	// apply objects
-	pool := semaphore.New(limit)
-	errs := make(chan error, limit)
+	log.Info("starting errgroup")
+	g, _ := errgroup.WithContext(context.Background())
 	for key := range objects {
-		fn := func() {
-			applyFunc(objects[key], configuration, errs)
-		}
-		pool.MustAdd(fn)
+		log.WithValues("index", key).Info("ranging objects")
+		g.Go(func() error {
+			log.WithValues("index", key).Info("executing goroutine for object")
+			litter.Dump(objects[key])
+			return applyFunc(objects[key], configuration)
+		})
 	}
-
-	pool.Wait()
-
-	select {
-	case err := <-errs:
-		return err
-	default:
-	}
-
-	return nil
+	log.Info("waiting inside do")
+	return g.Wait()
 }
 
-func Ensure(obj runtime.Object, configuration *config.Config, errs chan error) {
+func Ensure(obj runtime.Object, configuration *config.Config) error {
 	var err error
 	log = log.WithValues("action", "ensure", "type", obj.GetObjectKind().GroupVersionKind().String())
 	log.Info("starting reconciliation")
 
 	kubeclient, err := GetKubeclient()
 	if err != nil {
+		log.Error(err, "err with kubeclient")
 		fmt.Printf("%#+v\n", err)
-		errs <- err
-		return
+		return err
 	}
+
+	log.Info("got kubeclient")
 
 	switch obj.(type) {
 	case *appsv1.Deployment:
 		log.Info("Deployment!")
 	case *azurev1alpha1.DockerConfig:
+		log.Info("trying docker config")
 		client, err := dockercfg.New(configuration, &kubeclient, scheme)
 		if err != nil {
+			log.Error(err, "got error with docker new client")
 			fmt.Printf("%#+v\n", err.Error())
 			break
 		}
 		err = EnsureSync(client, obj, log)
+		if err != nil {
+			log.Error(err, "got error with docker cfg")
+			fmt.Printf("%#+v\n", err.Error())
+		}
 	case *azurev1alpha1.Identity:
 		err = EnsureSync(identities.New(configuration), obj, log)
 	case *azurev1alpha1.Keyvault:
@@ -301,6 +302,9 @@ func Ensure(obj runtime.Object, configuration *config.Config, errs chan error) {
 		if err == nil {
 			err = EnsureSync(client, obj, log)
 		}
+		if err != nil {
+			fmt.Printf("%#+v\n", err)
+		}
 	case *azurev1alpha1.ServiceBusKey:
 		err = EnsureSync(servicebuskey.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.ServiceBusNamespace:
@@ -318,6 +322,9 @@ func Ensure(obj runtime.Object, configuration *config.Config, errs chan error) {
 		if err == nil {
 			err = EnsureSync(client, obj, log)
 		}
+		if err != nil {
+			fmt.Printf("%#+v\n", err)
+		}
 	case *azurev1alpha1.TrafficManager:
 		err = EnsureTrafficManager(trafficmanagers.New(configuration), obj, log)
 	case *azurev1alpha1.VirtualNetwork:
@@ -331,20 +338,20 @@ func Ensure(obj runtime.Object, configuration *config.Config, errs chan error) {
 		log.Info("failed to reconcile")
 		fmt.Printf("%#+v\n", err)
 		fmt.Printf("%s\n", err.Error())
-		errs <- err
-		return
+		return err
 	}
 	log.Info("sucessfully reconciled")
+	return nil
 }
 
-func Delete(obj runtime.Object, configuration *config.Config, errs chan error) {
+func Delete(obj runtime.Object, configuration *config.Config) error {
 	log := log.WithValues("action", "delete", "type", obj.GetObjectKind().GroupVersionKind().String())
 	log.Info("starting deletion")
 
 	kubeclient, err := GetKubeclient()
 	if err != nil {
 		fmt.Printf("%#+v\n", err)
-		errs <- err
+		return err
 	}
 
 	switch obj.(type) {
@@ -402,10 +409,10 @@ func Delete(obj runtime.Object, configuration *config.Config, errs chan error) {
 	if err != nil {
 		log.Info("failed to delete")
 		fmt.Printf("%s\n", err.Error())
-		errs <- err
-		return
+		return err
 	}
 	log.Info("sucessfully deleted")
+	return nil
 }
 
 func EnsureSync(client controllers.SyncClient, obj runtime.Object, log logr.Logger) error {
