@@ -65,7 +65,6 @@ const (
 )
 
 var (
-	log    = ctrl.Log.WithName("tinker")
 	scheme = runtime.NewScheme()
 )
 
@@ -141,7 +140,8 @@ func (opts *EnsureOptions) authorize() (*config.Config, error) {
 }
 
 func (opts *EnsureOptions) Ensure() error {
-	objects, err := opts.Read()
+	log := ctrl.Log.WithName("tinker")
+	objects, err := opts.Read(log)
 	if err != nil {
 		return err
 	}
@@ -150,11 +150,12 @@ func (opts *EnsureOptions) Ensure() error {
 		return err
 	}
 	log.WithValues("App", opts.App, "Tenant", opts.Tenant, "KeyLen", len(opts.Key)).Info("args")
-	return do(objects, configuration, Ensure)
+	return do(objects, configuration, Ensure, log)
 }
 
 func (opts *EnsureOptions) Delete() error {
-	objects, err := opts.Read()
+	log := ctrl.Log.WithName("tinker")
+	objects, err := opts.Read(log)
 	if err != nil {
 		return err
 	}
@@ -162,10 +163,10 @@ func (opts *EnsureOptions) Delete() error {
 	if err != nil {
 		return err
 	}
-	return do(objects, configuration, Delete)
+	return do(objects, configuration, Delete, log)
 }
 
-func (opts *EnsureOptions) Read() ([]runtime.Object, error) {
+func (opts *EnsureOptions) Read(log logr.Logger) ([]runtime.Object, error) {
 	if opts.File == "" {
 		return []runtime.Object{}, errors.New("must provide non-empty filepath")
 	}
@@ -230,7 +231,7 @@ func (opts *EnsureOptions) Read() ([]runtime.Object, error) {
 	return objects, nil
 }
 
-func do(objects []runtime.Object, configuration *config.Config, applyFunc func(obj runtime.Object, configuration *config.Config) error) error {
+func do(objects []runtime.Object, configuration *config.Config, applyFunc func(obj runtime.Object, configuration *config.Config, log logr.Logger) error, log logr.Logger) error {
 	// apply objects
 	log.Info("starting errgroup")
 	g, _ := errgroup.WithContext(context.Background())
@@ -239,14 +240,14 @@ func do(objects []runtime.Object, configuration *config.Config, applyFunc func(o
 		g.Go(func() error {
 			log.WithValues("index", key).Info("executing goroutine for object")
 			litter.Dump(objects[key])
-			return applyFunc(objects[key], configuration)
+			return applyFunc(objects[key], configuration, log)
 		})
 	}
 	log.Info("waiting inside do")
 	return g.Wait()
 }
 
-func Ensure(obj runtime.Object, configuration *config.Config) error {
+func Ensure(obj runtime.Object, configuration *config.Config, log logr.Logger) error {
 	var err error
 	log = log.WithValues("action", "ensure", "type", obj.GetObjectKind().GroupVersionKind().String())
 	log.Info("starting reconciliation")
@@ -344,8 +345,8 @@ func Ensure(obj runtime.Object, configuration *config.Config) error {
 	return nil
 }
 
-func Delete(obj runtime.Object, configuration *config.Config) error {
-	log := log.WithValues("action", "delete", "type", obj.GetObjectKind().GroupVersionKind().String())
+func Delete(obj runtime.Object, configuration *config.Config, log logr.Logger) error {
+	log = log.WithValues("action", "delete", "type", obj.GetObjectKind().GroupVersionKind().String())
 	log.Info("starting deletion")
 
 	kubeclient, err := GetKubeclient()
