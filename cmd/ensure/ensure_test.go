@@ -102,7 +102,7 @@ var _ = Describe("read yaml + parse resources", func() {
 		File: path,
 	}
 
-	objects, err := options.Read()
+	objects, err := options.Read(nil)
 	It("should read object successfully", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(len(objects)).To(Equal(1))
