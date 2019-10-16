@@ -49,6 +49,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/vms"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	"github.com/alexeldeib/incendiary-iguana/pkg/decoder"
+	"github.com/alexeldeib/semaphore"
 )
 
 type token struct{}
@@ -159,6 +160,7 @@ func (opts *EnsureOptions) Delete() error {
 	if err != nil {
 		return err
 	}
+	log.WithValues("App", opts.App, "Tenant", opts.Tenant, "KeyLen", len(opts.Key))
 	return do(objects, configuration, Delete)
 }
 
@@ -241,23 +243,18 @@ func do(objects []runtime.Object, configuration *config.Config, applyFunc func(o
 			kubeclient = &c
 		}
 	}
+
 	// apply objects
-	pool := make(chan token, limit)
+	pool := semaphore.New(limit)
 	errs := make(chan error, limit)
-	for _, obj := range objects {
-		// n.b. acquire
-		pool <- token{}
-		go func(o runtime.Object) {
-			applyFunc(o, configuration, kubeclient, errs)
-			// n.b. release
-			<-pool
-		}(obj)
+	for key := range objects {
+		fn := func() {
+			applyFunc(objects[key], configuration, kubeclient, errs)
+		}
+		pool.MustAdd(fn)
 	}
 
-	// n.b. wait for task completion
-	for n := limit; n > 0; n-- {
-		pool <- token{}
-	}
+	pool.Wait()
 
 	select {
 	case err := <-errs:
@@ -329,9 +326,9 @@ func Ensure(obj runtime.Object, configuration *config.Config, kubeclient *client
 		log.Info("nothing to do.")
 	}
 	if err != nil {
-		errs <- err
 		log.Info("failed to reconcile")
 		fmt.Printf("%s\n", err.Error())
+		errs <- err
 		return
 	}
 	log.Info("sucessfully reconciled")
@@ -394,9 +391,9 @@ func Delete(obj runtime.Object, configuration *config.Config, kubeclient *client
 		log.Info("nothing to do.")
 	}
 	if err != nil {
-		errs <- err
 		log.Info("failed to delete")
 		fmt.Printf("%s\n", err.Error())
+		errs <- err
 		return
 	}
 	log.Info("sucessfully deleted")

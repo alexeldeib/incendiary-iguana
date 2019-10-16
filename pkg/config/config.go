@@ -2,8 +2,8 @@ package config
 
 import (
 	"errors"
+	"strings"
 
-	kvauth "github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -122,6 +122,21 @@ func (c *Config) GetAuthorizerFromArgs() (autorest.Authorizer, error) {
 	return authConfig.Authorizer()
 }
 
+func (c *Config) GetAuthorizerFromArgsForResource(resource string) (autorest.Authorizer, error) {
+	if err := c.validateArgs(); err != nil {
+		return nil, err
+	}
+	authConfig := auth.ClientCredentialsConfig{
+		ClientID:     c.app,
+		ClientSecret: c.key,
+		TenantID:     c.tenant,
+		Resource:     resource,
+		AADEndpoint:  c.env.ActiveDirectoryEndpoint,
+	}
+
+	return authConfig.Authorizer()
+}
+
 // AuthorizeClientFromArgs tries to fetch an authorizer using GetArgsAuthorizer and inject it into a client.
 func (c *Config) AuthorizeClientFromArgs(client *autorest.Client) (err error) {
 	return c.AuthorizeClientFromArgsForResource(client, c.env.ResourceManagerEndpoint)
@@ -143,16 +158,7 @@ func (c *Config) validateArgs() error {
 	return nil
 }
 
-// GetKeyvaultAuthorizer creates a new Keyvault authorizer, preferring cli => file => env vars => msi.
+// GetKeyvaultAuthorizer creates a new Keyvault authorizer.
 func (c *Config) GetKeyvaultAuthorizer() (autorest.Authorizer, error) {
-	authorizer, err := kvauth.NewAuthorizerFromFile(azure.PublicCloud.KeyVaultEndpoint)
-	if err == nil {
-		return authorizer, nil
-	}
-	authorizer, err = kvauth.NewAuthorizerFromCLI()
-	if err == nil {
-		return authorizer, nil
-	}
-	authorizer, err = kvauth.NewAuthorizerFromEnvironment()
-	return authorizer, err
+	return c.GetAuthorizerFromArgsForResource(strings.TrimSuffix(c.env.KeyVaultEndpoint, "/"))
 }
