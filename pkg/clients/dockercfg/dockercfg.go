@@ -37,7 +37,7 @@ func New(configuration *config.Config, kubeclient *ctrl.Client, scheme *runtime.
 	kvclient := keyvault.New()
 	authorizer, err := configuration.GetKeyvaultAuthorizer()
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	kvclient.Authorizer = authorizer
 	return &Client{internal: kvclient, kubeclient: kubeclient, scheme: scheme}, nil
