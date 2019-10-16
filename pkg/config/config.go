@@ -1,132 +1,158 @@
-/*
-Copyright 2019 Alexander Eldeib.
-*/
-
 package config
 
 import (
+	"errors"
+
 	kvauth "github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
-	"github.com/go-logr/logr"
 )
 
-const userAgent = "ace/incendiary-iguana"
-
-// AuthorizationMode is a string to identify the Azure authentication mode at startup.
-type AuthorizationMode string
-
-const (
-	FileMode        AuthorizationMode = "file"
-	CLIMode         AuthorizationMode = "cli"
-	EnvironmentMode AuthorizationMode = "environment"
-)
-
-var (
-	mode AuthorizationMode
-)
-
+// Config holds environment settings, cached authorizers, and global loggers.
+// Notably, the environment settings contain the name of the Azure Cloud,
+// required for parameterizing authentication for for each Cloud environment (e.g. Public, Fairfax, Mooncake).
 type Config struct {
-	log        logr.Logger
-	internal   autorest.Authorizer
-	kvinternal *autorest.Authorizer
+	userAgent string
+	env       *azure.Environment
+	app       string
+	key       string
+	tenant    string
 }
 
-// TODO(ace): refactor this to support multiple cloud environments
-// TODO(ace): support retrieving arbitrary settings
-// TODO(ace): azure manager w all client/cache?
+type Option func(*Config)
 
-// New returns a concrete implementation of the Config interface
-func New(log logr.Logger) *Config {
-	return &Config{
-		log: log,
+// New fetches and caches environment settings for resource authentication and initializes loggers.
+func New(opts ...Option) (*Config, error) {
+	var err error
+	var settings auth.EnvironmentSettings
+
+	if settings, err = auth.GetSettingsFromEnvironment(); err != nil {
+		return nil, err
+	}
+
+	c := &Config{
+		userAgent: "azauth",
+		env:       &settings.Environment,
+	}
+
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	return c, nil
+}
+
+// UserAgent provides a method of setting the user agent on the client.
+func UserAgent(userAgent string) Option {
+	return func(c *Config) {
+		c.userAgent = userAgent
 	}
 }
 
-func (c *Config) Settings() (auth.EnvironmentSettings, error) {
-	return auth.GetSettingsFromEnvironment()
+// App provides a method of setting the user agent on the client.
+func App(app string) Option {
+	return func(c *Config) {
+		c.app = app
+	}
 }
 
-// GetAuthorizer creates a new ARM authorizer, preferring cli => file => env vars => msi.
-func (c *Config) DetectAuthorizer() error {
-	internal, err := auth.NewAuthorizerFromFile(azure.PublicCloud.ResourceManagerEndpoint)
-	if err == nil {
-		mode = FileMode
-		c.internal = internal
-		c.log.WithValues("authorization_mode", "file").Info("")
-		return nil
+// Key provides a method of setting the user agent on the client.
+func Key(key string) Option {
+	return func(c *Config) {
+		c.key = key
 	}
-	c.log.WithValues("authorization_mode", "file").Error(err, "failed to get authorizer")
-	internal, err = auth.NewAuthorizerFromCLI()
-	if err == nil {
-		c.internal = internal
-		mode = CLIMode
-		c.log.WithValues("authorization_mode", "cli").Info("")
-		return nil
-	}
-	c.log.WithValues("authorization_mode", "cli").Error(err, "failed to get authorizer")
-	internal, err = auth.NewAuthorizerFromEnvironment()
-	if err == nil {
-		mode = EnvironmentMode
-		c.internal = internal
-		c.log.WithValues("authorization_mode", "environment").Info("")
-		return nil
-	}
-	c.log.WithValues("authorization_mode", "environment").Error(err, "failed to get authorizer")
-	return err
 }
 
-// AuthorizerClient configures the provided client with an authorizer or returns an error.
+// Tenant provides a method of setting the user agent on the client.
+func Tenant(tenant string) Option {
+	return func(c *Config) {
+		c.tenant = tenant
+	}
+}
 
-// GetAuthorizer creates a new ARM authorizer, preferring cli => file => env vars => msi.
-func (c *Config) GetAuthorizer() (autorest.Authorizer, error) {
-	// TODO(ace): use detected mode and don't do the whole loop every time.
-	// authorizer, err := auth.NewAuthorizerFromFile(azure.PublicCloud.ResourceManagerEndpoint)
-	// if err == nil {
-	// 	return authorizer, nil
-	// }
-	// authorizer, err = auth.NewAuthorizerFromCLI()
-	// if err == nil {
-	// 	return authorizer, nil
-	// }
-	// return auth.NewAuthorizerFromEnvironment()
-	return c.internal, nil
+// AuthorizeClientForResource tries to fetch an authorizer using GetAuthorizerForResource and inject it into a client.
+func (c *Config) AuthorizeClientForResource(client *autorest.Client, resource string) (err error) {
+	if authorizer, err := auth.NewAuthorizerFromEnvironmentWithResource(resource); err == nil {
+		client.Authorizer = authorizer
+		return client.AddToUserAgent(c.userAgent)
+	}
+	return
+}
+
+// AuthorizeClienet tries to fetch an authorizer for management operations.
+func (c *Config) AuthorizeClient(client *autorest.Client) (err error) {
+	if authorizer, err := auth.NewAuthorizerFromEnvironment(); err == nil {
+		client.Authorizer = authorizer
+		return client.AddToUserAgent(c.userAgent)
+	}
+	return
+}
+
+// AuthorizeClientFromFile tries to fetch an authorizer using GetFileAuthorizer and inject it into a client.
+func (c *Config) AuthorizeClientFromFile(client *autorest.Client) (err error) {
+	if authorizer, err := auth.NewAuthorizerFromFile(c.env.ResourceManagerEndpoint); err == nil {
+		client.Authorizer = authorizer
+		return client.AddToUserAgent(c.userAgent)
+	}
+	return
+}
+
+// AuthorizeClientFromFile tries to fetch an authorizer using GetFileAuthorizer and inject it into a client.
+func (c *Config) AuthorizeClientFromFileForResource(client *autorest.Client, resource string) (err error) {
+	if authorizer, err := auth.NewAuthorizerFromFileWithResource(resource); err == nil {
+		client.Authorizer = authorizer
+		return client.AddToUserAgent(c.userAgent)
+	}
+	return
+}
+
+func (c *Config) GetAuthorizerFromArgs() (autorest.Authorizer, error) {
+	if err := c.validateArgs(); err != nil {
+		return nil, err
+	}
+	authConfig := auth.ClientCredentialsConfig{
+		ClientID:     c.app,
+		ClientSecret: c.key,
+		TenantID:     c.tenant,
+		Resource:     c.env.ResourceManagerEndpoint,
+		AADEndpoint:  c.env.ActiveDirectoryEndpoint,
+	}
+
+	return authConfig.Authorizer()
+}
+
+// AuthorizeClientFromArgs tries to fetch an authorizer using GetArgsAuthorizer and inject it into a client.
+func (c *Config) AuthorizeClientFromArgs(client *autorest.Client) (err error) {
+	return c.AuthorizeClientFromArgsForResource(client, c.env.ResourceManagerEndpoint)
+}
+
+// AuthorizeClientFromArgs tries to fetch an authorizer using GetArgsAuthorizer and inject it into a client.
+func (c *Config) AuthorizeClientFromArgsForResource(client *autorest.Client, resource string) (err error) {
+	if authorizer, err := c.GetAuthorizerFromArgs(); err == nil {
+		client.Authorizer = authorizer
+		return client.AddToUserAgent(c.userAgent)
+	}
+	return
+}
+
+func (c *Config) validateArgs() error {
+	if c.app == "" || c.tenant == "" || c.key == "" {
+		return errors.New("app, tenant, and key must all be provided as options for authenticating with args")
+	}
+	return nil
 }
 
 // GetKeyvaultAuthorizer creates a new Keyvault authorizer, preferring cli => file => env vars => msi.
 func (c *Config) GetKeyvaultAuthorizer() (autorest.Authorizer, error) {
-	if c.kvinternal != nil {
-		return *c.kvinternal, nil
-	}
 	authorizer, err := kvauth.NewAuthorizerFromFile(azure.PublicCloud.KeyVaultEndpoint)
 	if err == nil {
-		c.kvinternal = &authorizer
 		return authorizer, nil
 	}
 	authorizer, err = kvauth.NewAuthorizerFromCLI()
 	if err == nil {
-		c.kvinternal = &authorizer
 		return authorizer, nil
 	}
 	authorizer, err = kvauth.NewAuthorizerFromEnvironment()
-	if err == nil {
-		c.kvinternal = &authorizer
-		return authorizer, nil
-	}
 	return authorizer, err
-}
-
-// AuthorizerClient configures the provided client with an authorizer or returns an error.
-// It takes an autorest client and configures its user agent as well as Azure credentials.
-func (c *Config) AuthorizeClient(client *autorest.Client) error {
-	authorizer, err := c.GetAuthorizer()
-	if err != nil {
-		return err
-	}
-	client.Authorizer = authorizer
-	if err := client.AddToUserAgent(userAgent); err != nil {
-		return err
-	}
-	return nil
 }

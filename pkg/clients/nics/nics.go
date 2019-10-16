@@ -53,7 +53,7 @@ func (c *Client) ForSubscription(ctx context.Context, obj runtime.Object) error 
 		return err
 	}
 	c.internal = c.factory(local.Spec.SubscriptionID)
-	return c.config.AuthorizeClient(&c.internal.Client)
+	return c.config.AuthorizeClientFromArgs(&c.internal.Client)
 }
 
 // Ensure creates or updates a virtual network in an idempotent manner and sets its provisioning state.

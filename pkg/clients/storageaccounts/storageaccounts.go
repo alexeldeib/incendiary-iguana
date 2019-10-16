@@ -57,7 +57,7 @@ func (c *Client) ForSubscription(obj runtime.Object) error {
 		return err
 	}
 	c.internal = c.factory(local.Spec.SubscriptionID)
-	return c.config.AuthorizeClient(&c.internal.Client)
+	return c.config.AuthorizeClientFromArgs(&c.internal.Client)
 }
 
 // Ensure creates or updates a SQL server in an idempotent manner and sets its provisioning state.

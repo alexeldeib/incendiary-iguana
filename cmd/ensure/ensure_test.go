@@ -34,9 +34,10 @@ import (
 
 const testdata = "./testdata/group.yaml"
 
+var configuration *config.Config
+
 var (
 	log                 = ctrl.Log.WithName("test")
-	configuration       = config.New(log)
 	identitiesClient    *identities.Client
 	loadbalancersClient *loadbalancers.Client
 	publicIPClient      *publicips.Client
@@ -58,7 +59,8 @@ func TestEnsure(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	if err := configuration.DetectAuthorizer(); err != nil {
+	var err error
+	if configuration, err = config.New(); err != nil {
 		Fail(err.Error())
 	}
 	identitiesClient = identities.New(configuration)
