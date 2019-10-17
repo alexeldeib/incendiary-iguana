@@ -207,7 +207,7 @@ func format(format *string, secret string) ([]byte, error) {
 			}
 			var certPEM bytes.Buffer
 			pem.Encode(&certPEM, certBlock)
-			output := fmt.Sprintf("%s\n%s\n%s", tlssecrets.GenerateSubject(pfxCert), tlssecrets.GenerateIssuer(pfxCert), certPEM.String())
+			output := fmt.Sprintf("%s\n%s\n%s", tlssecrets.GenerateSubject(pfxCert), tlssecrets.GenerateIssuer(pfxCert), strings.TrimRight(certPEM.String(), "\n"))
 
 			// Fix cert chain order (reverse them and fix headers)
 			for _, cert := range caCerts {
@@ -217,7 +217,7 @@ func format(format *string, secret string) ([]byte, error) {
 				}
 				var certPEM bytes.Buffer
 				pem.Encode(&certPEM, certBlock)
-				output = fmt.Sprintf("%s\n%s\n%s%s", tlssecrets.GenerateSubject(cert), tlssecrets.GenerateIssuer(cert), certPEM.String(), output)
+				output = fmt.Sprintf("%s\n%s\n%s\n%s", output, tlssecrets.GenerateSubject(cert), tlssecrets.GenerateIssuer(cert), strings.TrimRight(certPEM.String(), "\n"))
 			}
 			return []byte(output), nil
 		default:

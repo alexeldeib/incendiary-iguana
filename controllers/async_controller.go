@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 type AsyncClient interface {
@@ -31,11 +32,18 @@ type AsyncReconciler struct {
 	Az       AsyncClient
 	Log      logr.Logger
 	Recorder record.EventRecorder
+	Scheme   *runtime.Scheme
 }
 
 func (r *AsyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctrl.Result, error) {
 	ctx := context.Background()
-	log := r.Log.WithValues("type", local.GetObjectKind().GroupVersionKind().String(), "namespace", req.Namespace, "name", req.Name)
+
+	gvk, err := apiutil.GVKForObject(local, r.Scheme)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	log := r.Log.WithValues("groupversion", gvk.GroupVersion().String(), "kind", gvk.Kind, "namespace", req.Namespace, "name", req.Name)
 
 	if err := r.Get(ctx, req.NamespacedName, local); err != nil {
 		log.Info("error during fetch from api server")
@@ -82,7 +90,7 @@ func (r *AsyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctr
 	}
 	log.Info("successfully reconciled")
 	final := multierror.Append(ensureErr, r.Status().Update(ctx, local))
-	err := final.ErrorOrNil()
+	err = final.ErrorOrNil()
 	if err != nil {
 		r.Recorder.Event(local, "Warning", "FailedReconcile", fmt.Sprintf("Failed to reconcile resource: %s", err.Error()))
 	} else if done {

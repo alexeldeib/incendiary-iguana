@@ -101,6 +101,7 @@ func main() {
 			Az:       resourcegroups.New(configuration),
 			Log:      log,
 			Recorder: recorder,
+			Scheme:   scheme,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ResourceGroup")
@@ -113,6 +114,7 @@ func main() {
 			Az:       keyvaults.New(configuration),
 			Log:      log,
 			Recorder: recorder,
+			Scheme:   scheme,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Keyvault")
@@ -125,6 +127,7 @@ func main() {
 			Az:       tlssecretsclient,
 			Log:      log,
 			Recorder: recorder,
+			Scheme:   scheme,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Secret")
@@ -137,6 +140,7 @@ func main() {
 			Az:       tlssecretsclient,
 			Log:      log,
 			Recorder: recorder,
+			Scheme:   scheme,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "TLSSecret")
@@ -149,6 +153,7 @@ func main() {
 			Az:       secretsclient,
 			Log:      log,
 			Recorder: recorder,
+			Scheme:   scheme,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SecretBundle")
@@ -161,6 +166,7 @@ func main() {
 			Az:       virtualnetworks.New(configuration),
 			Log:      log,
 			Recorder: recorder,
+			Scheme:   scheme,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VirtualNetwork")
@@ -173,6 +179,7 @@ func main() {
 			Az:       subnets.New(configuration),
 			Log:      log,
 			Recorder: recorder,
+			Scheme:   scheme,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Subnet")
@@ -185,6 +192,7 @@ func main() {
 			Az:       securitygroups.New(configuration),
 			Log:      log,
 			Recorder: recorder,
+			Scheme:   scheme,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SecurityGroup")
@@ -197,6 +205,7 @@ func main() {
 			Az:       publicips.New(configuration),
 			Log:      log,
 			Recorder: recorder,
+			Scheme:   scheme,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PublicIP")
@@ -209,6 +218,7 @@ func main() {
 			Az:       nics.New(configuration),
 			Log:      log,
 			Recorder: recorder,
+			Scheme:   scheme,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NetworkInterface")
@@ -232,6 +242,7 @@ func main() {
 			Az:       redis.New(configuration, &client, scheme),
 			Log:      log,
 			Recorder: recorder,
+			Scheme:   scheme,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Redis")
@@ -244,6 +255,7 @@ func main() {
 			Az:       servicebus.New(configuration, &client, scheme),
 			Log:      log,
 			Recorder: recorder,
+			Scheme:   scheme,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ServiceBusNamespace")
@@ -256,6 +268,7 @@ func main() {
 			Az:       vms.New(configuration),
 			Log:      log,
 			Recorder: recorder,
+			Scheme:   scheme,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VM")
@@ -268,6 +281,7 @@ func main() {
 			Az:       sqlservers.New(configuration, &client, scheme),
 			Log:      log,
 			Recorder: recorder,
+			Scheme:   scheme,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SQLServer")
@@ -280,6 +294,7 @@ func main() {
 			Az:       sqlfirewallrules.New(configuration),
 			Log:      log,
 			Recorder: recorder,
+			Scheme:   scheme,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SQLFirewallRule")

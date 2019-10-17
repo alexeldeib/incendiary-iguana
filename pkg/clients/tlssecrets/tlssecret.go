@@ -102,7 +102,7 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 		}
 		var certPEM bytes.Buffer
 		pem.Encode(&certPEM, certBlock)
-		output = fmt.Sprintf("%s%s\n%s\n%s", output, GenerateSubject(cert), GenerateIssuer(cert), strings.TrimRight(certPEM.String(), "\n"))
+		output = fmt.Sprintf("%s\n%s\n%s\n%s", output, GenerateSubject(cert), GenerateIssuer(cert), strings.TrimRight(certPEM.String(), "\n"))
 	}
 
 	keyX509 := x509.MarshalPKCS1PrivateKey(pfxKey.(*rsa.PrivateKey))
