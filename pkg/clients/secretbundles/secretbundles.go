@@ -217,7 +217,7 @@ func format(format *string, secret string) ([]byte, error) {
 				}
 				var certPEM bytes.Buffer
 				pem.Encode(&certPEM, certBlock)
-				output = fmt.Sprintf("%s\n%s\n%s\n%s", output, tlssecrets.GenerateSubject(cert), tlssecrets.GenerateIssuer(cert), strings.TrimRight(certPEM.String(), "\n"))
+				output = fmt.Sprintf("\n%s\n%s\n%s\n%s", output, tlssecrets.GenerateSubject(cert), tlssecrets.GenerateIssuer(cert), strings.TrimRight(certPEM.String(), "\n"))
 			}
 			return []byte(output), nil
 		default:
