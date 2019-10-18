@@ -236,7 +236,8 @@ func do(objects []runtime.Object, configuration *config.Config, applyFunc func(o
 	tasks := []*taskpool.Task{}
 
 	for key := range objects {
-		val := objects[key]
+		// If you don't do this, you will end up ranging a non-deterministic subset of the array, duplicating some elements and missing others.
+		val := objects[key] // This will get me in Go everytime.
 		t := taskpool.NewTask(func() error {
 			return applyFunc(val, configuration, log)
 		})
