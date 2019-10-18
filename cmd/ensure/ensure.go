@@ -16,7 +16,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sanity-io/litter"
 	"github.com/spf13/cobra"
-	"golang.org/x/sync/errgroup"
 	appsv1 "k8s.io/api/apps/v1"
 	extensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,6 +50,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/vms"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	"github.com/alexeldeib/incendiary-iguana/pkg/decoder"
+	"github.com/alexeldeib/taskpool"
 )
 
 type token struct{}
@@ -233,18 +233,37 @@ func (opts *EnsureOptions) Read(log logr.Logger) ([]runtime.Object, error) {
 
 func do(objects []runtime.Object, configuration *config.Config, applyFunc func(obj runtime.Object, configuration *config.Config, log logr.Logger) error, log logr.Logger) error {
 	// apply objects
-	log.Info("starting errgroup")
-	g, _ := errgroup.WithContext(context.Background())
+	tasks := []*taskpool.Task{}
+
 	for key := range objects {
-		log.WithValues("index", key).Info("ranging objects")
-		g.Go(func() error {
-			log.WithValues("index", key).Info("executing goroutine for object")
-			litter.Dump(objects[key])
-			return applyFunc(objects[key], configuration, log)
+		val := objects[key]
+		t := taskpool.NewTask(func() error {
+			return applyFunc(val, configuration, log)
 		})
+		tasks = append(tasks, t)
 	}
-	log.Info("waiting inside do")
-	return g.Wait()
+
+	pool := taskpool.NewPool(tasks, limit)
+
+	log.Info("waiting for all tasks to complete")
+	pool.Run()
+
+	var numErrors int
+	for _, task := range pool.Tasks {
+		if task.Err != nil {
+			log.Error(task.Err, "failed to reconcile object")
+			numErrors++
+		}
+		if numErrors >= 10 {
+			log.Info("Too many errors.")
+			break
+		}
+	}
+
+	if numErrors > 0 {
+		return errors.New("one or more resources failed to deploy, check log output for further details")
+	}
+	return nil
 }
 
 func Ensure(obj runtime.Object, configuration *config.Config, log logr.Logger) error {
@@ -259,13 +278,10 @@ func Ensure(obj runtime.Object, configuration *config.Config, log logr.Logger) e
 		return err
 	}
 
-	log.Info("got kubeclient")
-
 	switch obj.(type) {
 	case *appsv1.Deployment:
 		log.Info("Deployment!")
 	case *azurev1alpha1.DockerConfig:
-		log.Info("trying docker config")
 		client, err := dockercfg.New(configuration, &kubeclient, scheme)
 		if err != nil {
 			log.Error(err, "got error with docker new client")

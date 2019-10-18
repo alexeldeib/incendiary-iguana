@@ -87,6 +87,10 @@ github.com/alexeldeib/pool v0.0.0-20191007162139-3a38b72c0630 h1:qyG6ZES/UXo0Cy4
 github.com/alexeldeib/pool v0.0.0-20191007162139-3a38b72c0630/go.mod h1:DytR9dYkHtcBRFnwtlkhecUohelH30BceuakIvdONHE=
 github.com/alexeldeib/semaphore v0.0.0-20190930053851-96c61b009cd7 h1:qV9G7eufJDtZYcoaa9n7ErRj4YYdHkNaPCIa65lN7Zg=
 github.com/alexeldeib/semaphore v0.0.0-20190930053851-96c61b009cd7/go.mod h1:1iBLMBUiGSTFx+5D4JlqmRwGJ+P5htelPV6P/wlQn/I=
+github.com/alexeldeib/taskpool v0.0.0-20191018014840-8b3c2fb08f72 h1:y1331HX5nlvbS4D6ykNFPO90zPPFpcy61CsERVrvbgY=
+github.com/alexeldeib/taskpool v0.0.0-20191018014840-8b3c2fb08f72/go.mod h1:steKmoteX7gHF8hTZGuKyvTIs9w3kkjnyXVXi0ttvb0=
+github.com/alexeldeib/taskpool v0.0.0-20191018015559-bd6834978157 h1:qjQ4DUbMABMBwkqR5abUqZcRV9cOK4HUgN8ZmRVL5do=
+github.com/alexeldeib/taskpool v0.0.0-20191018015559-bd6834978157/go.mod h1:steKmoteX7gHF8hTZGuKyvTIs9w3kkjnyXVXi0ttvb0=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=
 github.com/asaskevich/govalidator v0.0.0-20180720115003-f9ffefc3facf/go.mod h1:lB+ZfQJz7igIIfQNfa7Ml4HSf2uFQQRzpGGRXenZAgY=

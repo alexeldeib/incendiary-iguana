@@ -13,6 +13,7 @@ require (
 	github.com/Azure/go-autorest/autorest/validation v0.2.0 // indirect
 	github.com/alexeldeib/pool v0.0.0-20191007162139-3a38b72c0630
 	github.com/alexeldeib/semaphore v0.0.0-20190930053851-96c61b009cd7
+	github.com/alexeldeib/taskpool v0.0.0-20191018015559-bd6834978157
 	github.com/apache/thrift v0.12.0 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/go-logr/logr v0.1.0
