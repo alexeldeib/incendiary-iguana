@@ -92,7 +92,7 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 	var certPEM bytes.Buffer
 	pem.Encode(&certPEM, certBlock)
 	output := fmt.Sprintf("%s\n%s\n%s", GenerateSubject(pfxCert), GenerateIssuer(pfxCert), certPEM.String())
-
+	caCertString := ""
 	// Fix cert chain order (reverse them and fix headers)
 	for _, cert := range caCerts {
 		certBlock = &pem.Block{
@@ -101,9 +101,9 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 		}
 		var certPEM bytes.Buffer
 		pem.Encode(&certPEM, certBlock)
-		output = fmt.Sprintf("%s\n%s\n%s\n%s", GenerateSubject(cert), GenerateIssuer(cert), certPEM.String(), output)
+		caCertString = fmt.Sprintf("%s\n%s\n%s\n%s", caCertString, GenerateSubject(cert), GenerateIssuer(cert), certPEM.String())
 	}
-
+	output = fmt.Sprintf("%s\n%s", output, caCertString)
 	keyX509 := x509.MarshalPKCS1PrivateKey(pfxKey.(*rsa.PrivateKey))
 	keyBlock := &pem.Block{
 		Type:  "RSA PRIVATE KEY",

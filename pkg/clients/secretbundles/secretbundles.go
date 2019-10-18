@@ -208,7 +208,7 @@ func format(format *string, secret string) ([]byte, error) {
 			var certPEM bytes.Buffer
 			pem.Encode(&certPEM, certBlock)
 			output := fmt.Sprintf("%s\n%s\n%s", tlssecrets.GenerateSubject(pfxCert), tlssecrets.GenerateIssuer(pfxCert), certPEM.String())
-
+			caCertString := ""
 			// Fix cert chain order (reverse them and fix headers)
 			for _, cert := range caCerts {
 				certBlock = &pem.Block{
@@ -217,8 +217,9 @@ func format(format *string, secret string) ([]byte, error) {
 				}
 				var certPEM bytes.Buffer
 				pem.Encode(&certPEM, certBlock)
-				output = fmt.Sprintf("%s\n%s\n%s\n%s", tlssecrets.GenerateSubject(cert), tlssecrets.GenerateIssuer(cert), certPEM.String(), output)
+				caCertString = fmt.Sprintf("%s\n%s\n%s\n%s", caCertString, tlssecrets.GenerateSubject(cert), tlssecrets.GenerateIssuer(cert), certPEM.String())
 			}
+			output = fmt.Sprintf("%s\n%s", output, caCertString)
 			return []byte(output), nil
 		default:
 			return nil, errors.New("failed to find expected case inside switch statement (should never happen)")

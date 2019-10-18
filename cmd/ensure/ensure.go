@@ -53,10 +53,8 @@ import (
 	"github.com/alexeldeib/taskpool"
 )
 
-type token struct{}
-
 const (
-	limit           = 1
+	limit           = 5
 	backoffSteps    = 30
 	backoffFactor   = 1.25
 	backoffInterval = 5 * time.Second
@@ -491,12 +489,10 @@ func EnsureAsync(client controllers.AsyncClient, obj runtime.Object, log logr.Lo
 
 	log = log.WithValues("type", obj.GetObjectKind().GroupVersionKind().String(), "namespace", local.GetNamespace(), "name", local.GetName())
 
-	// extract. consider keyvault and non-sub specific clients. Matrix size = 2x2 (async, sub)
 	if err := client.ForSubscription(context.Background(), obj); err != nil {
 		return errors.Wrap(err, "failed to get client for subscription")
 	}
 
-	// extract this into async/sync, probably
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")
 		done, err = client.Ensure(context.Background(), obj)
@@ -515,12 +511,10 @@ func DeleteAsync(client controllers.AsyncClient, obj runtime.Object, log logr.Lo
 
 	log = log.WithValues("type", obj.GetObjectKind().GroupVersionKind().String(), "namespace", local.GetNamespace(), "name", local.GetName())
 
-	// extract. consider keyvault and non-sub specific clients. Matrix size = 2x2 (async, sub)
 	if err := client.ForSubscription(context.Background(), obj); err != nil {
 		return errors.Wrap(err, "failed to get client for subscription")
 	}
 
-	// extract this into async/sync, probably
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")
 		found, err := client.Delete(context.Background(), obj)
