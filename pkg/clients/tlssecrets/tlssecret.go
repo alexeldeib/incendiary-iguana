@@ -81,16 +81,23 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 	if err != nil {
 		return errors.Wrapf(err, "err decoding base64 to p12")
 	}
+
 	pfxKey, pfxCert, caCerts, err := pkcs12.DecodeChain(p12, "")
 	if err != nil {
 		return err
 	}
+
+	if secret.Spec.Reverse {
+		pfxCert, caCerts[len(caCerts)-1] = caCerts[len(caCerts)-1], pfxCert
+	}
+
+	var certPEM bytes.Buffer
 	certBlock := &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: pfxCert.Raw,
 	}
-	var certPEM bytes.Buffer
 	pem.Encode(&certPEM, certBlock)
+
 	output := fmt.Sprintf("%s\n%s\n%s", GenerateSubject(pfxCert), GenerateIssuer(pfxCert), certPEM.String())
 	caCertString := ""
 	// Fix cert chain order (reverse them and fix headers)
@@ -99,16 +106,18 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 			Type:  "CERTIFICATE",
 			Bytes: cert.Raw,
 		}
-		var certPEM bytes.Buffer
-		pem.Encode(&certPEM, certBlock)
-		caCertString = fmt.Sprintf("%s\n%s\n%s\n%s", caCertString, GenerateSubject(cert), GenerateIssuer(cert), certPEM.String())
+		var caCertPEM bytes.Buffer
+		pem.Encode(&caCertPEM, certBlock)
+		caCertString = fmt.Sprintf("%s%s\n%s\n%s", caCertString, GenerateSubject(cert), GenerateIssuer(cert), caCertPEM.String())
 	}
 	output = fmt.Sprintf("%s\n%s", output, caCertString)
+
 	keyX509 := x509.MarshalPKCS1PrivateKey(pfxKey.(*rsa.PrivateKey))
 	keyBlock := &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: keyX509,
 	}
+
 	var keyPEM bytes.Buffer
 	if err := pem.Encode(&keyPEM, keyBlock); err != nil {
 		return err
@@ -205,4 +214,10 @@ func (c *Client) convert(obj runtime.Object) (*azurev1alpha1.TLSSecret, error) {
 		return nil, fmt.Errorf("failed type assertion on kind: %s", obj.GetObjectKind().GroupVersionKind().String())
 	}
 	return local, nil
+}
+
+func reverse(s []*x509.Certificate) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
 }

@@ -13,7 +13,8 @@ type TLSSecretSpec struct {
 	// Name is the name the corresponding Keyvault Secret.
 	Name string `json:"name"`
 	// Vault is the name of the Keyvault where this secret should be stored.
-	Vault string `json:"vault"`
+	Vault   string `json:"vault"`
+	Reverse bool   `json:"reverse,omitempty"`
 }
 
 // TLSSecretStatus defines the observed state of TLSSecret
