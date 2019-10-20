@@ -1,10 +1,10 @@
 Incendiary Iguana
 ---
-
+[![GitHub release](https://img.shields.io/github/release/alexeldeib/incendiary-iguana.svg)](https://GitHub.com/alexeldeib/incendiary-iguana/releases/)
 ![Github Actions Status](https://github.com/alexeldeib/incendiary-iguana/workflows/build%20and%20test/badge.svg)
-
-
 [![Azure DevOps Status](https://dev.azure.com/alexeldeib/incendiary-iguana/_apis/build/status/alexeldeib.incendiary-iguana?branchName=master)](https://dev.azure.com/alexeldeib/incendiary-iguana/_build/latest?definitionId=2&branchName=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/alexeldeib/incendiary-iguana)](https://goreportcard.com/report/github.com/alexeldeib/incendiary-iguana)
+
 
 # Motivation
 
