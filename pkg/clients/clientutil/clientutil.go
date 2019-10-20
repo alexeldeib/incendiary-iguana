@@ -58,7 +58,7 @@ func GenerateSafeRandomString(n int) string {
 	return string(b)
 }
 
-// LogRequests logs full autorest requests for any Azure client.
+// LogRequest logs full autorest requests for any Azure client.
 func LogRequest() autorest.PrepareDecorator {
 	return func(p autorest.Preparer) autorest.Preparer {
 		return autorest.PreparerFunc(func(r *http.Request) (*http.Request, error) {
