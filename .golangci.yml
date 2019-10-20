@@ -28,6 +28,7 @@ run:
   skip-files:
     - ".*\\.my\\.go$"
     - lib/bad.go
+    - "api\\v1alpha1\\zz_generated.deepcopy.go"
 
   # by default isn't set. If set we pass it to "go list -mod={option}". From "go help modules":
   # If invoked with -mod=readonly, the go command is disallowed from the implicit
@@ -236,7 +237,6 @@ linters:
     - govet
     - ineffassign
     - interfacer
-    - lll
     - misspell
     - nakedret
     - scopelint
@@ -252,6 +252,7 @@ linters:
   disable:
     - gochecknoglobals
     - gochecknoinits
+    - lll
   disable-all: false
   presets:
     - bugs
@@ -275,6 +276,9 @@ issues:
         - errcheck
         - dupl
         - gosec
+    - path: "api\\v1alpha1\\zz_generated.deepcopy.go"
+      linters:
+        - dupl
 
     # Exclude some staticcheck messages
     - linters:

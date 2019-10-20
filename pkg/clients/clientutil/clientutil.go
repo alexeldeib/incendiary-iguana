@@ -49,6 +49,7 @@ func GenerateRandomString(n int) string {
 	return base64.StdEncoding.EncodeToString(b) //, err
 }
 
+// GenerateSafeRandomString generates a string of n bytes from the known set of random safe characters.
 func GenerateSafeRandomString(n int) string {
 	b := make([]byte, n)
 	for i := range b {
@@ -57,6 +58,7 @@ func GenerateSafeRandomString(n int) string {
 	return string(b)
 }
 
+// LogRequests logs full autorest requests for any Azure client.
 func LogRequest() autorest.PrepareDecorator {
 	return func(p autorest.Preparer) autorest.Preparer {
 		return autorest.PreparerFunc(func(r *http.Request) (*http.Request, error) {
@@ -71,6 +73,7 @@ func LogRequest() autorest.PrepareDecorator {
 	}
 }
 
+// LogResponse logs full autorest responses for any Azure client.
 func LogResponse() autorest.RespondDecorator {
 	return func(p autorest.Responder) autorest.Responder {
 		return autorest.ResponderFunc(func(r *http.Response) error {
