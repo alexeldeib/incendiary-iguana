@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/msi/mgmt/2018-11-30/msi"
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
@@ -87,7 +88,7 @@ func (c *Client) Get(ctx context.Context, obj runtime.Object) (msi.Identity, err
 }
 
 // Delete handles deletion of a managed identity.
-func (c *Client) Delete(ctx context.Context, obj runtime.Object) error {
+func (c *Client) Delete(ctx context.Context, obj runtime.Object, log logr.Logger) error {
 	local, err := c.convert(obj)
 	if err != nil {
 		return err

@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2019-04-01/network"
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
@@ -95,7 +96,7 @@ func (c *Client) Get(ctx context.Context, obj runtime.Object) (network.PublicIPA
 }
 
 // Delete handles deletion of a virtual network.
-func (c *Client) Delete(ctx context.Context, obj runtime.Object) (bool, error) {
+func (c *Client) Delete(ctx context.Context, obj runtime.Object, log logr.Logger) (bool, error) {
 	local, err := c.convert(obj)
 	if err != nil {
 		return false, err

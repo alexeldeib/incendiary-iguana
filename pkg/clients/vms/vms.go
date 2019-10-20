@@ -13,6 +13,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2019-07-01/compute"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
@@ -122,7 +123,7 @@ func (c *Client) Get(ctx context.Context, obj runtime.Object) (compute.VirtualMa
 }
 
 // Delete handles deletion of a virtual network.
-func (c *Client) Delete(ctx context.Context, obj runtime.Object) (bool, error) {
+func (c *Client) Delete(ctx context.Context, obj runtime.Object, log logr.Logger) (bool, error) {
 	local, err := c.convert(obj)
 	if err != nil {
 		return false, err
@@ -138,7 +139,7 @@ func (c *Client) Delete(ctx context.Context, obj runtime.Object) (bool, error) {
 	found := !remote.IsHTTPStatus(http.StatusNotFound)
 	c.SetStatus(local, remote)
 	if err != nil && remote.IsHTTPStatus(http.StatusNotFound) {
-		return c.disks.Delete(ctx, local)
+		return c.disks.Delete(ctx, local, log)
 	}
 	return found, err
 }

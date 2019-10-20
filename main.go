@@ -98,7 +98,7 @@ func main() {
 	if err = (&controllers.ResourceGroupReconciler{
 		Reconciler: &controllers.AsyncReconciler{
 			Client:   client,
-			Az:       resourcegroups.New(configuration),
+			Az:       resourcegroups.NewGroupClient(configuration),
 			Log:      log,
 			Recorder: recorder,
 			Scheme:   scheme,

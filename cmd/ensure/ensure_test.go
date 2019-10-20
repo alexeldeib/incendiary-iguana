@@ -42,7 +42,7 @@ var (
 	loadbalancersClient *loadbalancers.Client
 	publicIPClient      *publicips.Client
 	redisClient         *redis.Client
-	rgClient            *resourcegroups.Client
+	rgClient            *resourcegroups.GroupClient
 	sbnamespaceClient   *servicebus.Client
 	secretsClient       *secrets.Client
 	secretbundlesClient *secretbundles.Client
@@ -66,7 +66,7 @@ var _ = BeforeSuite(func() {
 	identitiesClient = identities.New(configuration)
 	loadbalancersClient = loadbalancers.New(configuration)
 	publicIPClient = publicips.New(configuration)
-	rgClient = resourcegroups.New(configuration)
+	rgClient = resourcegroups.NewGroupClient(configuration)
 	redisClient = redis.New(configuration, nil, nil)
 	sbnamespaceClient = servicebus.New(configuration, nil, nil)
 	sgClient = securitygroups.New(configuration)

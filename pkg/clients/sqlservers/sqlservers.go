@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
+	"github.com/go-logr/logr"
 	"github.com/sanity-io/litter"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -219,12 +220,12 @@ func (c *Client) ensureRule(ctx context.Context, local *azurev1alpha1.SQLServer)
 			fmt.Printf("err: %s", err.Error()) // hoist this up
 			return err
 		}
-	} else {
-		if err := c.firewalls.Delete(ctx, rule); err != nil {
-			fmt.Printf("err: %s", err.Error())
-			return err
-		}
-	}
+	} // else {
+	// 	if err := c.firewalls.Delete(ctx, rule, log); err != nil {
+	// 		fmt.Printf("err: %s", err.Error())
+	// 		return err
+	// 	}
+	// }
 	return nil
 }
 
@@ -238,7 +239,7 @@ func (c *Client) Get(ctx context.Context, obj runtime.Object) (sql.Server, error
 }
 
 // Delete handles deletion of a SQL server.
-func (c *Client) Delete(ctx context.Context, obj runtime.Object) error {
+func (c *Client) Delete(ctx context.Context, obj runtime.Object, log logr.Logger) error {
 	local, err := c.convert(obj)
 	if err != nil {
 		return err

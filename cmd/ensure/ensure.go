@@ -303,7 +303,7 @@ func Ensure(obj runtime.Object, configuration *config.Config, log logr.Logger) e
 	case *azurev1alpha1.Redis:
 		err = EnsureAsync(redis.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.ResourceGroup:
-		err = EnsureAsync(resourcegroups.New(configuration), obj, log)
+		err = EnsureAsync(resourcegroups.NewGroupClient(configuration), obj, log)
 	case *azurev1alpha1.Secret:
 		client, err := secrets.New(configuration, &kubeclient, scheme)
 		if err != nil {
@@ -389,7 +389,7 @@ func Delete(obj runtime.Object, configuration *config.Config, log logr.Logger) e
 	case *azurev1alpha1.Redis:
 		err = DeleteAsync(redis.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.ResourceGroup:
-		err = DeleteAsync(resourcegroups.New(configuration), obj, log)
+		err = DeleteAsync(resourcegroups.NewGroupClient(configuration), obj, log)
 	case *azurev1alpha1.Secret:
 		client, err := secrets.New(configuration, &kubeclient, scheme)
 		if err == nil {
@@ -473,7 +473,7 @@ func DeleteSync(client controllers.SyncClient, obj runtime.Object, log logr.Logg
 	// extract this into async/sync, probably
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")
-		err = client.Delete(context.Background(), obj)
+		err = client.Delete(context.Background(), obj, log)
 		if err != nil {
 			log.Error(err, "failed reconcile attempt")
 		}
@@ -517,7 +517,7 @@ func DeleteAsync(client controllers.AsyncClient, obj runtime.Object, log logr.Lo
 
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")
-		found, err := client.Delete(context.Background(), obj)
+		found, err := client.Delete(context.Background(), obj, log)
 		if err != nil {
 			log.Error(err, "failed reconcile attempt")
 		}

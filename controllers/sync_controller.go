@@ -25,7 +25,7 @@ const (
 type SyncClient interface {
 	ForSubscription(context.Context, runtime.Object) error
 	Ensure(context.Context, runtime.Object) error
-	Delete(context.Context, runtime.Object) error
+	Delete(context.Context, runtime.Object, logr.Logger) error
 }
 
 // SyncReconciler is a generic reconciler for Azure resources which run fast, synchronous operations.
@@ -69,7 +69,7 @@ func (r *SyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctrl
 		}
 	} else {
 		if HasFinalizer(res, finalizerName) {
-			final := multierror.Append(r.Az.Delete(ctx, local), r.Status().Update(ctx, local))
+			final := multierror.Append(r.Az.Delete(ctx, local, log), r.Status().Update(ctx, local))
 			if err := final.ErrorOrNil(); err != nil {
 				r.Recorder.Event(local, "Warning", "FailedDelete", fmt.Sprintf("Failed to delete resource: %s", err.Error()))
 				return ctrl.Result{}, err

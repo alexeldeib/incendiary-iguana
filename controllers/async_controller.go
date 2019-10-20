@@ -22,7 +22,7 @@ import (
 type AsyncClient interface {
 	ForSubscription(context.Context, runtime.Object) error
 	Ensure(context.Context, runtime.Object) (bool, error)
-	Delete(context.Context, runtime.Object) (bool, error)
+	Delete(context.Context, runtime.Object, logr.Logger) (bool, error)
 }
 
 // AsyncReconciler is a generic reconciler for Azure resources.
@@ -67,7 +67,7 @@ func (r *AsyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctr
 		}
 	} else {
 		if HasFinalizer(res, finalizerName) {
-			found, deleteErr := r.Az.Delete(ctx, local)
+			found, deleteErr := r.Az.Delete(ctx, local, log)
 			final := multierror.Append(deleteErr, r.Status().Update(ctx, local))
 			if err := final.ErrorOrNil(); err != nil {
 				r.Recorder.Event(local, "Warning", "FailedDelete", fmt.Sprintf("Failed to delete resource: %s", err.Error()))

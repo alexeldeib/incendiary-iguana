@@ -9,9 +9,9 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 )
 
-// Config holds environment settings, cached authorizers, and global loggers.
-// Notably, the environment settings contain the name of the Azure Cloud,
-// required for parameterizing authentication for for each Cloud environment (e.g. Public, Fairfax, Mooncake).
+// Config holds the configured useragent, environment, and authentication
+// credentials. The environment will notably be used to identify what resource
+// to request tokens for e.g. in sovereign clouds.
 type Config struct {
 	userAgent string
 	env       *azure.Environment
@@ -22,7 +22,8 @@ type Config struct {
 
 type Option func(*Config)
 
-// New fetches and caches environment settings for resource authentication and initializes loggers.
+// New stores the environment and authentication configuration.
+// It uses this information to produces authorizers for various resources.
 func New(opts ...Option) (*Config, error) {
 	var err error
 	var settings auth.EnvironmentSettings
@@ -43,85 +44,82 @@ func New(opts ...Option) (*Config, error) {
 	return c, nil
 }
 
-// UserAgent provides a method of setting the user agent on the client.
+// UserAgent sets the user agent on Azure SDK clients.
 func UserAgent(userAgent string) Option {
 	return func(c *Config) {
 		c.userAgent = userAgent
 	}
 }
 
-// App provides a method of setting the user agent on the client.
+// App sets the AAD application to authenticate with.
 func App(app string) Option {
 	return func(c *Config) {
 		c.app = app
 	}
 }
 
-// Key provides a method of setting the user agent on the client.
+// Key sets the client secret for the AAD application used in authentication.
 func Key(key string) Option {
 	return func(c *Config) {
 		c.key = key
 	}
 }
 
-// Tenant provides a method of setting the user agent on the client.
+// Tenant sets the tenant ID for authentication and token acquisition.
 func Tenant(tenant string) Option {
 	return func(c *Config) {
 		c.tenant = tenant
 	}
 }
 
-// AuthorizeClientForResource tries to fetch an authorizer using GetAuthorizerForResource and inject it into a client.
+// AuthorizeClientForResource fetches an authorizer from the environment for a given resources and injects it to a client.
 func (c *Config) AuthorizeClientForResource(client *autorest.Client, resource string) (err error) {
-	if authorizer, err := auth.NewAuthorizerFromEnvironmentWithResource(resource); err == nil {
-		client.Authorizer = authorizer
-		return client.AddToUserAgent(c.userAgent)
+	authorizer, err := auth.NewAuthorizerFromEnvironmentWithResource(resource)
+	if err != nil {
+		return err
 	}
-	return
+	client.Authorizer = authorizer
+	return client.AddToUserAgent(c.userAgent)
 }
 
-// AuthorizeClienet tries to fetch an authorizer for management operations.
+// AuthorizeClient fetches a resource management authorizer from the environment and injects it to a client.
 func (c *Config) AuthorizeClient(client *autorest.Client) (err error) {
-	if authorizer, err := auth.NewAuthorizerFromEnvironment(); err == nil {
-		client.Authorizer = authorizer
-		return client.AddToUserAgent(c.userAgent)
+	authorizer, err := auth.NewAuthorizerFromEnvironment()
+	if err != nil {
+		return err
 	}
-	return
+	client.Authorizer = authorizer
+	return client.AddToUserAgent(c.userAgent)
 }
 
-// AuthorizeClientFromFile tries to fetch an authorizer using GetFileAuthorizer and inject it into a client.
+// AuthorizeClientFromFile fetches a resource management authorizer from an SDK auth file and injects it to a client.
 func (c *Config) AuthorizeClientFromFile(client *autorest.Client) (err error) {
-	if authorizer, err := auth.NewAuthorizerFromFile(c.env.ResourceManagerEndpoint); err == nil {
-		client.Authorizer = authorizer
-		return client.AddToUserAgent(c.userAgent)
+	authorizer, err := auth.NewAuthorizerFromFile(c.env.ResourceManagerEndpoint)
+	if err != nil {
+		return err
 	}
-	return
+	client.Authorizer = authorizer
+	return client.AddToUserAgent(c.userAgent)
 }
 
-// AuthorizeClientFromFile tries to fetch an authorizer using GetFileAuthorizer and inject it into a client.
+// AuthorizeClientFromFileForResource fetches an authorizer from an SDK auth file for an arbitrary resource and injects it to a client.
 func (c *Config) AuthorizeClientFromFileForResource(client *autorest.Client, resource string) (err error) {
-	if authorizer, err := auth.NewAuthorizerFromFileWithResource(resource); err == nil {
-		client.Authorizer = authorizer
-		return client.AddToUserAgent(c.userAgent)
+	authorizer, err := auth.NewAuthorizerFromFileWithResource(resource)
+	if err != nil {
+		return err
 	}
-	return
+	client.Authorizer = authorizer
+	return client.AddToUserAgent(c.userAgent)
 }
 
+// GetAuthorizerFromArgs uses arguments passed on the command line to authenticate using AAD app ID, secret, and tenant ID.
+// It returns the resultings resource management authorizer.
 func (c *Config) GetAuthorizerFromArgs() (autorest.Authorizer, error) {
-	if err := c.validateArgs(); err != nil {
-		return nil, err
-	}
-	authConfig := auth.ClientCredentialsConfig{
-		ClientID:     c.app,
-		ClientSecret: c.key,
-		TenantID:     c.tenant,
-		Resource:     c.env.ResourceManagerEndpoint,
-		AADEndpoint:  c.env.ActiveDirectoryEndpoint,
-	}
-
-	return authConfig.Authorizer()
+	return c.GetAuthorizerFromArgsForResource(c.env.ResourceManagerEndpoint)
 }
 
+// GetAuthorizerFromArgsForResource uses arguments passed on the command line to authenticate using AAD app ID, secret, and tenant ID.
+// It returns an authorizer to the resource provided as an argument.
 func (c *Config) GetAuthorizerFromArgsForResource(resource string) (autorest.Authorizer, error) {
 	if err := c.validateArgs(); err != nil {
 		return nil, err
@@ -137,18 +135,19 @@ func (c *Config) GetAuthorizerFromArgsForResource(resource string) (autorest.Aut
 	return authConfig.Authorizer()
 }
 
-// AuthorizeClientFromArgs tries to fetch an authorizer using GetArgsAuthorizer and inject it into a client.
+// AuthorizeClientFromArgs authorizes an SDK client using arguments from the command line.
 func (c *Config) AuthorizeClientFromArgs(client *autorest.Client) (err error) {
 	return c.AuthorizeClientFromArgsForResource(client, c.env.ResourceManagerEndpoint)
 }
 
-// AuthorizeClientFromArgs tries to fetch an authorizer using GetArgsAuthorizer and inject it into a client.
+// AuthorizeClientFromArgsForResource authorizes an SDK client to the provided resource using arguments from the command line.
 func (c *Config) AuthorizeClientFromArgsForResource(client *autorest.Client, resource string) (err error) {
-	if authorizer, err := c.GetAuthorizerFromArgs(); err == nil {
-		client.Authorizer = authorizer
-		return client.AddToUserAgent(c.userAgent)
+	authorizer, err := c.GetAuthorizerFromArgsForResource(resource)
+	if err != nil {
+		return err
 	}
-	return
+	client.Authorizer = authorizer
+	return client.AddToUserAgent(c.userAgent)
 }
 
 func (c *Config) validateArgs() error {

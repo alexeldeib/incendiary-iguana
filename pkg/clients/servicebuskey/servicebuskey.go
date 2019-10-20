@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/services/servicebus/mgmt/2017-04-01/servicebus"
+	"github.com/go-logr/logr"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -157,7 +158,7 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 }
 
 // Delete handles deletion of a virtual network.
-func (c *Client) Delete(ctx context.Context, obj runtime.Object) error {
+func (c *Client) Delete(ctx context.Context, obj runtime.Object, log logr.Logger) error {
 	local, err := c.convert(obj)
 	if err != nil {
 		return err

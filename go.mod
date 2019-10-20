@@ -30,6 +30,7 @@ require (
 	github.com/openzipkin/zipkin-go v0.1.6 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v1.2.0 // indirect
+	github.com/prometheus/common v0.7.0
 	github.com/sanity-io/litter v1.1.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/cobra v0.0.5

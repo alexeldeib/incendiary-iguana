@@ -46,7 +46,7 @@ var (
 	k8sClient    client.Client
 	mgr          ctrl.Manager
 	testEnv      *envtest.Environment
-	groupsClient *resourcegroups.Client
+	groupsClient *resourcegroups.GroupClient
 	doneMgr      = make(chan struct{})
 )
 
@@ -89,7 +89,6 @@ var _ = BeforeSuite(func(done Done) {
 	configuration, err := config.New()
 	Expect(err).ToNot(HaveOccurred())
 
-	groupsClient = resourcegroups.New(configuration)
 	log := logf.Log.WithName("testmanager")
 	recorder := mgr.GetEventRecorderFor("testmanager")
 
@@ -97,7 +96,7 @@ var _ = BeforeSuite(func(done Done) {
 	Expect((&ResourceGroupReconciler{
 		Reconciler: &AsyncReconciler{
 			Client:   k8sClient,
-			Az:       resourcegroups.New(configuration),
+			Az:       resourcegroups.NewGroupClient(configuration),
 			Log:      log,
 			Recorder: recorder,
 		},

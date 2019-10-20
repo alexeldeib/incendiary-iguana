@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -103,7 +104,7 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 }
 
 // Delete deletes a secret from Keyvault.
-func (c *Client) Delete(ctx context.Context, obj runtime.Object) error {
+func (c *Client) Delete(ctx context.Context, obj runtime.Object, log logr.Logger) error {
 	local, err := c.convert(obj)
 	if err != nil {
 		return err

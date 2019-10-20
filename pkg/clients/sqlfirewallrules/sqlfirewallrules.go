@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
@@ -96,7 +97,7 @@ func (c *Client) Get(ctx context.Context, obj runtime.Object) (sql.FirewallRule,
 }
 
 // Delete handles deletion of a SQL server.
-func (c *Client) Delete(ctx context.Context, obj runtime.Object) error {
+func (c *Client) Delete(ctx context.Context, obj runtime.Object, log logr.Logger) error {
 	local, err := c.convert(obj)
 	if err != nil {
 		return err

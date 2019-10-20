@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/redis/mgmt/2018-03-01/redis"
+	"github.com/go-logr/logr"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -164,7 +165,7 @@ func (c *Client) SyncSecrets(ctx context.Context, local *azurev1alpha1.Redis) er
 }
 
 // Delete handles deletion of a resource groups.
-func (c *Client) Delete(ctx context.Context, obj runtime.Object) (bool, error) {
+func (c *Client) Delete(ctx context.Context, obj runtime.Object, log logr.Logger) (bool, error) {
 	local, err := c.convert(obj)
 	if err != nil {
 		return false, err

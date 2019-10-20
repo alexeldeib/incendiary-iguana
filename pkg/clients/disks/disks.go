@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2019-07-01/compute"
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
@@ -62,7 +63,7 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) (bool, error) {
 }
 
 // Delete handles deletion of a disk.
-func (c *Client) Delete(ctx context.Context, obj runtime.Object) (bool, error) {
+func (c *Client) Delete(ctx context.Context, obj runtime.Object, log logr.Logger) (bool, error) {
 	local, err := c.convert(obj)
 	if err != nil {
 		return false, err

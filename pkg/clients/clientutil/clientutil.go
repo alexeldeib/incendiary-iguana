@@ -9,6 +9,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	mrand "math/rand"
+	"net/http"
+	"net/http/httputil"
+
+	"github.com/Azure/go-autorest/autorest"
 )
 
 const safeBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -51,4 +55,32 @@ func GenerateSafeRandomString(n int) string {
 		b[i] = safeBytes[mrand.Intn(len(safeBytes))]
 	}
 	return string(b)
+}
+
+func LogRequest() autorest.PrepareDecorator {
+	return func(p autorest.Preparer) autorest.Preparer {
+		return autorest.PreparerFunc(func(r *http.Request) (*http.Request, error) {
+			r, err := p.Prepare(r)
+			if err != nil {
+				fmt.Println(err)
+			}
+			dump, _ := httputil.DumpRequestOut(r, true)
+			fmt.Println(string(dump))
+			return r, err
+		})
+	}
+}
+
+func LogResponse() autorest.RespondDecorator {
+	return func(p autorest.Responder) autorest.Responder {
+		return autorest.ResponderFunc(func(r *http.Response) error {
+			err := p.Respond(r)
+			if err != nil {
+				fmt.Println(err)
+			}
+			dump, _ := httputil.DumpResponse(r, true)
+			fmt.Println(string(dump))
+			return err
+		})
+	}
 }
