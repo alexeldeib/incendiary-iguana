@@ -7,6 +7,7 @@ package trafficmanagers
 import (
 	"github.com/Azure/azure-sdk-for-go/services/trafficmanager/mgmt/2018-04-01/trafficmanager"
 	"github.com/Azure/go-autorest/autorest/to"
+
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 )
 

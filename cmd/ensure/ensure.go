@@ -27,6 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/alexeldeib/taskpool"
+
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/controllers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/dockercfg"
@@ -50,7 +52,6 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients/vms"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	"github.com/alexeldeib/incendiary-iguana/pkg/decoder"
-	"github.com/alexeldeib/taskpool"
 )
 
 const (
@@ -356,7 +357,7 @@ func Ensure(obj runtime.Object, configuration *config.Config, log logr.Logger) e
 		fmt.Printf("%s\n", err.Error())
 		return err
 	}
-	log.Info("sucessfully reconciled")
+	log.Info("successfully reconciled")
 	return nil
 }
 
@@ -427,7 +428,7 @@ func Delete(obj runtime.Object, configuration *config.Config, log logr.Logger) e
 		fmt.Printf("%s\n", err.Error())
 		return err
 	}
-	log.Info("sucessfully deleted")
+	log.Info("successfully deleted")
 	return nil
 }
 

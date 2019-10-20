@@ -19,9 +19,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/davecgh/go-spew/spew"
+
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
-	"github.com/davecgh/go-spew/spew"
 )
 
 type Client struct {
@@ -129,7 +130,6 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 			} else {
 				final = multierror.Append(final, errors.New("expected primary key but found nil"))
 			}
-
 		}
 
 		if local.Spec.PrimaryConnectionString != nil {
@@ -138,7 +138,6 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 			} else {
 				final = multierror.Append(final, errors.New("expected primary key but found nil"))
 			}
-
 		}
 
 		if local.Spec.SecondaryConnectionString != nil {
@@ -147,7 +146,6 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 			} else {
 				final = multierror.Append(final, errors.New("expected primary key but found nil"))
 			}
-
 		}
 
 		return final.ErrorOrNil()

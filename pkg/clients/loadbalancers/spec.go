@@ -10,10 +10,11 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2019-04-01/network"
 	"github.com/Azure/go-autorest/autorest/to"
-	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/clientutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sanity-io/litter"
+
+	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients/clientutil"
 )
 
 type Spec struct {

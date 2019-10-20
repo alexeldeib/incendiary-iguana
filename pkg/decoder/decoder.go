@@ -18,7 +18,7 @@ type yamlDecoder struct {
 	close   func() error
 }
 
-// Modified from https://github.com/kubernetes-sigs/cluster-api. Improved to accomodate custom schemes.
+// Modified from https://github.com/kubernetes-sigs/cluster-api. Improved to accommodate custom schemes.
 func (d *yamlDecoder) Decode(defaults *schema.GroupVersionKind, into runtime.Object) (runtime.Object, *schema.GroupVersionKind, error) {
 	for {
 		doc, err := d.reader.Read()
@@ -33,7 +33,6 @@ func (d *yamlDecoder) Decode(defaults *schema.GroupVersionKind, into runtime.Obj
 
 		return d.decoder.Decode(doc, defaults, into)
 	}
-
 }
 
 func (d *yamlDecoder) Close() error {

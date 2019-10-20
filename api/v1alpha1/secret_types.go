@@ -15,15 +15,15 @@ type SecretSpec struct {
 	FriendlyName *string `json:"friendlyName,omitempty"`
 	// Location is the Azure location of the resource group (e.g., eastus2 or "West US").
 	// Only required if Vault does not exist.
-	// Must be used it conjuction with ResourceGroup and SubscriptionID
+	// Must be used it conjunction with ResourceGroup and SubscriptionID
 	Location *string `json:"location,omitempty"`
 	// ResourceGroup contains the Keyvault.
 	// Only required if Vault does not exist.
-	// Must be used it conjuction with Location and SubscriptionID.
+	// Must be used it conjunction with Location and SubscriptionID.
 	ResourceGroup *string `json:"resourceGroup,omitempty"`
 	// SubscriptionID contains the Resource group. Is a GUID.
 	// Only required if Vault does not exist.
-	// Must be used it conjuction with Location and ResourceGroup.
+	// Must be used it conjunction with Location and ResourceGroup.
 	SubscriptionID *string `json:"subscriptionId,omitempty"`
 }
 

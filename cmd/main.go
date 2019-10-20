@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/alexeldeib/incendiary-iguana/cmd/ensure"
 	"github.com/spf13/cobra"
+
+	"github.com/alexeldeib/incendiary-iguana/cmd/ensure"
 )
 
 var version string

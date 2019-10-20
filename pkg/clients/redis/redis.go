@@ -155,7 +155,6 @@ func (c *Client) SyncSecrets(ctx context.Context, local *azurev1alpha1.Redis) er
 			} else {
 				final = multierror.Append(final, errors.New("expected primary key but found nil"))
 			}
-
 		}
 
 		return final.ErrorOrNil()

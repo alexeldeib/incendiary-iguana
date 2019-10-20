@@ -13,9 +13,10 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/sanity-io/litter"
 
-	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 )
 
 var _ = Describe("resource group controller", func() {

@@ -7,6 +7,7 @@ BAZEL_OPTIONS ?= --local_cpu_resources HOST_CPUS-2  --local_ram_resources HOST_R
 BAZEL_TEST_OPTIONS ?= $(BAZEL_OPTIONS) --test_output all --test_summary detailed 
 DEBUG_TEST_OPTIONS = $(BAZEL_TEST_OPTIONS) --sandbox_debug
 GO_TEST_OPTIONS ?= ./api/... ./controllers/... -coverprofile cover.out
+REPO = github.com/alexeldeib/incendiary-iguana
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -62,7 +63,7 @@ manifests: controller-gen generate
 # Run go fmt against code
 fmt:
 	go fmt ./...
-	goimports -w .
+	goimports -local $(REPO) -w .
 
 # Run go vet against code
 vet:

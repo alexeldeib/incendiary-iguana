@@ -110,7 +110,6 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 			} else {
 				final = multierror.Append(final, errors.New("expected primary key but found nil"))
 			}
-
 		}
 
 		return final.ErrorOrNil()
