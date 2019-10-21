@@ -14,7 +14,7 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/authorizer"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clientfactory"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients"
 )
 
 type service struct {
@@ -28,7 +28,7 @@ func newService(factory authorizer.Factory) *service {
 }
 
 func (s *service) CreateOrUpdate(ctx context.Context, local *azurev1alpha1.ResourceGroup, remote resources.Group) (result resources.Group, err error) {
-	client, err := clientfactory.NewGroupsClient(local.Spec.SubscriptionID, s.factory)
+	client, err := clients.NewGroupsClient(local.Spec.SubscriptionID, s.factory)
 	if err != nil {
 		return resources.Group{}, err
 	}
@@ -36,7 +36,7 @@ func (s *service) CreateOrUpdate(ctx context.Context, local *azurev1alpha1.Resou
 }
 
 func (s *service) Get(ctx context.Context, local *azurev1alpha1.ResourceGroup) (result resources.Group, err error) {
-	client, err := clientfactory.NewGroupsClient(local.Spec.SubscriptionID, s.factory)
+	client, err := clients.NewGroupsClient(local.Spec.SubscriptionID, s.factory)
 	if err != nil {
 		return resources.Group{}, err
 	}

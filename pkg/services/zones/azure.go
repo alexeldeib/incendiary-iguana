@@ -33,48 +33,53 @@ func (s *Service) Get(ctx context.Context, local *azurev1alpha1.VM) ([]string, e
 		return nil, err
 	}
 
-	var zones []string
 	res, err := client.ListComplete(ctx)
 	if err != nil {
-		return zones, err
+		return nil, err
 	}
 
+	var skus []compute.ResourceSku
 	for res.NotDone() {
-		resSku := res.Value()
-		if strings.EqualFold(*resSku.Name, local.Spec.SKU) {
-			// Use map for easy deletion and iteration
-			availableZones := make(map[string]bool)
-			for _, locationInfo := range *resSku.LocationInfo {
-				for _, zone := range *locationInfo.Zones {
-					availableZones[zone] = true
-				}
-				if strings.EqualFold(*locationInfo.Location, local.Spec.Location) {
-					for _, restriction := range *resSku.Restrictions {
+		skus = append(skus, res.Value())
+		err = res.NextWithContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return filterZones(skus, local.Spec.SubscriptionID, local.Spec.Location, local.Spec.SKU)
+}
+
+func filterZones(skus []compute.ResourceSku, sub, location, sku string) ([]string, error) {
+	for _, val := range skus {
+		if strings.EqualFold(*val.Name, sku) {
+			for _, locationInfo := range *val.LocationInfo {
+				if strings.EqualFold(*locationInfo.Location, location) {
+					available := make(map[string]bool)
+					for _, zone := range *locationInfo.Zones {
+						available[zone] = true
+					}
+					for _, restriction := range *val.Restrictions {
 						// Can't deploy anything in this subscription in this location. Bail out.
 						if restriction.Type == compute.Location {
-							return []string{}, errors.Errorf("rejecting sku: %s in location: %s due to susbcription restriction", local.Spec.SKU, local.Spec.Location)
+							return nil, errors.Errorf("rejecting sku: %s in location: %s due to susbcription restriction", sku, location)
 						}
 						// May be able to deploy one or more zones to this location.
-						for _, restrictedZone := range *restriction.RestrictionInfo.Zones {
-							delete(availableZones, restrictedZone)
+						for _, restricted := range *restriction.RestrictionInfo.Zones {
+							delete(available, restricted)
 						}
 					}
 					// Back to slice. Empty is fine, and will deploy the VM to some FD/UD (no point in configuring this until supported at higher levels)
 					result := make([]string, 0)
-					for availableZone := range availableZones {
-						result = append(result, availableZone)
+					for az := range available {
+						result = append(result, az)
 					}
 					// Lexical sort so comparisons work in tests
 					sort.Strings(result)
-					zones = result
+					return result, nil
 				}
 			}
 		}
-		err = res.NextWithContext(ctx)
-		if err != nil {
-			return zones, err
-		}
 	}
-
-	return zones, nil
+	return nil, nil
 }
