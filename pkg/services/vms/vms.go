@@ -17,8 +17,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/disks"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/zones"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/disks"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/zones"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 )
 

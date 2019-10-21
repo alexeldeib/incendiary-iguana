@@ -12,18 +12,18 @@ import (
 )
 
 // SubnetReconciler reconciles a Subnet object
-type SubnetReconciler struct {
-	Reconciler *AsyncReconciler
+type SubnetController struct {
+	Reconciler *reconciler.AsyncReconciler
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=subnets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=subnets/status,verbs=get;update;patch
 
-func (r *SubnetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *SubnetController) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return r.Reconciler.Reconcile(req, &azurev1alpha1.Subnet{})
 }
 
-func (r *SubnetReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *SubnetController) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&azurev1alpha1.Subnet{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).

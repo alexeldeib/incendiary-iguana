@@ -29,9 +29,9 @@ import (
 	"software.sslmate.com/src/go-pkcs12"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/redis"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebus"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/tlssecrets"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/redis"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/servicebus"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/tlssecrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 )
 

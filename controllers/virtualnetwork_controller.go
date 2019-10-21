@@ -12,19 +12,19 @@ import (
 )
 
 // VirtualNetworkReconciler reconciles a VirtualNetwork object
-type VirtualNetworkReconciler struct {
-	Reconciler *AsyncReconciler
+type VirtualNetworkController struct {
+	Reconciler *reconciler.AsyncReconciler
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=virtualnetworks,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=virtualnetworks/status,verbs=get;update;patch
 
 // Reconcile reconciles a specification for a virtual network against Azure.
-func (r *VirtualNetworkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *VirtualNetworkController) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return r.Reconciler.Reconcile(req, &azurev1alpha1.VirtualNetwork{})
 }
 
-func (r *VirtualNetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *VirtualNetworkController) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&azurev1alpha1.VirtualNetwork{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).

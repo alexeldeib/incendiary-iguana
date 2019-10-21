@@ -12,20 +12,20 @@ import (
 )
 
 // VMReconciler reconciles a VM object
-type VMReconciler struct {
-	Reconciler *AsyncReconciler
+type VMController struct {
+	Reconciler *reconciler.AsyncReconciler
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=vms,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=vms/status,verbs=get;update;patch
 
 // Reconcile reconciles a user request for a virtual machine against Azure.
-func (r *VMReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *VMController) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return r.Reconciler.Reconcile(req, &azurev1alpha1.VM{})
 }
 
 // SetupWithManager sets up this controller for use.
-func (r *VMReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *VMController) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&azurev1alpha1.VM{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).

@@ -13,29 +13,22 @@ import (
 	"github.com/go-logr/logr"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/config"
+	"github.com/alexeldeib/incendiary-iguana/pkg/authorizer"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clientfactory"
 )
 
 type service struct {
-	config *config.Config
+	factory authorizer.Factory
 }
 
-func newGroupService(c *config.Config) *service {
+func newService(factory authorizer.Factory) *service {
 	return &service{
-		config: c,
+		factory,
 	}
-}
-
-func (s *service) newClient(local *azurev1alpha1.ResourceGroup) (resources.GroupsClient, error) {
-	client := resources.NewGroupsClient(local.Spec.SubscriptionID)
-	if err := s.config.AuthorizeClientFromArgs(&client.Client); err != nil {
-		return resources.GroupsClient{}, err
-	}
-	return client, nil
 }
 
 func (s *service) CreateOrUpdate(ctx context.Context, local *azurev1alpha1.ResourceGroup, remote resources.Group) (result resources.Group, err error) {
-	client, err := s.newClient(local)
+	client, err := clientfactory.NewGroupsClient(local.Spec.SubscriptionID, s.factory)
 	if err != nil {
 		return resources.Group{}, err
 	}
@@ -43,7 +36,7 @@ func (s *service) CreateOrUpdate(ctx context.Context, local *azurev1alpha1.Resou
 }
 
 func (s *service) Get(ctx context.Context, local *azurev1alpha1.ResourceGroup) (result resources.Group, err error) {
-	client, err := s.newClient(local)
+	client, err := clientfactory.NewGroupsClient(local.Spec.SubscriptionID, s.factory)
 	if err != nil {
 		return resources.Group{}, err
 	}
@@ -51,7 +44,7 @@ func (s *service) Get(ctx context.Context, local *azurev1alpha1.ResourceGroup) (
 }
 
 func (s *service) Delete(ctx context.Context, local *azurev1alpha1.ResourceGroup, log logr.Logger) (bool, error) {
-	client, err := s.newClient(local)
+	client, err := clientfactory.NewGroupsClient(local.Spec.SubscriptionID, s.factory)
 	if err != nil {
 		return false, err
 	}

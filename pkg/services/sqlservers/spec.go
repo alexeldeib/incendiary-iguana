@@ -9,7 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/clientutil"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/clientutil"
 )
 
 type Spec struct {

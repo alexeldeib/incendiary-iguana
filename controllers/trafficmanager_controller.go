@@ -16,11 +16,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/trafficmanagers"
+	"github.com/alexeldeib/incendiary-iguana/pkg/constants"
+	"github.com/alexeldeib/incendiary-iguana/pkg/finalizer"
 )
 
 // TrafficManagerReconciler reconciles a PublicIP object
-type TrafficManagerReconciler struct {
+type TrafficManagerController struct {
 	client.Client
 	Log                   logr.Logger
 	TrafficManagersClient *trafficmanagers.Client
@@ -30,7 +32,7 @@ type TrafficManagerReconciler struct {
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=trafficmanagers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=trafficmanagers/status,verbs=get;update;patch
 
-func (r *TrafficManagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *TrafficManagerController) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
 	log := r.Log.WithValues("trafficmanager", fmt.Sprintf("%s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name))
 
@@ -46,20 +48,20 @@ func (r *TrafficManagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	}
 
 	if local.DeletionTimestamp.IsZero() {
-		if !HasFinalizer(&local, finalizerName) {
-			AddFinalizer(&local, finalizerName)
+		if !finalizer.Has(&local, constants.Finalizer) {
+			finalizer.Add(&local, constants.Finalizer)
 			r.Recorder.Event(&local, "Normal", "Added", "Object finalizer is added")
 			return ctrl.Result{}, r.Update(ctx, &local)
 		}
 	} else {
-		if HasFinalizer(&local, finalizerName) {
+		if finalizer.Has(&local, constants.Finalizer) {
 			err := multierror.Append(r.TrafficManagersClient.Delete(ctx, &local), r.Status().Update(ctx, &local))
 			if final := err.ErrorOrNil(); final != nil {
 				r.Recorder.Event(&local, "Warning", "FailedDelete", fmt.Sprintf("Failed to delete resource: %s", final.Error()))
 				return ctrl.Result{}, final
 			}
 			r.Recorder.Event(&local, "Normal", "Deleted", "Successfully deleted")
-			RemoveFinalizer(&local, finalizerName)
+			finalizer.Remove(&local, constants.Finalizer)
 			if err := r.Update(ctx, &local); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -78,7 +80,7 @@ func (r *TrafficManagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	return ctrl.Result{Requeue: !done}, err
 }
 
-func (r *TrafficManagerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *TrafficManagerController) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&azurev1alpha1.TrafficManager{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).

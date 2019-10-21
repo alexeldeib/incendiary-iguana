@@ -14,28 +14,22 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/config"
+	"github.com/alexeldeib/incendiary-iguana/pkg/authorizer"
 )
 
-type GroupClient struct {
+type GroupReconciler struct {
 	*service
 }
 
-// NewGroupClient returns a reconciler Azure resource groups.
-func NewGroupClient(configuration *config.Config) *GroupClient {
-	return &GroupClient{
-		service: newGroupService(configuration),
+// NewGroupReconciler returns a reconciler Azure resource groups.
+func NewGroupReconciler(credentials authorizer.Factory) *GroupReconciler {
+	return &GroupReconciler{
+		newService(credentials),
 	}
 }
 
-// ForSubscription is a noop for service style clients
-func (c *GroupClient) ForSubscription(ctx context.Context, obj runtime.Object) error {
-	// noop for keyvault secrets and kubeclients
-	return nil
-}
-
 // Ensure creates or updates a resource group in an idempotent manner.
-func (c *GroupClient) Ensure(ctx context.Context, obj runtime.Object) (done bool, err error) {
+func (c *GroupReconciler) Ensure(ctx context.Context, obj runtime.Object) (done bool, err error) {
 	local, err := convert(obj)
 	if err != nil {
 		return false, err
@@ -68,8 +62,8 @@ func (c *GroupClient) Ensure(ctx context.Context, obj runtime.Object) (done bool
 	return err == nil, err
 }
 
-// Delete handles deletion of a resource groups.
-func (c *GroupClient) Delete(ctx context.Context, obj runtime.Object, log logr.Logger) (bool, error) {
+// Delete handles deletion of a resource group.
+func (c *GroupReconciler) Delete(ctx context.Context, obj runtime.Object, log logr.Logger) (bool, error) {
 	local, err := convert(obj)
 	if err != nil {
 		return false, err

@@ -30,28 +30,28 @@ import (
 	"github.com/alexeldeib/taskpool"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/controllers"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/dockercfg"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/identities"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/loadbalancers"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/nics"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/redis"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/rediskeys"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secretbundles"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secrets"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebus"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebuskey"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/sqlservers"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/storagekeys"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/tlssecrets"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/vms"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/dockercfg"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/identities"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/keyvaults"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/loadbalancers"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/nics"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/redis"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/rediskeys"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/resourcegroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/secretbundles"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/secrets"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/servicebus"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/servicebuskey"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/sqlservers"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/storagekeys"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/subnets"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/tlssecrets"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/trafficmanagers"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/virtualnetworks"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/vms"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	"github.com/alexeldeib/incendiary-iguana/pkg/decoder"
+	"github.com/alexeldeib/incendiary-iguana/pkg/reconciler"
 )
 
 const (
@@ -432,18 +432,13 @@ func Delete(obj runtime.Object, configuration *config.Config, log logr.Logger) e
 	return nil
 }
 
-func EnsureSync(client controllers.SyncClient, obj runtime.Object, log logr.Logger) error {
+func EnsureSync(client reconciler.SyncClient, obj runtime.Object, log logr.Logger) error {
 	local, ok := obj.(metav1.Object)
 	if !ok {
 		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
 	}
 
 	log = log.WithValues("type", obj.GetObjectKind().GroupVersionKind().String(), "namespace", local.GetNamespace(), "name", local.GetName())
-
-	// extract. consider keyvault and non-sub specific clients. Matrix size = 2x2 (async, sub)
-	if err := client.ForSubscription(context.Background(), obj); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
 
 	var err error
 
@@ -458,18 +453,13 @@ func EnsureSync(client controllers.SyncClient, obj runtime.Object, log logr.Logg
 	})
 }
 
-func DeleteSync(client controllers.SyncClient, obj runtime.Object, log logr.Logger) error {
+func DeleteSync(client reconciler.SyncClient, obj runtime.Object, log logr.Logger) error {
 	local, ok := obj.(metav1.Object)
 	if !ok {
 		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
 	}
 
 	log = log.WithValues("type", obj.GetObjectKind().GroupVersionKind().String(), "namespace", local.GetNamespace(), "name", local.GetName())
-
-	// extract. consider keyvault and non-sub specific clients. Matrix size = 2x2 (async, sub)
-	if err := client.ForSubscription(context.Background(), obj); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
 
 	// extract this into async/sync, probably
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
@@ -482,17 +472,13 @@ func DeleteSync(client controllers.SyncClient, obj runtime.Object, log logr.Logg
 	})
 }
 
-func EnsureAsync(client controllers.AsyncClient, obj runtime.Object, log logr.Logger) error {
+func EnsureAsync(client reconciler.AsyncClient, obj runtime.Object, log logr.Logger) error {
 	local, ok := obj.(metav1.Object)
 	if !ok {
 		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
 	}
 
 	log = log.WithValues("type", obj.GetObjectKind().GroupVersionKind().String(), "namespace", local.GetNamespace(), "name", local.GetName())
-
-	if err := client.ForSubscription(context.Background(), obj); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
 
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")
@@ -504,17 +490,13 @@ func EnsureAsync(client controllers.AsyncClient, obj runtime.Object, log logr.Lo
 	})
 }
 
-func DeleteAsync(client controllers.AsyncClient, obj runtime.Object, log logr.Logger) error {
+func DeleteAsync(client reconciler.AsyncClient, obj runtime.Object, log logr.Logger) error {
 	local, ok := obj.(metav1.Object)
 	if !ok {
 		return errors.New("failed type assertion after switching on type. check switch statement and function invocation.")
 	}
 
 	log = log.WithValues("type", obj.GetObjectKind().GroupVersionKind().String(), "namespace", local.GetNamespace(), "name", local.GetName())
-
-	if err := client.ForSubscription(context.Background(), obj); err != nil {
-		return errors.Wrap(err, "failed to get client for subscription")
-	}
 
 	return wait.ExponentialBackoff(backoff(), func() (done bool, err error) {
 		log.Info("reconciling")

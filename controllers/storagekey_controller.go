@@ -10,21 +10,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
+	"github.com/alexeldeib/incendiary-iguana/pkg/reconciler"
 )
 
 // StorageKeyReconciler reconciles a storage key object
-type StorageKeyReconciler struct {
-	Reconciler *SyncReconciler
+type StorageKeyController struct {
+	Reconciler *reconciler.SyncReconciler
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=storagekeys,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=storagekeys/status,verbs=get;update;patch
 
-func (r *StorageKeyReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *StorageKeyController) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return r.Reconciler.Reconcile(req, &azurev1alpha1.StorageKey{})
 }
 
-func (r *StorageKeyReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *StorageKeyController) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&azurev1alpha1.StorageKey{}).
 		Owns(&corev1.Secret{}).

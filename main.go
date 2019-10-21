@@ -19,22 +19,23 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/controllers"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/keyvaults"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/nics"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/publicips"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/redis"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/secrets"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/securitygroups"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/servicebus"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/sqlfirewallrules"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/sqlservers"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/subnets"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/tlssecrets"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/trafficmanagers"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/virtualnetworks"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/vms"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/keyvaults"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/nics"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/publicips"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/redis"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/resourcegroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/secrets"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/securitygroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/servicebus"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/sqlfirewallrules"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/sqlservers"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/subnets"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/tlssecrets"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/trafficmanagers"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/virtualnetworks"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/vms"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
+	"github.com/alexeldeib/incendiary-iguana/pkg/reconciler"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -95,137 +96,137 @@ func main() {
 	}
 
 	// TODO(ace): handle this in a loop.
-	if err = (&controllers.ResourceGroupReconciler{
-		Reconciler: &controllers.AsyncReconciler{
-			Client:   client,
-			Az:       resourcegroups.NewGroupClient(configuration),
-			Log:      log,
-			Recorder: recorder,
-			Scheme:   scheme,
-		},
+	if err = (&controllers.ResourceGroupController{
+		Reconciler: reconciler.NewAsyncReconciler(
+			client,
+			resourcegroups.NewGroupClient(configuration),
+			log,
+			recorder,
+			scheme,
+		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ResourceGroup")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.KeyvaultReconciler{
-		Reconciler: &controllers.SyncReconciler{
-			Client:   client,
-			Az:       keyvaults.New(configuration),
-			Log:      log,
-			Recorder: recorder,
-			Scheme:   scheme,
-		},
+	if err = (&controllers.KeyvaultController{
+		Reconciler: reconciler.NewSyncReconciler(
+			client,
+			keyvaults.New(configuration),
+			log,
+			recorder,
+			scheme,
+		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Keyvault")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.SecretReconciler{
-		Reconciler: &controllers.SyncReconciler{
-			Client:   client,
-			Az:       tlssecretsclient,
-			Log:      log,
-			Recorder: recorder,
-			Scheme:   scheme,
-		},
+	if err = (&controllers.SecretController{
+		Reconciler: reconciler.NewSyncReconciler(
+			client,
+			tlssecretsclient,
+			log,
+			recorder,
+			scheme,
+		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Secret")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.TLSSecretReconciler{
-		Reconciler: &controllers.SyncReconciler{
-			Client:   client,
-			Az:       tlssecretsclient,
-			Log:      log,
-			Recorder: recorder,
-			Scheme:   scheme,
-		},
+	if err = (&controllers.TLSSecretController{
+		Reconciler: reconciler.NewSyncReconciler(
+			client,
+			tlssecretsclient,
+			log,
+			recorder,
+			scheme,
+		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "TLSSecret")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.SecretBundleReconciler{
-		Reconciler: &controllers.SyncReconciler{
-			Client:   client,
-			Az:       secretsclient,
-			Log:      log,
-			Recorder: recorder,
-			Scheme:   scheme,
-		},
+	if err = (&controllers.SecretBundleController{
+		Reconciler: reconciler.NewSyncReconciler(
+			client,
+			secretsclient,
+			log,
+			recorder,
+			scheme,
+		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SecretBundle")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.VirtualNetworkReconciler{
-		Reconciler: &controllers.AsyncReconciler{
-			Client:   client,
-			Az:       virtualnetworks.New(configuration),
-			Log:      log,
-			Recorder: recorder,
-			Scheme:   scheme,
-		},
+	if err = (&controllers.VirtualNetworkController{
+		Reconciler: reconciler.NewAsyncReconciler(
+			client,
+			virtualnetworks.New(configuration),
+			log,
+			recorder,
+			scheme,
+		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VirtualNetwork")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.SubnetReconciler{
-		Reconciler: &controllers.AsyncReconciler{
-			Client:   client,
-			Az:       subnets.New(configuration),
-			Log:      log,
-			Recorder: recorder,
-			Scheme:   scheme,
-		},
+	if err = (&controllers.SubnetController{
+		Reconciler: reconciler.NewAsyncReconciler(
+			client,
+			subnets.New(configuration),
+			log,
+			recorder,
+			scheme,
+		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Subnet")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.SecurityGroupReconciler{
-		Reconciler: &controllers.AsyncReconciler{
-			Client:   client,
-			Az:       securitygroups.New(configuration),
-			Log:      log,
-			Recorder: recorder,
-			Scheme:   scheme,
-		},
+	if err = (&controllers.SecurityGroupController{
+		Reconciler: reconciler.NewAsyncReconciler(
+			client,
+			securitygroups.New(configuration),
+			log,
+			recorder,
+			scheme,
+		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SecurityGroup")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.PublicIPReconciler{
-		Reconciler: &controllers.AsyncReconciler{
-			Client:   client,
-			Az:       publicips.New(configuration),
-			Log:      log,
-			Recorder: recorder,
-			Scheme:   scheme,
-		},
+	if err = (&controllers.PublicIPController{
+		Reconciler: reconciler.NewAsyncReconciler(
+			client,
+			publicips.New(configuration),
+			log,
+			recorder,
+			scheme,
+		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PublicIP")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.NetworkInterfaceReconciler{
-		Reconciler: &controllers.AsyncReconciler{
-			Client:   client,
-			Az:       nics.New(configuration),
-			Log:      log,
-			Recorder: recorder,
-			Scheme:   scheme,
-		},
+	if err = (&controllers.NetworkInterfaceController{
+		Reconciler: reconciler.NewAsyncReconciler(
+			client,
+			nics.New(configuration),
+			log,
+			recorder,
+			scheme,
+		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NetworkInterface")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.TrafficManagerReconciler{
+	if err = (&controllers.TrafficManagerController{
 		Client:                client,
 		Log:                   ctrl.Log.WithName("controllers").WithName("TrafficManager"),
 		TrafficManagersClient: trafficmanagers.New(configuration),
@@ -236,66 +237,66 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.RedisReconciler{
-		Reconciler: &controllers.AsyncReconciler{
-			Client:   client,
-			Az:       redis.New(configuration, &client, scheme),
-			Log:      log,
-			Recorder: recorder,
-			Scheme:   scheme,
-		},
+	if err = (&controllers.RedisController{
+		Reconciler: reconciler.NewAsyncReconciler(
+			client,
+			redis.New(configuration, &client, scheme),
+			log,
+			recorder,
+			scheme,
+		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Redis")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.ServiceBusNamespaceReconciler{
-		Reconciler: &controllers.AsyncReconciler{
-			Client:   client,
-			Az:       servicebus.New(configuration, &client, scheme),
-			Log:      log,
-			Recorder: recorder,
-			Scheme:   scheme,
-		},
+	if err = (&controllers.ServiceBusNamespaceController{
+		Reconciler: reconciler.NewAsyncReconciler(
+			client,
+			servicebus.New(configuration, &client, scheme),
+			log,
+			recorder,
+			scheme,
+		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ServiceBusNamespace")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.VMReconciler{
-		Reconciler: &controllers.AsyncReconciler{
-			Client:   client,
-			Az:       vms.New(configuration),
-			Log:      log,
-			Recorder: recorder,
-			Scheme:   scheme,
-		},
+	if err = (&controllers.VMController{
+		Reconciler: reconciler.NewAsyncReconciler(
+			client,
+			vms.New(configuration),
+			log,
+			recorder,
+			scheme,
+		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VM")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.SQLServerReconciler{
-		Reconciler: &controllers.SyncReconciler{
-			Client:   client,
-			Az:       sqlservers.New(configuration, &client, scheme),
-			Log:      log,
-			Recorder: recorder,
-			Scheme:   scheme,
-		},
+	if err = (&controllers.SQLServerController{
+		Reconciler: reconciler.NewSyncReconciler(
+			client,
+			sqlservers.New(configuration, &client, scheme),
+			log,
+			recorder,
+			scheme,
+		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SQLServer")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.SQLFirewallRuleReconciler{
-		Reconciler: &controllers.SyncReconciler{
-			Client:   client,
-			Az:       sqlfirewallrules.New(configuration),
-			Log:      log,
-			Recorder: recorder,
-			Scheme:   scheme,
-		},
+	if err = (&controllers.SQLFirewallRuleController{
+		Reconciler: reconciler.NewSyncReconciler(
+			client,
+			sqlfirewallrules.New(configuration),
+			log,
+			recorder,
+			scheme,
+		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SQLFirewallRule")
 		os.Exit(1)

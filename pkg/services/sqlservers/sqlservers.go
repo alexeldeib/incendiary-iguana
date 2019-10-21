@@ -21,8 +21,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/clientutil"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/sqlfirewallrules"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/clientutil"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/sqlfirewallrules"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 )
 

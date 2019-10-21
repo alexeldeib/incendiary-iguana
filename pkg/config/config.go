@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"os"
 	"strings"
 
 	"github.com/Azure/go-autorest/autorest"
@@ -160,4 +161,12 @@ func (c *Config) validateArgs() error {
 // GetKeyvaultAuthorizer creates a new Keyvault authorizer.
 func (c *Config) GetKeyvaultAuthorizer() (autorest.Authorizer, error) {
 	return c.GetAuthorizerFromArgsForResource(strings.TrimSuffix(c.env.KeyVaultEndpoint, "/"))
+}
+
+func GetEnvironment() (azure.Environment, error) {
+	userEnv := os.Getenv(auth.EnvironmentName)
+	if userEnv == "" {
+		return azure.PublicCloud, nil
+	}
+	return azure.EnvironmentFromName(userEnv)
 }

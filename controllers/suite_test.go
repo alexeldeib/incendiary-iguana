@@ -31,9 +31,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/resourcegroups"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/sqlfirewallrules"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/sqlservers"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/resourcegroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/sqlfirewallrules"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/sqlservers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	// +kubebuilder:scaffold:imports
 )

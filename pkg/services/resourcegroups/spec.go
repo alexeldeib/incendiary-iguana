@@ -2,27 +2,27 @@
 Copyright 2019 Alexander Eldeib.
 */
 
-package keyvaults
+package resourcegroups
 
 import (
-	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2018-02-14/keyvault"
+	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/google/go-cmp/cmp"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/clientutil"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/clientutil"
 )
 
 type Spec struct {
-	internal *keyvault.Vault
+	internal *resources.Group
 }
 
 func NewSpec() *Spec {
 	return &Spec{
-		internal: &keyvault.Vault{},
+		internal: &resources.Group{},
 	}
 }
 
-func NewSpecWithRemote(remote *keyvault.Vault) *Spec {
+func NewSpecWithRemote(remote *resources.Group) *Spec {
 	return &Spec{
 		internal: remote,
 	}
@@ -34,7 +34,7 @@ func (s *Spec) Set(opts ...func(*Spec)) {
 	}
 }
 
-func (s *Spec) Build() keyvault.Vault {
+func (s *Spec) Build() resources.Group {
 	return *s.internal
 }
 
@@ -67,4 +67,11 @@ func (s *Spec) Location() *string {
 
 func (s *Spec) ID() *string {
 	return s.internal.ID
+}
+
+func (s *Spec) State() *string {
+	if s.internal.Properties == nil {
+		return nil
+	}
+	return s.internal.Properties.ProvisioningState
 }
