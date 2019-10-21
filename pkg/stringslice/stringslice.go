@@ -37,6 +37,5 @@ func Filter(slice []string, keep func(val string) bool) []string {
 			index++
 		}
 	}
-	slice = slice[:index]
-	return slice
+	return slice[:index]
 }
