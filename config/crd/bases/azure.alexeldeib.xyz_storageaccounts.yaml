@@ -11,11 +11,9 @@ spec:
     categories:
     - all
     kind: StorageAccount
-    listKind: StorageAccountList
     plural: storageaccounts
     shortNames:
     - storage
-    singular: storageaccount
   scope: Namespaced
   subresources:
     status: {}

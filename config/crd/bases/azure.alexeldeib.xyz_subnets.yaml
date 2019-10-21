@@ -11,9 +11,7 @@ spec:
     categories:
     - all
     kind: Subnet
-    listKind: SubnetList
     plural: subnets
-    singular: subnet
   scope: Namespaced
   subresources:
     status: {}

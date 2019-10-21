@@ -35,6 +35,8 @@ type SecretIdentifier struct {
 	// +optional
 	// Kind allows specification of formatting other than the raw bytes in Keyvault.
 	Kind *string `json:"kind,omitempty"`
+	// If kind is x509 and reverse is true, this will fix the chain order.
+	Reverse bool `json:"reverse,omitempty"`
 }
 
 // SecretStatus defines the observed state of Secret

@@ -11,11 +11,9 @@ spec:
     categories:
     - all
     kind: SQLFirewallRule
-    listKind: SQLFirewallRuleList
     plural: sqlfirewalls
     shortNames:
     - sqlfw
-    singular: sqlfirewallrule
   scope: Namespaced
   subresources:
     status: {}
