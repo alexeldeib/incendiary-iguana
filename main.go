@@ -27,8 +27,6 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/secrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/securitygroups"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/servicebus"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/sqlfirewallrules"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/sqlservers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/subnets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/tlssecrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/trafficmanagers"
@@ -275,33 +273,6 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "VM")
 		os.Exit(1)
 	}
-
-	if err = (&controllers.SQLServerController{
-		Reconciler: reconciler.NewSyncReconciler(
-			client,
-			sqlservers.New(configuration, &client, scheme),
-			log,
-			recorder,
-			scheme,
-		),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "SQLServer")
-		os.Exit(1)
-	}
-
-	if err = (&controllers.SQLFirewallRuleController{
-		Reconciler: reconciler.NewSyncReconciler(
-			client,
-			sqlfirewallrules.New(configuration),
-			log,
-			recorder,
-			scheme,
-		),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "SQLFirewallRule")
-		os.Exit(1)
-	}
-
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")

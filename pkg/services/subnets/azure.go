@@ -2,7 +2,7 @@
 Copyright 2019 Alexander Eldeib.
 */
 
-package virtualnetworks
+package subnets
 
 import (
 	"context"

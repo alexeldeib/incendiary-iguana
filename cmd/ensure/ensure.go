@@ -30,6 +30,9 @@ import (
 	"github.com/alexeldeib/taskpool"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
+	"github.com/alexeldeib/incendiary-iguana/pkg/config"
+	"github.com/alexeldeib/incendiary-iguana/pkg/decoder"
+	"github.com/alexeldeib/incendiary-iguana/pkg/reconciler"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/dockercfg"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/identities"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/keyvaults"
@@ -42,16 +45,12 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/secrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/servicebus"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/servicebuskey"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/sqlservers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/storagekeys"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/subnets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/tlssecrets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/trafficmanagers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/virtualnetworks"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/vms"
-	"github.com/alexeldeib/incendiary-iguana/pkg/config"
-	"github.com/alexeldeib/incendiary-iguana/pkg/decoder"
-	"github.com/alexeldeib/incendiary-iguana/pkg/reconciler"
 )
 
 const (
@@ -326,8 +325,6 @@ func Ensure(obj runtime.Object, configuration *config.Config, log logr.Logger) e
 		err = EnsureSync(servicebuskey.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.ServiceBusNamespace:
 		err = EnsureAsync(servicebus.New(configuration, &kubeclient, scheme), obj, log)
-	case *azurev1alpha1.SQLServer:
-		err = EnsureSync(sqlservers.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.StorageKey:
 		err = EnsureSync(storagekeys.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.Subnet:
@@ -403,8 +400,6 @@ func Delete(obj runtime.Object, configuration *config.Config, log logr.Logger) e
 		}
 	case *azurev1alpha1.ServiceBusNamespace:
 		err = DeleteAsync(servicebus.New(configuration, &kubeclient, scheme), obj, log)
-	case *azurev1alpha1.SQLServer:
-		err = DeleteSync(sqlservers.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.StorageKey:
 		err = DeleteSync(storagekeys.New(configuration, &kubeclient, scheme), obj, log)
 	case *azurev1alpha1.Subnet:

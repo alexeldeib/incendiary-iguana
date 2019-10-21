@@ -31,10 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/resourcegroups"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/sqlfirewallrules"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/sqlservers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services/resourcegroups"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -97,24 +95,6 @@ var _ = BeforeSuite(func(done Done) {
 		Reconciler: &AsyncReconciler{
 			Client:   k8sClient,
 			Az:       resourcegroups.NewGroupClient(configuration),
-			Log:      log,
-			Recorder: recorder,
-		},
-	}).SetupWithManager(mgr)).NotTo(HaveOccurred())
-
-	Expect((&SQLServerReconciler{
-		Reconciler: &SyncReconciler{
-			Client:   k8sClient,
-			Az:       sqlservers.New(configuration, &k8sClient, mgr.GetScheme()),
-			Log:      log,
-			Recorder: recorder,
-		},
-	}).SetupWithManager(mgr)).NotTo(HaveOccurred())
-
-	Expect((&SQLFirewallRuleReconciler{
-		Reconciler: &SyncReconciler{
-			Client:   k8sClient,
-			Az:       sqlfirewallrules.New(configuration),
 			Log:      log,
 			Recorder: recorder,
 		},

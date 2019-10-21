@@ -16,6 +16,7 @@ import (
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/authorizer"
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients"
+	"github.com/alexeldeib/incendiary-iguana/pkg/constants"
 )
 
 type service struct {
@@ -78,7 +79,7 @@ func (s *service) Get(ctx context.Context, local *azurev1alpha1.VirtualNetwork) 
 	if err != nil {
 		return network.VirtualNetwork{}, err
 	}
-	return client.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name)
+	return client.Get(ctx, local.Spec.ResourceGroup, local.Spec.Name, constants.Empty)
 }
 
 func (s *service) Delete(ctx context.Context, local *azurev1alpha1.VirtualNetwork, log logr.Logger) (bool, error) {
