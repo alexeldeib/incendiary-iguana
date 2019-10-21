@@ -17,8 +17,6 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/authorizer"
 )
 
-const expand string = ""
-
 type VnetReconciler struct {
 	*service
 }
@@ -59,8 +57,7 @@ func (c *VnetReconciler) Ensure(ctx context.Context, obj runtime.Object) (bool, 
 		AddressSpaces(local.Spec.Addresses), // TODO(ace): declarative vs patch for merging over existing fields?
 	)
 
-	_, err = c.service.CreateOrUpdate(ctx, local, spec.Build())
-	return false, err
+	return c.service.CreateOrUpdate(ctx, local, spec.Build())
 }
 
 // Get returns a virtual network.

@@ -31,6 +31,8 @@ type SubnetStatus struct {
 	// ObservedGeneration is the iteration of user-provided spec which has already been reconciled.
 	// This is used to decide when to re-reconcile changes.
 	ObservedGeneration int64 `json:"observedGeneration"`
+	// Future tracks the status of a long-running operation.
+	Future *[]byte `json:"-"`
 }
 
 // +kubebuilder:object:root=true

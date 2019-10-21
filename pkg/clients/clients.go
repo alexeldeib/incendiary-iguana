@@ -27,3 +27,14 @@ func NewVirtualNetworksClient(sub string, factory authorizer.Factory) (network.V
 	client.Authorizer = authorizer
 	return client, nil
 }
+
+// NewSubnetsClient returns an authenticated client using the provided authorizer factory.
+func NewSubnetsClient(sub string, factory authorizer.Factory) (network.SubnetsClient, error) {
+	client := network.NewSubnetsClient(sub)
+	authorizer, err := factory.New()
+	if err != nil {
+		return network.SubnetsClient{}, err
+	}
+	client.Authorizer = authorizer
+	return client, nil
+}
