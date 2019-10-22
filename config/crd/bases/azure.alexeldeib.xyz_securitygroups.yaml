@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: SecurityGroup
+    listKind: SecurityGroupList
     plural: securitygroups
     shortNames:
     - sg
+    singular: securitygroup
   scope: Namespaced
   subresources:
     status: {}

@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: ServiceBusKey
+    listKind: ServiceBusKeyList
     plural: servicebuskeys
     shortNames:
     - sbkey
+    singular: servicebuskey
   scope: Namespaced
   subresources:
     status: {}

@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: SQLServer
+    listKind: SQLServerList
     plural: sqlservers
     shortNames:
     - sqlserver
+    singular: sqlserver
   scope: Namespaced
   subresources:
     status: {}

@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: TrafficManager
+    listKind: TrafficManagerList
     plural: trafficmanagers
     shortNames:
     - tm
+    singular: trafficmanager
   scope: Namespaced
   subresources:
     status: {}

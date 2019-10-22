@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: VM
+    listKind: VMList
     plural: vms
     shortNames:
     - vm
+    singular: vm
   scope: Namespaced
   subresources:
     status: {}
