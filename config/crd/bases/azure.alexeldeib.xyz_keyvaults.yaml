@@ -11,11 +11,9 @@ spec:
     categories:
     - all
     kind: Keyvault
-    listKind: KeyvaultList
     plural: keyvaults
     shortNames:
     - kv
-    singular: keyvault
   scope: Namespaced
   subresources:
     status: {}

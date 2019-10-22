@@ -11,11 +11,9 @@ spec:
     categories:
     - all
     kind: ServiceBusNamespace
-    listKind: ServiceBusNamespaceList
     plural: servicebus
     shortNames:
     - sb
-    singular: servicebusnamespace
   scope: Namespaced
   subresources:
     status: {}

@@ -11,11 +11,9 @@ spec:
     categories:
     - all
     kind: Identity
-    listKind: IdentityList
     plural: identities
     shortNames:
     - msi
-    singular: identity
   scope: Namespaced
   subresources:
     status: {}

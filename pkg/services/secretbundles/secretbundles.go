@@ -95,7 +95,7 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 			if err != nil {
 				return err
 			}
-			out, err := formatSha(*cert.X509Thumbprint)
+			out, err := formatSHA(*cert.X509Thumbprint)
 			if err != nil {
 				return err
 			}
@@ -105,7 +105,7 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 			if err != nil {
 				return err
 			}
-			output, err := format(item.Kind, *bundle.Value)
+			output, err := format(item.Kind, *bundle.Value, item.Reverse)
 			if err != nil {
 				return err
 			}
@@ -161,75 +161,32 @@ func (c *Client) Delete(ctx context.Context, obj runtime.Object, log logr.Logger
 	return client.IgnoreNotFound((*c.kubeclient).Delete(ctx, local))
 }
 
-func format(format *string, secret string) ([]byte, error) {
+func format(format *string, secret string, reverse bool) ([]byte, error) {
 	// PKCS12/pfx data is what we have and what we want, bail out successfully
 	if format == nil {
 		return []byte(secret), nil
 	}
 	switch kind := *format; kind {
-	case "pkcs8", "sha", "rsa", "x509":
-		p12, err := base64.StdEncoding.DecodeString(secret)
-		if err != nil {
-			return nil, errors.Wrapf(err, "err decoding base64 to p12")
-		}
-		pfxKey, pfxCert, caCerts, err := pkcs12.DecodeChain(p12, "")
-		if err != nil {
-			return nil, err
-		}
-
-		switch kind {
-		case "pkcs8":
-			keyX509, err := x509.MarshalPKCS8PrivateKey(pfxKey)
-			if err != nil {
-				return nil, err
-			}
-			keyBlock := &pem.Block{
-				Type:  "PRIVATE KEY",
-				Bytes: keyX509,
-			}
-			var keyPEM bytes.Buffer
-			if err := pem.Encode(&keyPEM, keyBlock); err != nil {
-				return nil, err
-			}
-			return keyPEM.Bytes(), nil
-		case "rsa":
-			keyX509 := x509.MarshalPKCS1PrivateKey(pfxKey.(*rsa.PrivateKey))
-			keyBlock := &pem.Block{
-				Type:  "RSA PRIVATE KEY",
-				Bytes: keyX509,
-			}
-			var keyPEM bytes.Buffer
-			pem.Encode(&keyPEM, keyBlock)
-			return keyPEM.Bytes(), nil
-		case "x509":
-			certBlock := &pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: pfxCert.Raw,
-			}
-			var certPEM bytes.Buffer
-			pem.Encode(&certPEM, certBlock)
-			output := fmt.Sprintf("%s\n%s\n%s", tlssecrets.GenerateSubject(pfxCert), tlssecrets.GenerateIssuer(pfxCert), certPEM.String())
-			caCertString := ""
-			// Fix cert chain order (reverse them and fix headers)
-			for _, cert := range caCerts {
-				certBlock = &pem.Block{
-					Type:  "CERTIFICATE",
-					Bytes: cert.Raw,
-				}
-				var certPEM bytes.Buffer
-				pem.Encode(&certPEM, certBlock)
-				caCertString = fmt.Sprintf("%s\n%s\n%s\n%s", caCertString, tlssecrets.GenerateSubject(cert), tlssecrets.GenerateIssuer(cert), certPEM.String())
-			}
-			output = fmt.Sprintf("%s\n%s", output, caCertString)
-			return []byte(output), nil
-		default:
-			return nil, errors.New("failed to find expected case inside switch statement (should never happen)")
-		}
+	case "pkcs8":
+		return formatPKCS8(secret)
+	case "rsa":
+		return formatRSA(secret)
+	case "x509":
+		return formatX509(secret, reverse)
+	default:
+		return nil, errors.New("failed to find secret format")
 	}
-	return []byte(secret), nil
 }
 
-func formatSha(thumbprint string) ([]byte, error) {
+func parsePKCS12(secret string) (privateKey interface{}, certificate *x509.Certificate, caCerts []*x509.Certificate, err error) {
+	p12, err := base64.StdEncoding.DecodeString(secret)
+	if err != nil {
+		return nil, nil, nil, errors.Wrapf(err, "err decoding base64 to p12")
+	}
+	return pkcs12.DecodeChain(p12, "")
+}
+
+func formatSHA(thumbprint string) ([]byte, error) {
 	src, err := base64.RawURLEncoding.DecodeString(thumbprint)
 	if err != nil {
 		return nil, err
@@ -238,6 +195,85 @@ func formatSha(thumbprint string) ([]byte, error) {
 	hex.Encode(dst, src)
 	dst = []byte(strings.ToUpper(string(dst)))
 	return dst, nil
+}
+
+func formatPKCS8(secret string) ([]byte, error) {
+	pfxKey, _, _, err := parsePKCS12(secret)
+	if err != nil {
+		return nil, err
+	}
+
+	keyX509, err := x509.MarshalPKCS8PrivateKey(pfxKey)
+	if err != nil {
+		return nil, err
+	}
+	keyBlock := &pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: keyX509,
+	}
+	var keyPEM bytes.Buffer
+	if err := pem.Encode(&keyPEM, keyBlock); err != nil {
+		return nil, err
+	}
+	return keyPEM.Bytes(), nil
+}
+
+func formatRSA(secret string) ([]byte, error) {
+	pfxKey, _, _, err := parsePKCS12(secret)
+	if err != nil {
+		return nil, err
+	}
+
+	keyX509 := x509.MarshalPKCS1PrivateKey(pfxKey.(*rsa.PrivateKey))
+	keyBlock := &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: keyX509,
+	}
+
+	var keyPEM bytes.Buffer
+	if err := pem.Encode(&keyPEM, keyBlock); err != nil {
+		return nil, err
+	}
+	return keyPEM.Bytes(), nil
+}
+
+func formatX509(secret string, reverse bool) ([]byte, error) {
+	_, pfxCert, caCerts, err := parsePKCS12(secret)
+	if err != nil {
+		return nil, err
+	}
+
+	if reverse {
+		pfxCert, caCerts[len(caCerts)-1] = caCerts[len(caCerts)-1], pfxCert
+	}
+
+	certBlock := &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: pfxCert.Raw,
+	}
+
+	var certPEM bytes.Buffer
+	if err := pem.Encode(&certPEM, certBlock); err != nil {
+		return nil, err
+	}
+
+	// append certificates to create chain
+	output := fmt.Sprintf("%s\n%s\n%s", tlssecrets.GenerateSubject(pfxCert), tlssecrets.GenerateIssuer(pfxCert), certPEM.String())
+	caCertString := ""
+	for _, cert := range caCerts {
+		certBlock = &pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: cert.Raw,
+		}
+		var certPEM bytes.Buffer
+		if err := pem.Encode(&certPEM, certBlock); err != nil {
+			return nil, err
+		}
+		caCertString = fmt.Sprintf("%s\n%s\n%s\n%s", caCertString, tlssecrets.GenerateSubject(cert), tlssecrets.GenerateIssuer(cert), certPEM.String())
+	}
+	output = fmt.Sprintf("%s\n%s", output, caCertString)
+
+	return []byte(output), nil
 }
 
 func (c *Client) convert(obj runtime.Object) (*azurev1alpha1.SecretBundle, error) {

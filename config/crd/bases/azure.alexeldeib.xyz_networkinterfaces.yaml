@@ -11,12 +11,10 @@ spec:
     categories:
     - all
     kind: NetworkInterface
-    listKind: NetworkInterfaceList
     plural: networkinterfaces
     shortNames:
     - nic
     - nics
-    singular: networkinterface
   scope: Namespaced
   subresources:
     status: {}
