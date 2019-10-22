@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: DockerConfig
+    listKind: DockerConfigList
     plural: dockerconfigs
     shortNames:
     - dockercfg
+    singular: dockerconfig
   scope: Namespaced
   subresources:
     status: {}

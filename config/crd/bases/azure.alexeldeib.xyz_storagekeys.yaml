@@ -11,7 +11,9 @@ spec:
     categories:
     - all
     kind: StorageKey
+    listKind: StorageKeyList
     plural: storagekeys
+    singular: storagekey
   scope: Namespaced
   subresources:
     status: {}

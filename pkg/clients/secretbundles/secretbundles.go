@@ -105,7 +105,7 @@ func (c *Client) Ensure(ctx context.Context, obj runtime.Object) error {
 			if err != nil {
 				return err
 			}
-			output, err := format(item.Kind, *bundle.Value, item.Reverse)
+			output, err := format(*item.Kind, *bundle.Value, item.Reverse)
 			if err != nil {
 				return err
 			}
@@ -161,18 +161,16 @@ func (c *Client) Delete(ctx context.Context, obj runtime.Object, log logr.Logger
 	return client.IgnoreNotFound((*c.kubeclient).Delete(ctx, local))
 }
 
-func format(format *string, secret string, reverse bool) ([]byte, error) {
-	// PKCS12/pfx data is what we have and what we want, bail out successfully
-	if format == nil {
-		return []byte(secret), nil
-	}
-	switch kind := *format; kind {
+func format(format string, secret string, reverse bool) ([]byte, error) {
+	switch format {
 	case "pkcs8":
 		return formatPKCS8(secret)
 	case "rsa":
 		return formatRSA(secret)
 	case "x509":
 		return formatX509(secret, reverse)
+	case "pfx":
+		return formatPFX(secret)
 	default:
 		return nil, errors.New("failed to find secret format")
 	}
@@ -184,6 +182,11 @@ func parsePKCS12(secret string) (privateKey interface{}, certificate *x509.Certi
 		return nil, nil, nil, errors.Wrapf(err, "err decoding base64 to p12")
 	}
 	return pkcs12.DecodeChain(p12, "")
+}
+
+// For PFX certificates, Keyvault returns the base64 encoded PFX with an empty string for the password.
+func formatPFX(secret string) ([]byte, error) {
+	return []byte(secret), nil
 }
 
 func formatSHA(thumbprint string) ([]byte, error) {

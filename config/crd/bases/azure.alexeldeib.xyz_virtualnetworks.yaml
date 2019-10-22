@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: VirtualNetwork
+    listKind: VirtualNetworkList
     plural: virtualnetworks
     shortNames:
     - vnet
+    singular: virtualnetwork
   scope: Namespaced
   subresources:
     status: {}

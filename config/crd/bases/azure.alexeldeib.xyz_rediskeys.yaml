@@ -11,9 +11,11 @@ spec:
     categories:
     - all
     kind: RedisKey
+    listKind: RedisKeyList
     plural: rediskeys
     shortNames:
     - rediskey
+    singular: rediskey
   scope: Namespaced
   subresources:
     status: {}
