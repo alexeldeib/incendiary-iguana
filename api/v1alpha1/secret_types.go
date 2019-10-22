@@ -11,20 +11,10 @@ import (
 // SecretSpec defines the desired state of Secret
 type SecretSpec struct {
 	SecretIdentifier `json:",inline"`
-	// FriendlyName is the name of the secret locally inside the kubernetes object (a key in the map[][])
-	FriendlyName *string `json:"friendlyName,omitempty"`
-	// Location is the Azure location of the resource group (e.g., eastus2 or "West US").
-	// Only required if Vault does not exist.
-	// Must be used it conjunction with ResourceGroup and SubscriptionID
-	Location *string `json:"location,omitempty"`
-	// ResourceGroup contains the Keyvault.
-	// Only required if Vault does not exist.
-	// Must be used it conjunction with Location and SubscriptionID.
-	ResourceGroup *string `json:"resourceGroup,omitempty"`
-	// SubscriptionID contains the Resource group. Is a GUID.
-	// Only required if Vault does not exist.
-	// Must be used it conjunction with Location and ResourceGroup.
-	SubscriptionID *string `json:"subscriptionId,omitempty"`
+	// TargetSecret is the name of the Kubernetes secret object this CRD should target
+	TargetSecret string `json:"targetSecret,omitempty"`
+	// TargetValue is the name of the key inside the kubernetes object (a key in the map[][])
+	TargetValue string `json:"targetValue,omitempty"`
 }
 
 type SecretIdentifier struct {

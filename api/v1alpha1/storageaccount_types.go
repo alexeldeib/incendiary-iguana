@@ -30,6 +30,8 @@ type StorageAccountStatus struct {
 	ProvisioningState *string `json:"provisioningState,omitempty"`
 	// ID is the fully qualified Azure resource ID.
 	ID *string `json:"id,omitempty"`
+	// Future tracks the status of a long-running operation.
+	Future *[]byte `json:"-"`
 }
 
 // +kubebuilder:object:root=true
