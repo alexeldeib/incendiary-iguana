@@ -53,7 +53,7 @@ func NewFromAlphabet(n int, alphabet string) string {
 	return sb.String()
 }
 
-// NewLowerCaseAlphanumeric generates a random string with lowercase alphanumeric characters.
-func NewLowerCaseAlphanumeric(n int) string {
+// NewLowerCaseAlphaNumeric generates a random string with lowercase alphanumeric characters.
+func NewLowerCaseAlphaNumeric(n int) string {
 	return NewFromAlphabet(n, lowerBytes)
 }
