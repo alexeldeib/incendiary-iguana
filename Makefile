@@ -62,12 +62,15 @@ manifests: controller-gen generate
 
 # Run go fmt against code
 fmt:
-	go fmt ./...
+	gofmt -w -s ./pkg ./api ./controllers ./main.go
 	goimports -local $(REPO) -w .
 
 # Run go vet against code
 vet:
-	go vet ./...
+	go vet ./pkg/... 
+	go vet ./api/... 
+	go vet ./controllers/... 
+	go vet ./main.go
 
 # Run go fmt against code
 ci-fmt:
