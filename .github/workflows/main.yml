@@ -22,7 +22,7 @@ jobs:
           go get golang.org/x/tools/cmd/goimports
           go get github.com/onsi/ginkgo/ginkgo
           go get sigs.k8s.io/kustomize/kustomize/v3@v3.2.3
-          go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
+          go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.2
           os=$(go env GOOS)
           arch=$(go env GOARCH)
           curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}.tar.gz
@@ -51,7 +51,7 @@ jobs:
           go get golang.org/x/tools/cmd/goimports
           go get github.com/onsi/ginkgo/ginkgo
           go get sigs.k8s.io/kustomize/kustomize/v3@v3.2.3
-          go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
+          go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.2
           os=$(go env GOOS)
           arch=$(go env GOARCH)
           curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}.tar.gz
@@ -81,7 +81,7 @@ jobs:
           go get github.com/onsi/ginkgo/ginkgo
           go get sigs.k8s.io/kind@v0.5.1
           go get sigs.k8s.io/kustomize/kustomize/v3@v3.2.3
-          go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
+          go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.2
           os=$(go env GOOS)
           arch=$(go env GOARCH)
           curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}.tar.gz
@@ -114,7 +114,7 @@ jobs:
           go get github.com/onsi/ginkgo/ginkgo
           go get sigs.k8s.io/kind@v0.5.1
           go get sigs.k8s.io/kustomize/kustomize/v3@v3.2.3
-          go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
+          go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.2
           os=$(go env GOOS)
           arch=$(go env GOARCH)
           curl -sL https://go.kubebuilder.io/dl/2.0.0/${os}/${arch} -o kubebuilder_2.0.0_${os}_${arch}.tar.gz
