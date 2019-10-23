@@ -32,7 +32,6 @@ import (
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	"github.com/alexeldeib/incendiary-iguana/pkg/decoder"
-	"github.com/alexeldeib/incendiary-iguana/pkg/reconciler"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/dockercfg"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/identities"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/keyvaults"

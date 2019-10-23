@@ -9,12 +9,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/reconciler"
+	"github.com/alexeldeib/incendiary-iguana/pkg/reconcilers/generic"
 )
 
 // TLSSecretReconciler reconciles a Secret object
 type TLSSecretController struct {
-	Reconciler *reconciler.SyncReconciler
+	Reconciler *generic.SyncReconciler
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=tlssecrets,verbs=get;list;watch;create;update;patch;delete

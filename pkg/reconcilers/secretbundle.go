@@ -27,7 +27,7 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients/tlssecrets"
+	"github.com/alexeldeib/incendiary-iguana/pkg/tlsutil"
 )
 
 type SecretBundleReconciler struct {
@@ -255,7 +255,7 @@ func formatX509Default(secret string) ([]byte, error) {
 	}
 
 	// append certificates to create chain
-	output := fmt.Sprintf("%s\n%s\n%s", tlssecrets.GenerateSubject(pfxCert), tlssecrets.GenerateIssuer(pfxCert), certPEM.String())
+	output := fmt.Sprintf("%s\n%s\n%s", tlsutil.GenerateSubject(pfxCert), tlsutil.GenerateIssuer(pfxCert), certPEM.String())
 	caCertString := ""
 	for _, cert := range caCerts {
 		certBlock = &pem.Block{
@@ -266,7 +266,7 @@ func formatX509Default(secret string) ([]byte, error) {
 		if err := pem.Encode(&certPEM, certBlock); err != nil {
 			return nil, err
 		}
-		caCertString = fmt.Sprintf("%s\n%s\n%s\n%s", caCertString, tlssecrets.GenerateSubject(cert), tlssecrets.GenerateIssuer(cert), certPEM.String())
+		caCertString = fmt.Sprintf("%s\n%s\n%s\n%s", caCertString, tlsutil.GenerateSubject(cert), tlsutil.GenerateIssuer(cert), certPEM.String())
 	}
 	output = fmt.Sprintf("%s\n%s", output, caCertString)
 
@@ -293,7 +293,7 @@ func formatX509Reverse(secret string) ([]byte, error) {
 	}
 
 	// append certificates to create chain
-	output := fmt.Sprintf("%s\n%s\n%s", tlssecrets.GenerateSubject(pfxCert), tlssecrets.GenerateIssuer(pfxCert), certPEM.String())
+	output := fmt.Sprintf("%s\n%s\n%s", tlsutil.GenerateSubject(pfxCert), tlsutil.GenerateIssuer(pfxCert), certPEM.String())
 	caCertString := ""
 	for _, cert := range caCerts {
 		certBlock = &pem.Block{
@@ -304,7 +304,7 @@ func formatX509Reverse(secret string) ([]byte, error) {
 		if err := pem.Encode(&certPEM, certBlock); err != nil {
 			return nil, err
 		}
-		caCertString = fmt.Sprintf("%s\n%s\n%s\n%s", caCertString, tlssecrets.GenerateSubject(cert), tlssecrets.GenerateIssuer(cert), certPEM.String())
+		caCertString = fmt.Sprintf("%s\n%s\n%s\n%s", caCertString, tlsutil.GenerateSubject(cert), tlsutil.GenerateIssuer(cert), certPEM.String())
 	}
 	output = fmt.Sprintf("%s\n%s", output, caCertString)
 

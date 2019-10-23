@@ -62,18 +62,3 @@ func GetEnvironment(env string) (azure.Environment, error) {
 	}
 	return azure.EnvironmentFromName(env)
 }
-
-// mgmtAuthorizer, err := NewBuilder()
-// 					.In(azure.PublicCloud)
-// 					.WithClientCredentials(app, key, tenant)
-// 					.Build()
-// kvAuthorizer, err := NewBuilder()
-// 					.In(azure.PublicCloud)
-// 					.For(strings.TrimSuffix(azure.PublicCloud.KeyVaultEndpoint))
-// 					.WithClientCredentials(app, key, tenant)
-// 					.Build()
-// kvAuthorizer := NewBuilder()
-// 					.In(azure.PublicCloud)
-// 					.For(strings.TrimSuffix(azure.PublicCloud.KeyVaultEndpoint))
-// 					.WithClientCredentials(app, key, tenant)
-// 					.Build()

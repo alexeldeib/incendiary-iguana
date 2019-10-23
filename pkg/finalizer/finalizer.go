@@ -8,12 +8,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/alexeldeib/incendiary-iguana/pkg/stringslice"
+	"github.com/alexeldeib/stringslice"
 )
 
 // Has return true if the provided object has the given finalizer.
 func Has(o metav1.Object, finalizer string) bool {
-	return !stringslice.Has(o.GetFinalizers(), finalizer)
+	return stringslice.Has(o.GetFinalizers(), finalizer)
 }
 
 // AddAndUpdate removes a finalizer from a runtime object and attempts to update that object in the API server.

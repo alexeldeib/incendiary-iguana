@@ -2,7 +2,7 @@
 Copyright 2019 Alexander Eldeib.
 */
 
-package reconciler
+package generic
 
 import (
 	"context"
@@ -21,7 +21,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/finalizer"
 )
 
-type SyncClient interface {
+type SyncActuator interface {
 	Ensure(context.Context, runtime.Object) error
 	Delete(context.Context, runtime.Object, logr.Logger) error
 }
@@ -30,33 +30,33 @@ type SyncClient interface {
 type SyncReconciler struct {
 	// Kubernetes generic recocniliation components
 	client.Client
-	log      logr.Logger
-	recorder record.EventRecorder
-	scheme   *runtime.Scheme
+	logr.Logger
+	Recorder record.EventRecorder
+	*runtime.Scheme
 	// Azure specific reconciliation components
-	service SyncClient
+	SyncActuator
 }
 
 // NewAsyncReconciler return a new synchronous reconciler for Azure resources associated with the client factory.
-func NewSyncReconciler(kubeclient client.Client, service SyncClient, log logr.Logger, recorder record.EventRecorder, scheme *runtime.Scheme) *SyncReconciler {
+func NewSyncReconciler(kubeclient client.Client, act SyncActuator, log logr.Logger, recorder record.EventRecorder, scheme *runtime.Scheme) *SyncReconciler {
 	return &SyncReconciler{
 		kubeclient,
 		log,
 		recorder,
 		scheme,
-		service,
+		act,
 	}
 }
 
 func (r *SyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctrl.Result, error) {
 	ctx := context.Background()
 
-	gvk, err := apiutil.GVKForObject(local, r.scheme)
+	gvk, err := apiutil.GVKForObject(local, r.Scheme)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	log := r.log.WithValues("groupversion", gvk.GroupVersion().String(), "kind", gvk.Kind, "namespace", req.Namespace, "name", req.Name)
+	log := r.Logger.WithValues("groupversion", gvk.GroupVersion().String(), "kind", gvk.Kind, "namespace", req.Namespace, "name", req.Name)
 
 	if err := r.Get(ctx, req.NamespacedName, local); err != nil {
 		log.Info("error during fetch from api server")
@@ -71,28 +71,28 @@ func (r *SyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctrl
 	if res.GetDeletionTimestamp().IsZero() {
 		if !finalizer.Has(res, constants.Finalizer) {
 			finalizer.Add(res, constants.Finalizer)
-			r.recorder.Event(local, "Normal", "Added", "Object finalizer is added")
+			r.Recorder.Event(local, "Normal", "Added", "Object finalizer is added")
 			return ctrl.Result{}, r.Update(ctx, local)
 		}
 	} else {
 		if finalizer.Has(res, constants.Finalizer) {
-			deleteErr := r.service.Delete(ctx, local, log)
+			deleteErr := r.SyncActuator.Delete(ctx, local, log)
 			statusErr := r.Status().Update(ctx, local)
 
 			final := multierror.Append(deleteErr, statusErr)
 			if err := final.ErrorOrNil(); err != nil {
-				r.recorder.Event(local, "Warning", "FailedDelete", fmt.Sprintf("Failed to delete resource: %s", err.Error()))
+				r.Recorder.Event(local, "Warning", "FailedDelete", fmt.Sprintf("Failed to delete resource: %s", err.Error()))
 				return ctrl.Result{}, err
 			}
 
-			r.recorder.Event(local, "Normal", "Deleted", "Successfully deleted")
+			r.Recorder.Event(local, "Normal", "Deleted", "Successfully deleted")
 			finalizer.Remove(res, constants.Finalizer)
 			return ctrl.Result{}, r.Update(ctx, local)
 		}
 		return ctrl.Result{}, nil
 	}
 
-	ensureErr := r.service.Ensure(ctx, local)
+	ensureErr := r.SyncActuator.Ensure(ctx, local)
 	statusErr := r.Status().Update(ctx, local)
 	if ensureErr != nil {
 		log.Error(ensureErr, "ensure err")
@@ -103,9 +103,9 @@ func (r *SyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctrl
 	final := multierror.Append(ensureErr, statusErr)
 	err = final.ErrorOrNil()
 	if err != nil {
-		r.recorder.Event(local, "Warning", "FailedReconcile", fmt.Sprintf("Failed to reconcile resource: %s", err.Error()))
+		r.Recorder.Event(local, "Warning", "FailedReconcile", fmt.Sprintf("Failed to reconcile resource: %s", err.Error()))
 	}
 
-	r.recorder.Event(local, "Normal", "Reconciled", "Successfully reconciled")
+	r.Recorder.Event(local, "Normal", "Reconciled", "Successfully reconciled")
 	return ctrl.Result{}, err
 }

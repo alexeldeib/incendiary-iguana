@@ -7,15 +7,14 @@ package reconcilers
 import (
 	"context"
 	"fmt"
-	"net/http"
 
-	"github.com/Azure/azure-sdk-for-go/services/redis/mgmt/2018-03-01/redis"
 	"github.com/go-logr/logr"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrl "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -29,19 +28,23 @@ type RedisKeyReconciler struct {
 	Scheme     *runtime.Scheme
 }
 
-func (r *RedisKeyReconciler) SyncSecrets(ctx context.Context, local *azurev1alpha1.Redis) error {
+func (r *RedisKeyReconciler) Ensure(ctx context.Context, obj runtime.Object) error {
+	local, err := r.convert(obj)
+	if err != nil {
+		return err
+	}
 	if local.Spec.PrimaryKey == nil && local.Spec.SecondaryKey == nil {
 		return nil
 	}
 
-	keys, err := r.Service.ListKeys(ctx, local)
+	keys, err := r.Service.ListKeys(ctx, r.accountFromKey(local))
 	if err != nil {
 		return err
 	}
 
 	targetSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      *local.Spec.TargetSecret,
+			Name:      local.Spec.TargetSecret,
 			Namespace: local.ObjectMeta.Namespace,
 		},
 	}
@@ -79,10 +82,34 @@ func (r *RedisKeyReconciler) SyncSecrets(ctx context.Context, local *azurev1alph
 }
 
 // Delete handles deletion of a resource groups.
-func (r *RedisKeyReconciler) Delete(ctx context.Context, obj runtime.Object, log logr.Logger) (bool, error) {
+func (r *RedisKeyReconciler) Delete(ctx context.Context, obj runtime.Object, log logr.Logger) error {
 	local, err := r.convert(obj)
 	if err != nil {
-		return false, err
+		return err
 	}
-	return r.Service.Delete(ctx, local, log)
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      local.Spec.TargetSecret,
+			Namespace: local.ObjectMeta.Namespace,
+		},
+	}
+	return client.IgnoreNotFound(r.Kubeclient.Delete(ctx, secret))
+}
+
+func (r *RedisKeyReconciler) convert(obj runtime.Object) (*azurev1alpha1.RedisKey, error) {
+	local, ok := obj.(*azurev1alpha1.RedisKey)
+	if !ok {
+		return nil, fmt.Errorf("failed type assertion on kind: %s", obj.GetObjectKind().GroupVersionKind().String())
+	}
+	return local, nil
+}
+
+func (r *RedisKeyReconciler) accountFromKey(key *azurev1alpha1.RedisKey) *azurev1alpha1.Redis {
+	return &azurev1alpha1.Redis{
+		Spec: azurev1alpha1.RedisSpec{
+			SubscriptionID: key.Spec.SubscriptionID,
+			ResourceGroup:  key.Spec.ResourceGroup,
+			Name:           key.Spec.Name,
+		},
+	}
 }

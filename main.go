@@ -5,12 +5,14 @@ Copyright 2019 Alexander Eldeib.
 package main
 
 import (
+	"errors"
 	"flag"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/sanity-io/litter"
+	"github.com/Azure/go-autorest/autorest/azure"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -19,27 +21,18 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/controllers"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/keyvaults"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/nics"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/publicips"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/redis"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/resourcegroups"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/secrets"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/securitygroups"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/servicebus"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/subnets"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/tlssecrets"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/trafficmanagers"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/virtualnetworks"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/vms"
-	"github.com/alexeldeib/incendiary-iguana/pkg/config"
-	"github.com/alexeldeib/incendiary-iguana/pkg/reconciler"
+	"github.com/alexeldeib/incendiary-iguana/pkg/authorizer"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients"
+	"github.com/alexeldeib/incendiary-iguana/pkg/reconcilers"
+	"github.com/alexeldeib/incendiary-iguana/pkg/reconcilers/generic"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services"
 	// +kubebuilder:scaffold:imports
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme         = runtime.NewScheme()
+	setupLog       = ctrl.Log.WithName("setup")
+	controllerName = "incendiaryiguana"
 )
 
 func init() {
@@ -50,25 +43,50 @@ func init() {
 
 func main() {
 	rand.Seed(time.Now().Unix())
-	var metricsAddr string
-	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
+
+	metricsAddr := flag.String("metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	enableLeaderElection := flag.Bool("enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
+	app := flag.String("app", "", "The AAD app ID for authentication.")
+	key := flag.String("key", "", "The AAD client secret for authentication.")
+	tenant := flag.String("tenant", "", "The AAD tenant ID for authentication.")
+	env := flag.String("env", "AzurePublicCloud", "The Azure cloud environment. options include AzurePublicCloud, ...")
 
 	flag.Parse()
 
 	ctrl.SetLogger(zap.Logger(false))
 
-	configuration, err := config.New()
-	if err != nil {
-		setupLog.Error(err, "failed to detect any authorizer")
+	if *app == "" || *key == "" || *tenant == "" {
+		setupLog.Error(errors.New("must specify all of app, key, and tenant for client credential authentication"), "", "app", *app, "tenant", *tenant, "key length", len(*key))
+		os.Exit(1)
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	// Must have some cloud set. Default to Azure public cloud.
+	var cloud azure.Environment
+	var err error
+	if *env == "" {
+		cloud = azure.PublicCloud
+	} else {
+		c, err := azure.EnvironmentFromName(*env)
+		if err != nil {
+			setupLog.Error(err, "failed to create azure environment from user-provided value", "env", *env)
+		}
+		cloud = c
+		os.Exit(2)
+	}
+
+	// Fetch kubeconfig
+	kubeconfig, err := ctrl.GetConfig()
+	if err != nil {
+		setupLog.Error(err, "failed to get kubeconfig")
+		os.Exit(1)
+	}
+
+	// Setup manager
+	mgr, err := ctrl.NewManager(kubeconfig, ctrl.Options{
 		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
-		LeaderElection:     enableLeaderElection,
+		MetricsBindAddress: *metricsAddr,
+		LeaderElection:     *enableLeaderElection,
 	})
 
 	if err != nil {
@@ -76,205 +94,137 @@ func main() {
 		os.Exit(1)
 	}
 
-	log := ctrl.Log.WithName("incendiaryiguana")
-	recorder := mgr.GetEventRecorderFor("incendiaryiguana")
+	// Initialize shared logger, event recorder, and kubeclient
+	log := ctrl.Log.WithName(controllerName)
+	recorder := mgr.GetEventRecorderFor(controllerName)
 	client := mgr.GetClient()
 
-	// Global client initialization
-	secretsclient, err := secrets.New(configuration, &client, scheme)
+	// Initialize Azure authorizers.
+	// Builder can be replaced with MSI easily to use AAD pod identity.
+	mgmtAuthorizer, err := authorizer.NewBuilder().
+		In(azure.PublicCloud).
+		WithClientCredentials(*app, *key, *tenant).
+		Build()
+
 	if err != nil {
-		setupLog.Error(err, "failed to initialize keyvault secret client")
-		os.Exit(1)
+		setupLog.Error(err, "failed to create arm authorizer")
 	}
 
-	tlssecretsclient, err := tlssecrets.New(configuration, &client, scheme)
+	// Keyvault data plane uses a separate AAD resource for the token.
+	// There are only ~six of these, so it's worth making retrieving all of them easy.
+	kvAuthorizer, err := authorizer.NewBuilder().
+		In(azure.PublicCloud).
+		For(strings.TrimSuffix(cloud.KeyVaultEndpoint, "/")).
+		WithClientCredentials(*app, *key, *tenant).
+		Build()
+
 	if err != nil {
-		setupLog.Error(err, "failed to initialize keyvault tlssecret client")
-		os.Exit(1)
+		setupLog.Error(err, "failed to create keyvault data plane authorizer")
 	}
 
-	// TODO(ace): handle this in a loop.
+	// Create Azure service clients. Thin wrappers on Azure SDK with mockable interfaces.
+	groupService := &services.ResourceGroupService{
+		Authorizer: mgmtAuthorizer,
+	}
+
+	secretService := &services.SecretService{
+		DNSSuffix: cloud.KeyVaultDNSSuffix,
+		Client:    clients.NewSecretsClient(kvAuthorizer),
+	}
+
+	storageService := &services.StorageService{
+		Authorizer: mgmtAuthorizer,
+	}
+
+	trafficManagerService := &services.TrafficManagerService{
+		Authorizer: mgmtAuthorizer,
+	}
+
+	// Initialize controllers
 	if err = (&controllers.ResourceGroupController{
-		Reconciler: reconciler.NewAsyncReconciler(
-			client,
-			resourcegroups.NewGroupClient(configuration),
-			log,
-			recorder,
-			scheme,
-		),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ResourceGroup")
-		os.Exit(1)
-	}
-
-	if err = (&controllers.KeyvaultController{
-		Reconciler: reconciler.NewSyncReconciler(
-			client,
-			keyvaults.New(configuration),
-			log,
-			recorder,
-			scheme,
-		),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Keyvault")
-		os.Exit(1)
-	}
-
-	if err = (&controllers.SecretController{
-		Reconciler: reconciler.NewSyncReconciler(
-			client,
-			tlssecretsclient,
-			log,
-			recorder,
-			scheme,
-		),
+		Reconciler: &generic.AsyncReconciler{
+			Client:   client,
+			Logger:   log,
+			Recorder: recorder,
+			Scheme:   scheme,
+			AsyncActuator: &reconcilers.ResourceGroupReconciler{
+				Service:    groupService,
+				Kubeclient: client,
+				Scheme:     scheme,
+			},
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Secret")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.TLSSecretController{
-		Reconciler: reconciler.NewSyncReconciler(
-			client,
-			tlssecretsclient,
-			log,
-			recorder,
-			scheme,
-		),
+	if err = (&controllers.SecretController{
+		Reconciler: &generic.SyncReconciler{
+			Client:   client,
+			Logger:   log,
+			Recorder: recorder,
+			Scheme:   scheme,
+			SyncActuator: &reconcilers.SecretReconciler{
+				Service:    secretService,
+				Kubeclient: client,
+				Scheme:     scheme,
+			},
+		},
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "TLSSecret")
+		setupLog.Error(err, "unable to create controller", "controller", "Secret")
 		os.Exit(1)
 	}
 
 	if err = (&controllers.SecretBundleController{
-		Reconciler: reconciler.NewSyncReconciler(
-			client,
-			secretsclient,
-			log,
-			recorder,
-			scheme,
-		),
+		Reconciler: &generic.SyncReconciler{
+			Client:   client,
+			Logger:   log,
+			Recorder: recorder,
+			Scheme:   scheme,
+			SyncActuator: &reconcilers.SecretBundleReconciler{
+				Service:    secretService,
+				Kubeclient: client,
+				Scheme:     scheme,
+			},
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SecretBundle")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.VirtualNetworkController{
-		Reconciler: reconciler.NewAsyncReconciler(
-			client,
-			virtualnetworks.New(configuration),
-			log,
-			recorder,
-			scheme,
-		),
+	if err = (&controllers.StorageKeyController{
+		Reconciler: &generic.SyncReconciler{
+			Client:   client,
+			Logger:   log,
+			Recorder: recorder,
+			Scheme:   scheme,
+			SyncActuator: &reconcilers.StorageKeyReconciler{
+				Service:    storageService,
+				Kubeclient: client,
+				Scheme:     scheme,
+			},
+		},
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VirtualNetwork")
-		os.Exit(1)
-	}
-
-	if err = (&controllers.SubnetController{
-		Reconciler: reconciler.NewAsyncReconciler(
-			client,
-			subnets.New(configuration),
-			log,
-			recorder,
-			scheme,
-		),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Subnet")
-		os.Exit(1)
-	}
-
-	if err = (&controllers.SecurityGroupController{
-		Reconciler: reconciler.NewAsyncReconciler(
-			client,
-			securitygroups.New(configuration),
-			log,
-			recorder,
-			scheme,
-		),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "SecurityGroup")
-		os.Exit(1)
-	}
-
-	if err = (&controllers.PublicIPController{
-		Reconciler: reconciler.NewAsyncReconciler(
-			client,
-			publicips.New(configuration),
-			log,
-			recorder,
-			scheme,
-		),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "PublicIP")
-		os.Exit(1)
-	}
-
-	if err = (&controllers.NetworkInterfaceController{
-		Reconciler: reconciler.NewAsyncReconciler(
-			client,
-			nics.New(configuration),
-			log,
-			recorder,
-			scheme,
-		),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "NetworkInterface")
+		setupLog.Error(err, "unable to create controller", "controller", "StorageKey")
 		os.Exit(1)
 	}
 
 	if err = (&controllers.TrafficManagerController{
-		Client:                client,
-		Log:                   ctrl.Log.WithName("controllers").WithName("TrafficManager"),
-		TrafficManagersClient: trafficmanagers.New(configuration),
-		Recorder:              recorder,
+		Reconciler: &generic.AsyncReconciler{
+			Client:   client,
+			Logger:   log,
+			Recorder: recorder,
+			Scheme:   scheme,
+			AsyncActuator: &reconcilers.TrafficManagerReconciler{
+				Service: trafficManagerService,
+			},
+		},
 	}).SetupWithManager(mgr); err != nil {
-		litter.Dump(err)
 		setupLog.Error(err, "unable to create controller", "controller", "TrafficManager")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.RedisController{
-		Reconciler: reconciler.NewAsyncReconciler(
-			client,
-			redis.New(configuration, &client, scheme),
-			log,
-			recorder,
-			scheme,
-		),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Redis")
-		os.Exit(1)
-	}
-
-	if err = (&controllers.ServiceBusNamespaceController{
-		Reconciler: reconciler.NewAsyncReconciler(
-			client,
-			servicebus.New(configuration, &client, scheme),
-			log,
-			recorder,
-			scheme,
-		),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ServiceBusNamespace")
-		os.Exit(1)
-	}
-
-	if err = (&controllers.VMController{
-		Reconciler: reconciler.NewAsyncReconciler(
-			client,
-			vms.New(configuration),
-			log,
-			recorder,
-			scheme,
-		),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VM")
-		os.Exit(1)
-	}
-	// +kubebuilder:scaffold:builder
-
+	// Start manager
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")

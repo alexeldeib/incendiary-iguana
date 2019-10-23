@@ -11,14 +11,14 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/reconciler"
+	"github.com/alexeldeib/incendiary-iguana/pkg/reconcilers/generic"
 )
 
 var BadHostRegex = regexp.MustCompile(`StatusCode=([0-9]{0,3})`)
 
 // SecretBundleReconciler reconciles a Secret object
 type SecretBundleController struct {
-	Reconciler *reconciler.SyncReconciler
+	Reconciler *generic.SyncReconciler
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=secretbundles,verbs=get;list;watch;create;update;patch;delete

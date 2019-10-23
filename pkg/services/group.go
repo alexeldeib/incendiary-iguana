@@ -57,6 +57,10 @@ func (s *ResourceGroupService) Delete(ctx context.Context, local *azurev1alpha1.
 		log.Info("no existing future found, beginning deletion")
 		deleteFuture, err := client.Delete(ctx, local.Spec.Name)
 		if err != nil {
+			if res := deleteFuture.Response(); res != nil && res.StatusCode == http.StatusNotFound {
+				// Not found is successful delete on a resource.
+				return true, nil
+			}
 			return false, err
 		}
 		future = deleteFuture
@@ -66,10 +70,6 @@ func (s *ResourceGroupService) Delete(ctx context.Context, local *azurev1alpha1.
 	log.Info("checking deletion status")
 	done, err := future.DoneWithContext(ctx, &client)
 	if err != nil {
-		if res := future.Response(); res != nil && res.StatusCode == http.StatusNotFound {
-			// Not found is successful delete on a resource.
-			return false, nil
-		}
 		return false, err
 	}
 
@@ -79,5 +79,5 @@ func (s *ResourceGroupService) Delete(ctx context.Context, local *azurev1alpha1.
 		*local.Status.Future, err = future.MarshalJSON()
 	}
 
-	return !done, err
+	return done, err
 }

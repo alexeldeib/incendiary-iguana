@@ -16,12 +16,19 @@ limitations under the License.
 package controllers
 
 import (
-	"path/filepath"
+	"fmt"
+	"math/rand"
+	"os"
 	"testing"
+	"time"
 
+	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/go-autorest/autorest/azure"
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -31,21 +38,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/config"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/resourcegroups"
+	"github.com/alexeldeib/incendiary-iguana/pkg/authorizer"
+	"github.com/alexeldeib/incendiary-iguana/pkg/clients"
+	"github.com/alexeldeib/incendiary-iguana/pkg/reconcilers"
+	"github.com/alexeldeib/incendiary-iguana/pkg/reconcilers/generic"
+	"github.com/alexeldeib/incendiary-iguana/pkg/services"
 	// +kubebuilder:scaffold:imports
 )
 
-// These tests use Ginkgo (BDD-style Go testing framework). Refer to
-// http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
-
 var (
-	cfg          *rest.Config
-	k8sClient    client.Client
-	mgr          ctrl.Manager
-	testEnv      *envtest.Environment
-	groupsClient *resourcegroups.GroupClient
-	doneMgr      = make(chan struct{})
+	cfg            *rest.Config
+	k8sClient      client.Client
+	mgr            ctrl.Manager
+	testEnv        *envtest.Environment
+	doneMgr        = make(chan struct{})
+	log            logr.Logger
+	mgmtAuthorizer autorest.Authorizer
+	groupsClient   resources.GroupsClient
+	groupService   *services.ResourceGroupService
 )
 
 func TestAPIs(t *testing.T) {
@@ -57,11 +67,37 @@ func TestAPIs(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(done Done) {
+	rand.Seed(time.Now().Unix())
 	logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
+
+	app := os.Getenv("AZURE_CLIENT_ID")
+	key := os.Getenv("AZURE_CLIENT_SECRET")
+	tenant := os.Getenv("AZURE_TENANT_ID")
+	subscription := os.Getenv("AZURE_SUBSCRIPTION_ID")
+
+	if app == "" || key == "" || tenant == "" {
+		Fail(fmt.Sprintf("must specify all of app, key, and tenant for client credential authentication, app: [ %s ], sub: [ %s ], tenant: [ %s ], key length: [ %d ]", app, subscription, tenant, len(key)))
+	}
+
+	log = logf.Log.WithName("testmanager")
+	log.WithValues("subscription", subscription, "app", app, "tenant", tenant).Info("using client configuration")
+
+	mgmtAuthorizer, err := authorizer.NewBuilder().
+		In(azure.PublicCloud).
+		WithClientCredentials(app, key, tenant).
+		Build()
+	Expect(err).ToNot(HaveOccurred())
+
+	groupsClient, err = clients.NewGroupsClient(subscription, mgmtAuthorizer)
+	Expect(err).ToNot(HaveOccurred())
+
+	groupService = &services.ResourceGroupService{
+		Authorizer: mgmtAuthorizer,
+	}
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths: []string{filepath.Join("..", "config", "crd", "bases")},
+		CRDDirectoryPaths: []string{},
 	}
 
 	cfg, err := testEnv.Start()
@@ -83,20 +119,21 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(k8sClient).ToNot(BeNil())
 
 	// +kubebuilder:scaffold:scheme
-	By("initializing azure config")
-	configuration, err := config.New()
-	Expect(err).ToNot(HaveOccurred())
 
-	log := logf.Log.WithName("testmanager")
 	recorder := mgr.GetEventRecorderFor("testmanager")
 
 	By("creating reconciler")
-	Expect((&ResourceGroupReconciler{
-		Reconciler: &AsyncReconciler{
+	Expect((&ResourceGroupController{
+		Reconciler: &generic.AsyncReconciler{
 			Client:   k8sClient,
-			Az:       resourcegroups.NewGroupClient(configuration),
-			Log:      log,
+			Logger:   log,
 			Recorder: recorder,
+			Scheme:   scheme.Scheme,
+			AsyncActuator: &reconcilers.ResourceGroupReconciler{
+				Service:    groupService,
+				Kubeclient: k8sClient,
+				Scheme:     scheme.Scheme,
+			},
 		},
 	}).SetupWithManager(mgr)).NotTo(HaveOccurred())
 

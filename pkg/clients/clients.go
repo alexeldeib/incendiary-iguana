@@ -1,6 +1,10 @@
 package clients
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httputil"
+
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2019-07-01/compute"
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/mgmt/2018-02-14/keyvault"
 	kvsecret "github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
@@ -116,4 +120,34 @@ func NewVirtualNetworksClient(sub string, authorizer autorest.Authorizer) (netwo
 	client := network.NewVirtualNetworksClient(sub)
 	client.Authorizer = authorizer
 	return client, nil
+}
+
+// LogRequest logs full autorest requests for any Azure client.
+func LogRequest() autorest.PrepareDecorator {
+	return func(p autorest.Preparer) autorest.Preparer {
+		return autorest.PreparerFunc(func(r *http.Request) (*http.Request, error) {
+			r, err := p.Prepare(r)
+			if err != nil {
+				fmt.Println(err)
+			}
+			dump, _ := httputil.DumpRequestOut(r, true)
+			fmt.Println(string(dump))
+			return r, err
+		})
+	}
+}
+
+// LogResponse logs full autorest responses for any Azure client.
+func LogResponse() autorest.RespondDecorator {
+	return func(p autorest.Responder) autorest.Responder {
+		return autorest.ResponderFunc(func(r *http.Response) error {
+			err := p.Respond(r)
+			if err != nil {
+				fmt.Println(err)
+			}
+			dump, _ := httputil.DumpResponse(r, true)
+			fmt.Println(string(dump))
+			return err
+		})
+	}
 }

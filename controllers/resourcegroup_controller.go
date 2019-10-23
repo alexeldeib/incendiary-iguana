@@ -6,15 +6,14 @@ package controllers
 
 import (
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/reconciler"
+	"github.com/alexeldeib/incendiary-iguana/pkg/reconcilers/generic"
 )
 
 // ResourceGroupController reconciles a ResourceGroup object
 type ResourceGroupController struct {
-	Reconciler *reconciler.AsyncReconciler
+	Reconciler *generic.AsyncReconciler
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=resourcegroups,verbs=get;list;watch;create;update;patch;delete
@@ -29,6 +28,5 @@ func (r *ResourceGroupController) Reconcile(req ctrl.Request) (ctrl.Result, erro
 func (r *ResourceGroupController) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&azurev1alpha1.ResourceGroup{}).
-		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }

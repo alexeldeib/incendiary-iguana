@@ -2,7 +2,7 @@
 Copyright 2019 Alexander Eldeib.
 */
 
-package reconciler
+package generic
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/finalizer"
 )
 
-type AsyncClient interface {
+type AsyncActuator interface {
 	Ensure(context.Context, runtime.Object) (bool, error)
 	Delete(context.Context, runtime.Object, logr.Logger) (bool, error)
 }
@@ -32,33 +32,34 @@ type AsyncClient interface {
 type AsyncReconciler struct {
 	// Kubernetes generic recocniliation components
 	client.Client
-	log      logr.Logger
-	recorder record.EventRecorder
-	scheme   *runtime.Scheme
+	logr.Logger
+	Recorder record.EventRecorder
+	*runtime.Scheme
 	// Azure specific reconciliation components
-	service AsyncClient
+	// TODO(ace): better naming...
+	AsyncActuator
 }
 
 // NewAsyncReconciler return a new asynchronous reconciler for Azure resources associated with the client.
-func NewAsyncReconciler(kubeclient client.Client, service AsyncClient, log logr.Logger, recorder record.EventRecorder, scheme *runtime.Scheme) *AsyncReconciler {
+func NewAsyncReconciler(kubeclient client.Client, act AsyncActuator, log logr.Logger, recorder record.EventRecorder, scheme *runtime.Scheme) *AsyncReconciler {
 	return &AsyncReconciler{
 		kubeclient,
 		log,
 		recorder,
 		scheme,
-		service,
+		act,
 	}
 }
 
 func (r *AsyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctrl.Result, error) {
 	ctx := context.Background()
 
-	gvk, err := apiutil.GVKForObject(local, r.scheme)
+	gvk, err := apiutil.GVKForObject(local, r.Scheme)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	log := r.log.WithValues("groupversion", gvk.GroupVersion().String(), "kind", gvk.Kind, "namespace", req.Namespace, "name", req.Name)
+	log := r.Logger.WithValues("groupversion", gvk.GroupVersion().String(), "kind", gvk.Kind, "namespace", req.Namespace, "name", req.Name)
 
 	if err := r.Get(ctx, req.NamespacedName, local); err != nil {
 		log.Info("error during fetch from api server")
@@ -70,25 +71,30 @@ func (r *AsyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctr
 		return ctrl.Result{}, err
 	}
 
+	log.V(2).Info("checking deletion timestamp")
 	if res.GetDeletionTimestamp().IsZero() {
+		log.Info("will try to add finalizer")
 		if !finalizer.Has(res, constants.Finalizer) {
 			finalizer.Add(res, constants.Finalizer)
-			r.recorder.Event(local, "Normal", "Added", "Object finalizer is added")
+			log.Info("added finalizer")
+			r.Recorder.Event(local, "Normal", "Added", "Object finalizer is added")
 			return ctrl.Result{}, r.Update(ctx, local)
 		}
 	} else {
+		log.V(2).Info("checking for finalizer")
 		if finalizer.Has(res, constants.Finalizer) {
-			done, deleteErr := r.service.Delete(ctx, local, log)
+			log.V(2).Info("finalizer present, invoking actuator deletion")
+			done, deleteErr := r.AsyncActuator.Delete(ctx, local, log)
 			statusErr := r.Status().Update(ctx, local)
 
 			final := multierror.Append(deleteErr, statusErr)
 			if err := final.ErrorOrNil(); err != nil {
-				r.recorder.Event(local, "Warning", "FailedDelete", fmt.Sprintf("Failed to delete resource: %s", err.Error()))
+				r.Recorder.Event(local, "Warning", "FailedDelete", fmt.Sprintf("Failed to delete resource: %s", err.Error()))
 				return ctrl.Result{}, err
 			}
 
 			if done {
-				r.recorder.Event(local, "Normal", "Deleted", "Successfully deleted")
+				r.Recorder.Event(local, "Normal", "Deleted", "Successfully deleted")
 				finalizer.Remove(res, constants.Finalizer)
 				return ctrl.Result{}, r.Update(ctx, local)
 			}
@@ -98,20 +104,20 @@ func (r *AsyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctr
 		return ctrl.Result{}, nil
 	}
 
-	log.Info("reconciling object")
-	done, ensureErr := r.service.Ensure(ctx, local)
+	log.V(2).Info("reconciling object")
+	done, ensureErr := r.AsyncActuator.Ensure(ctx, local)
 	statusErr := r.Status().Update(ctx, local)
 
 	final := multierror.Append(ensureErr, statusErr)
 	if err := final.ErrorOrNil(); err != nil {
 		log.Error(err, "failed to reconcile")
-		r.recorder.Event(local, "Warning", "FailedReconcile", fmt.Sprintf("Failed to reconcile resource: %s", err.Error()))
+		r.Recorder.Event(local, "Warning", "FailedReconcile", fmt.Sprintf("Failed to reconcile resource: %s", err.Error()))
 	} else if done {
 		log.Info("successfully reconciled")
-		r.recorder.Event(local, "Normal", "Reconciled", "Successfully reconciled")
+		r.Recorder.Event(local, "Normal", "Reconciled", "Successfully reconciled")
 	} else {
 		log.Info("reconciled, but will requeue for completion.")
-		r.recorder.Event(local, "Normal", "Reconciled", "Reconciled, but will requeue for completion")
+		r.Recorder.Event(local, "Normal", "Reconciled", "Reconciled, but will requeue for completion")
 	}
 
 	return ctrl.Result{Requeue: !done}, err

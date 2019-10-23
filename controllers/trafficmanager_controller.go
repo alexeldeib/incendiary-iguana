@@ -5,84 +5,25 @@ Copyright 2019 Alexander Eldeib.
 package controllers
 
 import (
-	"context"
-	"fmt"
-
-	"github.com/go-logr/logr"
-	multierror "github.com/hashicorp/go-multierror"
-	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/services/trafficmanagers"
-	"github.com/alexeldeib/incendiary-iguana/pkg/constants"
-	"github.com/alexeldeib/incendiary-iguana/pkg/finalizer"
+	"github.com/alexeldeib/incendiary-iguana/pkg/reconcilers/generic"
 )
 
-// TrafficManagerReconciler reconciles a PublicIP object
+// TrafficManagerReconciler reconciles a TrafficManager object
 type TrafficManagerController struct {
-	client.Client
-	Log                   logr.Logger
-	TrafficManagersClient *trafficmanagers.Client
-	Recorder              record.EventRecorder
+	Reconciler *generic.AsyncReconciler
 }
 
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=trafficmanagers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=trafficmanagers/status,verbs=get;update;patch
-
 func (r *TrafficManagerController) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
-	log := r.Log.WithValues("trafficmanager", fmt.Sprintf("%s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name))
-
-	var local azurev1alpha1.TrafficManager
-
-	if err := r.Get(ctx, req.NamespacedName, &local); err != nil {
-		log.Info("error during fetch from api server")
-		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
-
-	if err := r.TrafficManagersClient.ForSubscription(local.Spec.SubscriptionID); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	if local.DeletionTimestamp.IsZero() {
-		if !finalizer.Has(&local, constants.Finalizer) {
-			finalizer.Add(&local, constants.Finalizer)
-			r.Recorder.Event(&local, "Normal", "Added", "Object finalizer is added")
-			return ctrl.Result{}, r.Update(ctx, &local)
-		}
-	} else {
-		if finalizer.Has(&local, constants.Finalizer) {
-			err := multierror.Append(r.TrafficManagersClient.Delete(ctx, &local), r.Status().Update(ctx, &local))
-			if final := err.ErrorOrNil(); final != nil {
-				r.Recorder.Event(&local, "Warning", "FailedDelete", fmt.Sprintf("Failed to delete resource: %s", final.Error()))
-				return ctrl.Result{}, final
-			}
-			r.Recorder.Event(&local, "Normal", "Deleted", "Successfully deleted")
-			finalizer.Remove(&local, constants.Finalizer)
-			if err := r.Update(ctx, &local); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-		return ctrl.Result{}, nil
-	}
-
-	done, ensureErr := r.TrafficManagersClient.Ensure(ctx, &local)
-	final := multierror.Append(ensureErr, r.Status().Update(ctx, &local))
-	err := final.ErrorOrNil()
-	if err != nil {
-		r.Recorder.Event(&local, "Warning", "FailedReconcile", fmt.Sprintf("Failed to reconcile resource: %s", err.Error()))
-	} else if done {
-		r.Recorder.Event(&local, "Normal", "Reconciled", "Successfully reconciled")
-	}
-	return ctrl.Result{Requeue: !done}, err
+	return r.Reconciler.Reconcile(req, &azurev1alpha1.TrafficManager{})
 }
 
 func (r *TrafficManagerController) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&azurev1alpha1.TrafficManager{}).
-		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }

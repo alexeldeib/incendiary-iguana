@@ -16,6 +16,7 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/cmd/ensure"
+	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/identities"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/keyvaults"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/loadbalancers"
@@ -29,7 +30,6 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/subnets"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/trafficmanagers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services/virtualnetworks"
-	"github.com/alexeldeib/incendiary-iguana/pkg/config"
 )
 
 const testdata = "./testdata/group.yaml"
