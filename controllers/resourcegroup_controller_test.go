@@ -18,7 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/stringutil"
+	"github.com/alexeldeib/incendiary-iguana/pkg/randstring"
 )
 
 var _ = Describe("resource group controller", func() {
@@ -27,7 +27,7 @@ var _ = Describe("resource group controller", func() {
 	const interval = time.Second * 5
 
 	It("should create successfully", func() {
-		name := fmt.Sprintf("test-ctrl-%s", stringutil.GenerateLowerCaseAlphaNumeric(16))
+		name := fmt.Sprintf("test-ctrl-%s", randstring.NewLowerCaseAlphaNumeric(16))
 		subscription := os.Getenv("AZURE_SUBSCRIPTION_ID")
 		if subscription == "" {
 			Fail("subscription can't be empty")
