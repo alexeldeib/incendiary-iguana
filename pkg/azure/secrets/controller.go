@@ -1,0 +1,70 @@
+/*
+Copyright 2019 Alexander Eldeib.
+*/
+
+package secrets
+
+import (
+	corev1 "k8s.io/api/core/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
+
+	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
+	"github.com/alexeldeib/incendiary-iguana/pkg/reconcilers"
+)
+
+// SecretReconciler reconciles a Secret object
+type SecretController struct {
+	Reconciler *reconcilers.SyncReconciler
+}
+
+// +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=secrets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=secrets/status,verbs=get;update;patch
+
+func (r *SecretController) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+	return r.Reconciler.Reconcile(req, &azurev1alpha1.Secret{})
+}
+
+func (r *SecretController) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&azurev1alpha1.Secret{}).
+		Owns(&corev1.Secret{}).
+		Complete(r)
+}
+
+// SecretBundleReconciler reconciles a Secret object
+type SecretBundleController struct {
+	Reconciler *reconcilers.SyncReconciler
+}
+
+// +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=secretbundles,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=secretbundles/status,verbs=get;update;patch
+
+func (r *SecretBundleController) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+	return r.Reconciler.Reconcile(req, &azurev1alpha1.SecretBundle{})
+}
+
+func (r *SecretBundleController) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&azurev1alpha1.SecretBundle{}).
+		Owns(&corev1.Secret{}).
+		Complete(r)
+}
+
+// TLSSecretReconciler reconciles a Secret object
+type TLSSecretController struct {
+	Reconciler *reconcilers.SyncReconciler
+}
+
+// +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=tlssecrets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=azure.alexeldeib.xyz,resources=tlssecrets/status,verbs=get;update;patch
+
+func (r *TLSSecretController) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+	return r.Reconciler.Reconcile(req, &azurev1alpha1.Secret{})
+}
+
+func (r *TLSSecretController) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&azurev1alpha1.TLSSecret{}).
+		Owns(&corev1.Secret{}).
+		Complete(r)
+}
