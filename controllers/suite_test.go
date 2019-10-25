@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -38,8 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
-	"github.com/alexeldeib/incendiary-iguana/pkg/authorizer"
-	"github.com/alexeldeib/incendiary-iguana/pkg/clients"
 	"github.com/alexeldeib/incendiary-iguana/pkg/reconcilers"
 	"github.com/alexeldeib/incendiary-iguana/pkg/reconcilers/generic"
 	"github.com/alexeldeib/incendiary-iguana/pkg/services"
@@ -55,7 +52,7 @@ var (
 	log            logr.Logger
 	mgmtAuthorizer autorest.Authorizer
 	groupsClient   resources.GroupsClient
-	groupService   *services.ResourceGroupService
+	groupService   *services.FakeResourceGroupService
 )
 
 func TestAPIs(t *testing.T) {
@@ -70,6 +67,7 @@ var _ = BeforeSuite(func(done Done) {
 	rand.Seed(time.Now().Unix())
 	logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
 
+	// Retrieve authentication parameters
 	app := os.Getenv("AZURE_CLIENT_ID")
 	key := os.Getenv("AZURE_CLIENT_SECRET")
 	tenant := os.Getenv("AZURE_TENANT_ID")
@@ -82,17 +80,23 @@ var _ = BeforeSuite(func(done Done) {
 	log = logf.Log.WithName("testmanager")
 	log.WithValues("subscription", subscription, "app", app, "tenant", tenant).Info("using client configuration")
 
-	mgmtAuthorizer, err := authorizer.NewBuilder().
-		In(azure.PublicCloud).
-		WithClientCredentials(app, key, tenant).
-		Build()
-	Expect(err).ToNot(HaveOccurred())
+	// // Setup authorizer
+	// mgmtAuthorizer, err := authorizer.New(authorizer.ClientCredentials(app, key, tenant))
+	// Expect(err).ToNot(HaveOccurred())
 
-	groupsClient, err = clients.NewGroupsClient(subscription, mgmtAuthorizer)
-	Expect(err).ToNot(HaveOccurred())
+	// // Real Azure clients
+	// groupsClient, err = clients.NewGroupsClient(subscription, mgmtAuthorizer)
+	// Expect(err).ToNot(HaveOccurred())
 
-	groupService = &services.ResourceGroupService{
-		Authorizer: mgmtAuthorizer,
+	// // Azure service wrappers
+	// groupService = &services.ResourceGroupService{
+	// 	Authorizer: mgmtAuthorizer,
+	// }
+
+	groupService = &services.FakeResourceGroupService{
+		State:  map[string]string{},
+		Exists: map[string]bool{},
+		Start:  time.Now(),
 	}
 
 	By("bootstrapping test environment")
@@ -104,6 +108,7 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(cfg).ToNot(BeNil())
 
+	By("Building scheme")
 	err = azurev1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -120,14 +125,12 @@ var _ = BeforeSuite(func(done Done) {
 
 	// +kubebuilder:scaffold:scheme
 
-	recorder := mgr.GetEventRecorderFor("testmanager")
-
 	By("creating reconciler")
 	Expect((&ResourceGroupController{
 		Reconciler: &generic.AsyncReconciler{
 			Client:   k8sClient,
 			Logger:   log,
-			Recorder: recorder,
+			Recorder: mgr.GetEventRecorderFor("testmanager"),
 			Scheme:   scheme.Scheme,
 			AsyncActuator: &reconcilers.ResourceGroupReconciler{
 				Service:    groupService,

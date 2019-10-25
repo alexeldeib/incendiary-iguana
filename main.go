@@ -43,36 +43,40 @@ func init() {
 
 func main() {
 	rand.Seed(time.Now().Unix())
+	ctrl.SetLogger(zap.Logger(false))
+	setupLog.Info("starting manager")
 
-	metricsAddr := flag.String("metrics-addr", ":8080", "The address the metric endpoint binds to.")
-	enableLeaderElection := flag.Bool("enable-leader-election", false,
+	var (
+		metricsAddr           string
+		enableLeaderElection  bool
+		app, key, tenant, env string
+	)
+	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
-	app := flag.String("app", "", "The AAD app ID for authentication.")
-	key := flag.String("key", "", "The AAD client secret for authentication.")
-	tenant := flag.String("tenant", "", "The AAD tenant ID for authentication.")
-	env := flag.String("env", "AzurePublicCloud", "The Azure cloud environment. options include AzurePublicCloud, ...")
-
+	flag.StringVar(&app, "app", "", "The AAD app ID for authentication.")
+	flag.StringVar(&key, "key", "", "The AAD client secret for authentication.")
+	flag.StringVar(&tenant, "tenant", "", "The AAD tenant ID for authentication.")
+	flag.StringVar(&env, "env", "AzurePublicCloud", "The Azure cloud environment. options include AzurePublicCloud, ...")
 	flag.Parse()
 
-	ctrl.SetLogger(zap.Logger(false))
-
-	if *app == "" || *key == "" || *tenant == "" {
-		setupLog.Error(errors.New("must specify all of app, key, and tenant for client credential authentication"), "", "app", *app, "tenant", *tenant, "key length", len(*key))
+	if app == "" || key == "" || tenant == "" {
+		setupLog.Error(errors.New("must specify all of app, key, and tenant for client credential authentication"), "", "app", app, "tenant", tenant, "key length", len(key))
 		os.Exit(1)
 	}
 
 	// Must have some cloud set. Default to Azure public cloud.
 	var cloud azure.Environment
 	var err error
-	if *env == "" {
+	if env == "" {
 		cloud = azure.PublicCloud
 	} else {
-		c, err := azure.EnvironmentFromName(*env)
+		c, err := azure.EnvironmentFromName(env)
 		if err != nil {
-			setupLog.Error(err, "failed to create azure environment from user-provided value", "env", *env)
+			setupLog.Error(err, "failed to create azure environment from user-provided value", "env", env)
+			os.Exit(1)
 		}
 		cloud = c
-		os.Exit(2)
 	}
 
 	// Fetch kubeconfig
@@ -85,8 +89,8 @@ func main() {
 	// Setup manager
 	mgr, err := ctrl.NewManager(kubeconfig, ctrl.Options{
 		Scheme:             scheme,
-		MetricsBindAddress: *metricsAddr,
-		LeaderElection:     *enableLeaderElection,
+		MetricsBindAddress: metricsAddr,
+		LeaderElection:     enableLeaderElection,
 	})
 
 	if err != nil {
@@ -100,23 +104,17 @@ func main() {
 	client := mgr.GetClient()
 
 	// Initialize Azure authorizers.
-	// Builder can be replaced with MSI easily to use AAD pod identity.
-	mgmtAuthorizer, err := authorizer.NewBuilder().
-		In(azure.PublicCloud).
-		WithClientCredentials(*app, *key, *tenant).
-		Build()
-
+	mgmtAuthorizer, err := authorizer.New(authorizer.ClientCredentials(app, key, tenant))
 	if err != nil {
 		setupLog.Error(err, "failed to create arm authorizer")
 	}
 
 	// Keyvault data plane uses a separate AAD resource for the token.
 	// There are only ~six of these, so it's worth making retrieving all of them easy.
-	kvAuthorizer, err := authorizer.NewBuilder().
-		In(azure.PublicCloud).
-		For(strings.TrimSuffix(cloud.KeyVaultEndpoint, "/")).
-		WithClientCredentials(*app, *key, *tenant).
-		Build()
+	kvAuthorizer, err := authorizer.New(
+		authorizer.Resource(strings.TrimSuffix(cloud.KeyVaultEndpoint, "/")),
+		authorizer.ClientCredentials(app, key, tenant),
+	)
 
 	if err != nil {
 		setupLog.Error(err, "failed to create keyvault data plane authorizer")

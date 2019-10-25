@@ -26,6 +26,12 @@ cli-test: # fmt vet
 	# go test -v -ginkgo.v ./cmd/...
 
 manager-test:
+	# $env:AZURE_CLIENT_ID=$(cat sp.json | jq -r .clientId)
+	# $env:AZURE_CLIENT_SECRET=$(cat sp.json | jq -r .clientSecret)
+	# $env:AZURE_TENANT_ID=$(cat sp.json | jq -r .tenantId)
+	# $env:AZURE_SUBSCRIPTION_ID=$(cat sp.json | jq -r .subscriptionId)
+	# $env:USE_EXISTING_CLUSTER="true"
+	# $env:KUBECONFIG=$(kind get kubeconfig-path)
 	ginkgo -randomizeSuites -stream --slowSpecThreshold=180 -v -r ./controllers
 	# go test -v -ginkgo.v ./controllers/...
 

@@ -94,9 +94,6 @@ func (r *SyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctrl
 
 	ensureErr := r.SyncActuator.Ensure(ctx, local)
 	statusErr := r.Status().Update(ctx, local)
-	if ensureErr != nil {
-		log.Error(ensureErr, "ensure err")
-	}
 
 	log.Info("successfully reconciled")
 

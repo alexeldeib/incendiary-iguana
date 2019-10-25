@@ -57,6 +57,9 @@ spec:
         status:
           description: ResourceGroupStatus defines the observed state of ResourceGroup
           properties:
+            future:
+              format: byte
+              type: string
             id:
               description: ID is the fully qualified Azure resource ID.
               type: string

@@ -6,7 +6,6 @@ package generic
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/go-logr/logr"
@@ -73,7 +72,7 @@ func (r *AsyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctr
 
 	log.V(2).Info("checking deletion timestamp")
 	if res.GetDeletionTimestamp().IsZero() {
-		log.Info("will try to add finalizer")
+		log.V(2).Info("will try to add finalizer")
 		if !finalizer.Has(res, constants.Finalizer) {
 			finalizer.Add(res, constants.Finalizer)
 			log.Info("added finalizer")
@@ -98,27 +97,25 @@ func (r *AsyncReconciler) Reconcile(req ctrl.Request, local runtime.Object) (ctr
 				finalizer.Remove(res, constants.Finalizer)
 				return ctrl.Result{}, r.Update(ctx, local)
 			}
-
-			return ctrl.Result{}, errors.New("requeuing, deletion unfinished")
+			log.Info("requeueing, deletion unfinished")
+			return ctrl.Result{Requeue: true}, nil
 		}
 		return ctrl.Result{}, nil
 	}
 
-	log.V(2).Info("reconciling object")
+	log.Info("reconciling object")
 	done, ensureErr := r.AsyncActuator.Ensure(ctx, local)
 	statusErr := r.Status().Update(ctx, local)
 
 	final := multierror.Append(ensureErr, statusErr)
 	if err := final.ErrorOrNil(); err != nil {
-		log.Error(err, "failed to reconcile")
 		r.Recorder.Event(local, "Warning", "FailedReconcile", fmt.Sprintf("Failed to reconcile resource: %s", err.Error()))
 	} else if done {
-		log.Info("successfully reconciled")
 		r.Recorder.Event(local, "Normal", "Reconciled", "Successfully reconciled")
 	} else {
 		log.Info("reconciled, but will requeue for completion.")
 		r.Recorder.Event(local, "Normal", "Reconciled", "Reconciled, but will requeue for completion")
 	}
 
-	return ctrl.Result{Requeue: !done}, err
+	return ctrl.Result{Requeue: !done}, final.ErrorOrNil()
 }

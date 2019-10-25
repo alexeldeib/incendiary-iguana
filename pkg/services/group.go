@@ -17,6 +17,12 @@ import (
 	"github.com/alexeldeib/incendiary-iguana/pkg/clients"
 )
 
+type AzureResourceGroupService interface {
+	CreateOrUpdate(ctx context.Context, local *azurev1alpha1.ResourceGroup, remote resources.Group) (result resources.Group, err error)
+	Get(ctx context.Context, local *azurev1alpha1.ResourceGroup) (result resources.Group, err error)
+	Delete(ctx context.Context, local *azurev1alpha1.ResourceGroup, log logr.Logger) (bool, error)
+}
+
 type ResourceGroupService struct {
 	autorest.Authorizer
 }
@@ -47,7 +53,7 @@ func (s *ResourceGroupService) Delete(ctx context.Context, local *azurev1alpha1.
 	if local.Status.Future != nil {
 		log.Info("existing future found, parsing to check remote status")
 		var azureFuture azure.Future
-		if err := azureFuture.UnmarshalJSON(*local.Status.Future); err != nil {
+		if err := azureFuture.UnmarshalJSON(local.Status.Future); err != nil {
 			return false, err
 		}
 		future = resources.GroupsDeleteFuture{
@@ -64,7 +70,6 @@ func (s *ResourceGroupService) Delete(ctx context.Context, local *azurev1alpha1.
 			return false, err
 		}
 		future = deleteFuture
-		local.Status.Future = &[]byte{}
 	}
 
 	log.Info("checking deletion status")
@@ -76,7 +81,7 @@ func (s *ResourceGroupService) Delete(ctx context.Context, local *azurev1alpha1.
 	if done {
 		local.Status.Future = nil
 	} else {
-		*local.Status.Future, err = future.MarshalJSON()
+		local.Status.Future, err = future.MarshalJSON()
 	}
 
 	return done, err

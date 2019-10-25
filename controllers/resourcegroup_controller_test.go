@@ -13,7 +13,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -50,26 +49,28 @@ var _ = Describe("resource group controller", func() {
 			},
 		}
 
-		cleanup := func() {
-			future, err := groupsClient.Delete(context.Background(), name)
-			res := future.Response()
-			for res.StatusCode == http.StatusConflict {
-				future, err = groupsClient.Delete(context.Background(), name)
-				res = future.Response()
-			}
-			if res.StatusCode == http.StatusNotFound {
-				return
-			}
-			if err != nil {
-				Fail(fmt.Sprintf("failed to clean up resource group manually, please go clean up the resources. sub: %s, rg: %s, error: %v\n", subscription, name, err))
-			}
-			err = future.WaitForCompletionRef(context.Background(), groupsClient.Client)
-			if err != nil {
-				Fail(fmt.Sprintf("failed to wait for cleanup when deleting resource group, please go ensure resources are cleaned up. sub: %s, rg: %s, error: %v\n", subscription, name, err))
-			}
-		}
-
-		defer cleanup()
+		// // E2E cleanup
+		// cleanup := func() {
+		// 	log.Info("handling forceful cleanup")
+		// 	future, err := groupsClient.Delete(context.Background(), name)
+		// 	res := future.Response()
+		// 	for res.StatusCode == http.StatusConflict {
+		// 		future, err = groupsClient.Delete(context.Background(), name)
+		// 		res = future.Response()
+		// 	}
+		// 	if res.StatusCode == http.StatusNotFound {
+		// 		log.Info("test cleaned up after itself :)")
+		// 		return
+		// 	}
+		// 	if err != nil {
+		// 		log.Error(err, "failed to clean up resource group manually", "subscription", subscription, "resourcegroup", name)
+		// 	}
+		// 	err = future.WaitForCompletionRef(context.Background(), groupsClient.Client)
+		// 	if err != nil {
+		// 		log.Error(err, "failed to wait for cleanup when deleting resource group, please go ensure resources are cleaned up", "subscription", subscription, "resourcegroup", name)
+		// 	}
+		// }
+		// defer cleanup()
 
 		// Create
 		By("expecting successful creation")
@@ -87,6 +88,11 @@ var _ = Describe("resource group controller", func() {
 			_, err := groupService.Get(context.Background(), rg)
 			return err == nil
 		}, timeout, interval).Should(BeTrue())
+
+		By("Check status fields")
+		k8sClient.Get(context.Background(), key, rg)
+		Expect(*rg.Status.ProvisioningState).To(Equal("Succeeded"))
+		Expect(*rg.Status.ID).To(Equal(fmt.Sprintf("/subscriptions/%s/resourceGroups/%s", subscription, name)))
 
 		// Delete
 		By("expecting successful deletion")

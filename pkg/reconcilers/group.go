@@ -16,11 +16,12 @@ import (
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/convert"
+
 	"github.com/alexeldeib/incendiary-iguana/pkg/services"
 )
 
 type ResourceGroupReconciler struct {
-	Service    *services.ResourceGroupService
+	Service    services.AzureResourceGroupService
 	Kubeclient ctrl.Client
 	Scheme     *runtime.Scheme
 }
