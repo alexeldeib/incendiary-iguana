@@ -147,7 +147,6 @@ func main() {
 			Scheme:   scheme,
 			AsyncActuator: &reconcilers.ResourceGroupReconciler{
 				Service:    groupService,
-				Kubeclient: client,
 				Scheme:     scheme,
 			},
 		},

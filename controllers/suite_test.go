@@ -133,9 +133,7 @@ var _ = BeforeSuite(func(done Done) {
 			Recorder: mgr.GetEventRecorderFor("testmanager"),
 			Scheme:   scheme.Scheme,
 			AsyncActuator: &reconcilers.ResourceGroupReconciler{
-				Service:    groupService,
-				Kubeclient: k8sClient,
-				Scheme:     scheme.Scheme,
+				Service: groupService,
 			},
 		},
 	}).SetupWithManager(mgr)).NotTo(HaveOccurred())

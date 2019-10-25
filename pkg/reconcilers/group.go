@@ -12,7 +12,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-05-01/resources"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime/pkg/client"
 
 	azurev1alpha1 "github.com/alexeldeib/incendiary-iguana/api/v1alpha1"
 	"github.com/alexeldeib/incendiary-iguana/pkg/convert"
@@ -21,9 +20,7 @@ import (
 )
 
 type ResourceGroupReconciler struct {
-	Service    services.AzureResourceGroupService
-	Kubeclient ctrl.Client
-	Scheme     *runtime.Scheme
+	Service services.AzureResourceGroupService
 }
 
 // Ensure creates or updates a redis cache in an idempotent manner.
