@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
@@ -196,6 +197,14 @@ func formatSHA(thumbprint string) ([]byte, error) {
 	hex.Encode(dst, src)
 	dst = []byte(strings.ToUpper(string(dst)))
 	return dst, nil
+}
+
+func formatSecretSHA(secret string) ([]byte, error) {
+	_, pfxCert, _, err := parsePKCS12(secret)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(fmt.Sprintf("%X", sha1.Sum(pfxCert.Raw))), nil
 }
 
 func formatPKCS8(secret string) ([]byte, error) {
